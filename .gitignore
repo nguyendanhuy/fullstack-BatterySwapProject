@@ -1,0 +1,20 @@
+# Bỏ qua thư mục node_modules ở cả frontend và backend
+frontend/node_modules/
+backend/node_modules/
+# Bỏ qua thư mục build/dist ở cả frontend và backend
+frontend/build/
+frontend/dist/
+backend/build/
+backend/dist/
+# Bỏ qua file môi trường
+frontend/.env
+backend/.env
+# Bỏ qua các file log
+*.log
+# Bỏ qua các file hệ thống
+.DS_Store
+Thumbs.db
+# Bỏ qua thư mục IDE
+.vscode/
+.idea/
+venv/

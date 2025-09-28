@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "Users", schema = "core")
+@Table(name = "Users")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

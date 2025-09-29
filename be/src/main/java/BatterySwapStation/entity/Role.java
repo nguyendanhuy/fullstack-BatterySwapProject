@@ -25,4 +25,16 @@ public class Role {
     // 1 Role có nhiều User
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<User> users = new ArrayList<>();
+
+    @PrePersist
+    @PreUpdate
+    private void prepareRoleName() {
+        if (this.roleName != null) {
+            this.roleName = this.roleName.toUpperCase();
+        }
+    }
+
+    public String getRoleName() {
+        return roleName != null ? roleName.toUpperCase() : null;
+    }
 }

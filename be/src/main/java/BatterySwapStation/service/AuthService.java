@@ -23,117 +23,85 @@ import BatterySwapStation.repository.UserRepository;
 
 public class AuthService {
 
-    @Autowired
     private UserRepository userRepository;
-
-    @Autowired
+    private final UserService userService;
     private RoleRepository roleRepository;
-    @Autowired
-    private final UserIdGenerator userIdGenerator;
+
+    //    @Autowired
+//    private final UserIdGenerator userIdGenerator;
+    private final JwtService jwtService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    /**
-     * Sinh UserId dựa trên role (ví dụ DR001, ST002, AD003).
-     */
 
-
-    // Đăng ký
-    public AuthResponse register(RegisterRequest request) {
+    //    // Đăng ký
+    public User registerUser(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email đã tồn tại!");
         }
 
-        Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Role không tồn tại!"));
+        Role role = roleRepository.findByRoleId(1); // 🔧 CHANGED: mặc định Driver
+        if (role == null) {
+            throw new RuntimeException("Role mặc định (Driver) không tồn tại!");
+        }
 
-        // Đếm số user đã có trong role này
-        String generatedId = userIdGenerator.generateUserId(role);
-
-        // Tạo user mới
         User user = new User();
-        user.setUserId(generatedId); // ✅ Gán ID trước khi save
+        user.setUserId("U" + System.currentTimeMillis()); // hoặc dùng UserIdGenerator
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
         user.setAddress(request.getAddress());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
+        user.setActive(true);
+        user.setCreateAt(LocalDateTime.now());
+        user.setUpdateAt(LocalDateTime.now());
 
-        userRepository.save(user);
-
-        return new AuthResponse(
-                "Đăng ký thành công",
-                user.getUserId(),
-                user.getEmail(),
-                role.getRoleName(),
-                "fake-jwt-token"
-        );
+        return userRepository.save(user);
     }
 
 
-    /**
-     * Đăng nhập.
-     */
-    public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail());
-
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Email hoặc mật khẩu không đúng");
+    // Đăng nhập
+    public AuthResponse login(LoginRequest req) {
+        User user = userService.findByEmail(req.getEmail());
+        if (user == null) {
+            throw new RuntimeException("Email không tồn tại");
         }
 
-        // Kiểm tra role FE chọn có khớp không
-        if (user.getRole().getRoleId() != request.getRoleId()) {
-            throw new RuntimeException("Loại tài khoản không khớp");
+        if (!userService.checkPassword(req.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu không đúng");
         }
+
+
+        String token = jwtService.generateToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getRole().getRoleName()
+        );
 
         return new AuthResponse(
                 "Đăng nhập thành công",
                 user.getUserId(),
                 user.getEmail(),
                 user.getRole().getRoleName(),
-                "fake-jwt-token"
+                token
         );
     }
 
-    /**
-     * Cập nhật role bằng roleId.
-     */
-    public AuthResponse updateRole(String userId, int newRoleId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
-        Role newRole = roleRepository.findById(newRoleId)
-                .orElseThrow(() -> new RuntimeException("Role không tồn tại"));
 
-        user.setRole(newRole);
-        user.setUpdateAt(LocalDateTime.now());
-        userRepository.save(user);
-
-        return new AuthResponse(
-                "Cập nhật role thành công",
-                user.getUserId(),
-                user.getEmail(),
-                newRole.getRoleName(),
-                "fake-jwt-token"
-        );
-    }
-
-    /**
-     * Cập nhật role cho user (nhận RoleDTO).
-     */
+    // Cập nhật role cho user
     public boolean updateUserRole(String userId, RoleDTO roleDTO) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return false;
 
         Role role = null;
         if (roleDTO.getRoleId() != 0) {
-            role = roleRepository.findById(roleDTO.getRoleId()).orElse(null);
+            role = roleRepository.findByRoleId(roleDTO.getRoleId());
         }
         if (role == null && roleDTO.getRoleName() != null) {
             role = roleRepository.findByRoleName(roleDTO.getRoleName());
         }
-
         if (role == null) return false;
 
         user.setRole(role);

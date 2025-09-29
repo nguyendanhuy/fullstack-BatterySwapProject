@@ -41,11 +41,13 @@ const Login = () => {
       });
       return;
     }
-  const res = await loginAPI(formData.email, formData.password);
+    const res = await loginAPI(formData.email, formData.password);
+    console.log(">>> check BE response when login: ", res);
     if (res && res.token) {
       toast({
         title: "Đăng nhập thành công!",
         description: `Chào mừng, ${res.email}`,
+        className: "bg-green-500 text-white",
       });
       localStorage.setItem("token", res.token);
       // Chuyển hướng theo role trả về từ response
@@ -65,7 +67,7 @@ const Login = () => {
     } else {
       toast({
         title: "Đăng nhập thất bại!",
-        description: res && res.message ? res.message : "Vui lòng kiểm tra lại thông tin.",
+        description: res.messages.auth == null ? "Vui lòng kiểm tra lại thông tin." : res.messages.auth,
         variant: "destructive",
       });
     }

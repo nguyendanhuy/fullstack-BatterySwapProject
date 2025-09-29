@@ -42,6 +42,17 @@ const SignUp = () => {
       });
       return;
     }
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng nhập email hợp lệ",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Lỗi",
@@ -80,8 +91,10 @@ const SignUp = () => {
       formData.phone,
       formData.address,
       formData.password,
-      formData.userType);
-    if (res) {
+      formData.confirmPassword);
+    console.log(">>>check res", res);
+    console.log(">>>check json", JSON.stringify(res));
+    if (!res.error) {
       toast({
         title: "Đăng ký thành công!",
         description: `User id của bạn là ${res.userId}.`,
@@ -90,10 +103,12 @@ const SignUp = () => {
     } else {
       toast({
         title: "Đăng ký thất bại!",
-        description: "Vui lòng thử lại.",
+        description: res.messages.business,
+        variant: "destructive"
       });
     }
   };
+
   return (<div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
     <Card className="w-full max-w-lg bg-white/95 backdrop-blur border-0">
       <CardHeader className="text-center">

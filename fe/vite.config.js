@@ -15,4 +15,14 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://batteryswap-be-production.up.railway.app', // API backend
+        changeOrigin: true, // đổi origin sang target
+        secure: true,       // true nếu target dùng https
+      },
+    },
+  },
 }));

@@ -8,46 +8,52 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 27%;
+    --background: 0 0% 100%;
+    --foreground: 212 100% 20%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
+    --card-foreground: 212 100% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 27%;
+    --popover-foreground: 212 100% 20%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 212 100% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 215 25% 27%;
+    --secondary: 212 30% 95%;
+    --secondary-foreground: 212 100% 20%;
 
-    --muted: 214 32% 91%;
-    --muted-foreground: 215 13% 65%;
+    --muted: 212 20% 96%;
+    --muted-foreground: 212 50% 40%;
 
-    --accent: 205 89% 94%;
-    --accent-foreground: 215 25% 27%;
+    --accent: 212 50% 90%;
+    --accent-foreground: 212 100% 20%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+    --border: 212 20% 90%;
+    --input: 212 20% 96%;
+    --ring: 212 100% 45%;
 
     /* EV Theme Colors */
-    --electric-blue: 217 91% 60%;
-    --electric-blue-dark: 217 91% 50%;
-    --electric-blue-light: 205 89% 94%;
-    --success: 142 76% 36%;
-    --warning: 48 96% 53%;
-    --charging: 39 87% 59%;
+    --electric-blue: 212 100% 45%;
+    --electric-blue-dark: 212 100% 35%;
+    --electric-blue-light: 212 50% 90%;
+    --success: 150 80% 40%;
+    --warning: 45 90% 55%;
+    --charging: 35 85% 55%;
+    --glow-primary: 212 100% 45%;
+    --glow-success: 150 80% 40%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(205 96% 72%));
-    --gradient-secondary: linear-gradient(135deg, hsl(205 89% 94%), hsl(214 32% 91%));
-    --gradient-dark: linear-gradient(135deg, hsl(215 25% 27%), hsl(217 91% 35%));
+    --gradient-primary: linear-gradient(135deg, hsl(212 100% 45%), hsl(212 80% 60%));
+    --gradient-secondary: linear-gradient(135deg, hsl(212 50% 90%), hsl(212 20% 96%));
+    --gradient-dark: linear-gradient(135deg, hsl(212 100% 20%), hsl(212 100% 35%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(212 20% 98%));
+    --gradient-hover: linear-gradient(145deg, hsl(212 50% 98%), hsl(212 30% 95%));
+    --gradient-electric: linear-gradient(135deg, hsl(212 100% 45%), hsl(190 100% 50%));
+    --gradient-success: linear-gradient(135deg, hsl(150 80% 40%), hsl(120 70% 45%));
 
     --radius: 0.5rem;
 
@@ -120,23 +126,52 @@ All colors MUST be HSL.
 @layer utilities {
   /* Animation utilities */
   .animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
+    animation: fadeIn 0.8s ease-out;
   }
   
   .animate-slide-up {
-    animation: slideUp 0.6s ease-out;
+    animation: slideUp 0.7s ease-out;
   }
   
   .animate-scale-in {
-    animation: scaleIn 0.4s ease-out;
+    animation: scaleIn 0.5s ease-out;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.6s ease-out;
   }
   
   .hover-scale {
-    @apply transition-transform duration-300 hover:scale-105;
+    @apply transition-all duration-500 hover:scale-105;
   }
   
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-lg hover:shadow-primary/25;
+    @apply transition-all duration-500 hover:shadow-2xl hover:shadow-primary/30;
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/20;
+  }
+  
+  .card-gradient {
+    background: var(--gradient-card);
+    @apply backdrop-blur-sm border border-white/20;
+  }
+  
+  .card-hover {
+    background: var(--gradient-hover);
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-xl bg-white/10 border border-white/20;
   }
   
   /* Gradient backgrounds */
@@ -151,12 +186,33 @@ All colors MUST be HSL.
   .bg-gradient-dark {
     background: var(--gradient-dark);
   }
+  
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  .bg-gradient-electric {
+    background: var(--gradient-electric);
+  }
+  
+  .bg-gradient-success {
+    background: var(--gradient-success);
+  }
+  
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--glow-primary) / 0.3);
+  }
+  
+  .glow-success {
+    box-shadow: 0 0 15px hsl(var(--glow-success) / 0.4);
+  }
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -167,7 +223,7 @@ All colors MUST be HSL.
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(40px);
+    transform: translateY(50px);
   }
   to {
     opacity: 1;
@@ -178,10 +234,39 @@ All colors MUST be HSL.
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.9);
   }
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--glow-primary) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px hsl(var(--glow-primary) / 0.5);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }

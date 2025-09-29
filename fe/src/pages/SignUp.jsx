@@ -92,8 +92,6 @@ const SignUp = () => {
       formData.address,
       formData.password,
       formData.confirmPassword);
-    console.log(">>>check res", res);
-    console.log(">>>check json", JSON.stringify(res));
     if (!res.error) {
       toast({
         title: "Đăng ký thành công!",

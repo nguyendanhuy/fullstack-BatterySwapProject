@@ -1,5 +1,6 @@
 package BatterySwapStation.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,5 +25,18 @@ public class Role {
 
     // 1 Role có nhiều User
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<User> users = new ArrayList<>();
+
+    @PrePersist
+    @PreUpdate
+    private void prepareRoleName() {
+        if (this.roleName != null) {
+            this.roleName = this.roleName.toUpperCase();
+        }
+    }
+
+    public String getRoleName() {
+        return roleName != null ? roleName.toUpperCase() : null;
+    }
 }

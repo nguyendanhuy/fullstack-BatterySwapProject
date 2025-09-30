@@ -54,8 +54,6 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
         user.setActive(true);
-        user.setCreateAt(LocalDateTime.now());
-        user.setUpdateAt(LocalDateTime.now());
 
         return userRepository.save(user);
     }
@@ -105,7 +103,6 @@ public class AuthService {
         if (role == null) return false;
 
         user.setRole(role);
-        user.setUpdateAt(LocalDateTime.now());
         userRepository.save(user);
         return true;
     }

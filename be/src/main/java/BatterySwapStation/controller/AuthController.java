@@ -8,6 +8,7 @@ import BatterySwapStation.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -49,6 +50,22 @@ public class AuthController {
             return ResponseEntity.badRequest().body("User or Role not found!");
         }
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "userId", user.getUserId(),
+                "email", user.getEmail(),
+                "fullName", user.getFullName(),
+                "role", user.getRole().getRoleName()
+        ));
+    }
+
+
 
 }
 

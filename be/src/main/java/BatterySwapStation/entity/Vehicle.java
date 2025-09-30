@@ -1,13 +1,11 @@
 package BatterySwapStation.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Vehicle")
@@ -23,6 +21,7 @@ public class Vehicle {
 
     @ManyToOne
     @JoinColumn(name = "UserId", nullable = false, columnDefinition = "VARCHAR(20)")
+    @JsonBackReference
     private User user;
 
     @Column(nullable = false, length = 100)
@@ -61,12 +60,4 @@ public class Vehicle {
 
     @Column(nullable = false)
     private boolean isActive = true;
-
-    @CreationTimestamp
-    @Column(nullable = false)
-    private LocalDateTime createAt;
-
-    @UpdateTimestamp
-    @Column(nullable = false)
-    private LocalDateTime updateAt;
 }

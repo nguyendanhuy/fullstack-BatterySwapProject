@@ -27,43 +27,53 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import Reports from "./pages/admin/Reports";
 import BatteryDispatch from "./pages/admin/BatteryDispatch";
 import StaffManagement from "./pages/admin/StaffManagement";
+import { SystemProvider } from "./contexts/system.context";
+import DriverPrivateRoute from "./pages/DriverPrivateRouter";
+import StaffPrivateRoute from "./pages/StaffPrivateRouter";
+import AdminPrivateRoute from "./pages/AdminPrivateRouter";
+import AuthProvider from "./components/AuthProvider";
 const queryClient = new QueryClient();
 const App = () => (<QueryClientProvider client={queryClient}>
-  <TooltipProvider>
-    <Toaster />
-    <Sonner />
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/dashboard" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
+  <SystemProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            {/* Driver routes */}
+            <Route path="/driver" element={<DriverPrivateRoute><DriverDashboard /></DriverPrivateRoute>} />
+            <Route path="/driver/register-vehicle" element={<DriverPrivateRoute><VehicleRegistration /></DriverPrivateRoute>} />
+            <Route path="/driver/find-stations" element={<DriverPrivateRoute><StationFinder /></DriverPrivateRoute>} />
+            <Route path="/driver/reservation" element={<DriverPrivateRoute><Reservation /></DriverPrivateRoute>} />
+            <Route path="/driver/payment" element={<DriverPrivateRoute><Payment /></DriverPrivateRoute>} />
+            <Route path="/driver/subscriptions" element={<DriverPrivateRoute><Subscriptions /></DriverPrivateRoute>} />
+            <Route path="/driver/booking-history" element={<DriverPrivateRoute><BookingHistory /></DriverPrivateRoute>} />
 
-        {/* Driver routes */}
-        <Route path="/driver" element={<DriverDashboard />} />
-        <Route path="/driver/register-vehicle" element={<VehicleRegistration />} />
-        <Route path="/driver/find-stations" element={<StationFinder />} />
-        <Route path="/driver/reservation" element={<Reservation />} />
-        <Route path="/driver/payment" element={<Payment />} />
-        <Route path="/driver/subscriptions" element={<Subscriptions />} />
-        <Route path="/driver/booking-history" element={<BookingHistory />} />
+            {/* Staff routes */}
+            <Route path="/staff" element={<StaffPrivateRoute><StaffDashboard /></StaffPrivateRoute>} />
+            <Route path="/staff/qr-checkin" element={<StaffPrivateRoute><QRCheckIn /></StaffPrivateRoute>} />
+            <Route path="/staff/transaction-history" element={<StaffPrivateRoute><TransactionHistory /></StaffPrivateRoute>} />
+            <Route path="/staff/battery-inventory" element={<StaffPrivateRoute><BatteryInventory /></StaffPrivateRoute>} />
+            <Route path="/staff/battery-inspection" element={<StaffPrivateRoute><BatteryInspection /></StaffPrivateRoute>} />
 
-        {/* Staff routes */}
-        <Route path="/staff" element={<StaffDashboard />} />
-        <Route path="/staff/qr-checkin" element={<QRCheckIn />} />
-        <Route path="/staff/transaction-history" element={<TransactionHistory />} />
-        <Route path="/staff/battery-inventory" element={<BatteryInventory />} />
-        <Route path="/staff/battery-inspection" element={<BatteryInspection />} />
+            {/* Admin routes */}
+            <Route path="/admin" element={<AdminPrivateRoute><AdminDashboard /></AdminPrivateRoute>} />
+            <Route path="/admin/reports" element={<AdminPrivateRoute><Reports /></AdminPrivateRoute>} />
+            <Route path="/admin/battery-dispatch" element={<AdminPrivateRoute><BatteryDispatch /></AdminPrivateRoute>} />
+            <Route path="/admin/staff-management" element={<AdminPrivateRoute><StaffManagement /></AdminPrivateRoute>} />
 
-        {/* Admin routes */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/reports" element={<Reports />} />
-        <Route path="/admin/battery-dispatch" element={<BatteryDispatch />} />
-        <Route path="/admin/staff-management" element={<StaffManagement />} />
-
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
-  </TooltipProvider>
+            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </SystemProvider>
 </QueryClientProvider>);
+
 export default App;

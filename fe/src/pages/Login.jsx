@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { loginAPI } from "../services/axios.services";
+import { useContext } from "react";
+import { SystemContext } from "../contexts/system.context";
+import { loginAPI, getInfoByToken } from "../services/axios.services";
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -15,6 +17,7 @@ const Login = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setUserData } = useContext(SystemContext);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -22,7 +25,6 @@ const Login = () => {
       [field]: value
     }));
   };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
@@ -42,23 +44,31 @@ const Login = () => {
       return;
     }
     const res = await loginAPI(formData.email, formData.password);
-    console.log(">>> check BE response when login: ", res);
     if (res && res.token) {
       toast({
         title: "Đăng nhập thành công!",
         description: `Chào mừng, ${res.email}`,
         className: "bg-green-500 text-white",
       });
+
+      // Save token first
       localStorage.setItem("token", res.token);
+
+      // Method 1: Set user data directly from login response
+      setUserData(res);
+
+      // Method 2: Or fetch fresh user data from token (optional, for consistency)
+      // const userInfo = await getInfoByToken();
+      // if (userInfo) setUserData(userInfo);
       // Chuyển hướng theo role trả về từ response
       switch (res.role) {
-        case "driver":
+        case "DRIVER":
           navigate("/driver");
           break;
-        case "staff":
+        case "STAFF":
           navigate("/staff");
           break;
-        case "admin":
+        case "ADMIN":
           navigate("/admin");
           break;
         default:

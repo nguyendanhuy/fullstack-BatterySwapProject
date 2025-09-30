@@ -17,5 +17,7 @@ const loginAPI = (email, password) => {
     };
     return axios.post("/auth/login", data);
 }
-
-export { registerAPI, loginAPI };
+const getInfoByToken = () => {
+    return axios.get("/auth/me", );
+}
+export { registerAPI, loginAPI, getInfoByToken };

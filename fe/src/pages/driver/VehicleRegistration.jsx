@@ -6,14 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
-import {
   Car, ArrowLeft, Battery, Zap, CheckCircle, Star, Home, X
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { vehicleRegisterAPI } from "@/services/axios.services";
+import { getVehicleInfoByVin, registerVehicleByVin } from "@/services/axios.services";
 
 export default function VehicleRegistration() {
   const { toast } = useToast();
@@ -23,64 +20,148 @@ export default function VehicleRegistration() {
     batteryType: ""
   });
 
-  const vinFastModels = [
-    "THEON", "FELIZ", "KLARA_S", "KLARA_A2", "TEMPEST", "VENTO",
-    "VF_5", "VF_6", "VF_7", "VF_8", "VF_9",
-  ];
-  const batteryTypes = ["LITHIUM_ION", "NICKEL_METAL_HYDRIDE", "LEAD_ACID"];
+  const [checkingVin, setCheckingVin] = useState(false);
+  const [lastQueriedVin, setLastQueriedVin] = useState("");
+  const [isAlreadyActive, setIsAlreadyActive] = useState(false); // BE active: true
 
+  // Helper ưu tiên lấy thông điệp lỗi đúng ý từ payload/status
+  const pickApiMessage = (p, status, fallback) =>
+    p?.messages?.auth ??
+    p?.messages?.business ??
+    p?.messages?.vin ??
+    p?.message ??
+    p?.error ??
+    (typeof status === "number" ? `Lỗi ${status}` : fallback ?? "Đã xảy ra lỗi");
+
+  // Tra cứu VIN khi đủ 17 ký tự
+  const lookupVin = async (vin) => {
+    try {
+      setCheckingVin(true);
+      const res = await getVehicleInfoByVin(vin);
+      const payload = res?.data ?? res;               // chịu mọi kiểu interceptor
+      const httpStatus = res?.status ?? payload?.status;
+
+      // Xác định request lỗi
+      const isError =
+        (typeof httpStatus === "number" && httpStatus >= 400) ||
+        !!payload?.error ||
+        !!payload?.messages?.auth ||
+        !!payload?.messages?.business ||
+        !!payload?.messages?.vin;
+
+      console.log("[VIN lookup payload]", payload);
+
+      if (isError) {
+        const msg = pickApiMessage(payload, httpStatus);
+        // Không fill UI khi lỗi
+        setFormData((prev) => ({ ...prev, vehicleType: "", batteryType: "" }));
+        setIsAlreadyActive(false);
+        setLastQueriedVin("");
+        toast({ title: "Tra cứu VIN thất bại", description: msg, variant: "destructive" });
+        return;
+      }
+
+      // Thành công
+      const vehicleType = payload?.vehicleType ?? payload?.model ?? "";
+      const batteryType = payload?.batteryType ?? payload?.battery ?? "";
+      const activeFlag = !!payload?.active;
+
+      setFormData((prev) => ({ ...prev, vehicleType, batteryType }));
+      setIsAlreadyActive(activeFlag);
+      setLastQueriedVin(vin);
+
+      if (activeFlag) {
+        toast({
+          title: "Cảnh báo",
+          description: "⚠️ Xe này đã được đăng ký.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Đã tra cứu VIN",
+          description: "Đã tự nhận dòng xe và loại pin từ BE.",
+        });
+      }
+    } catch (err) {
+      const d = err?.response?.data;
+      const msg = pickApiMessage(d, err?.response?.status, err?.message);
+      toast({ title: "Tra cứu VIN thất bại", description: msg, variant: "destructive" });
+      setFormData((p) => ({ ...p, vehicleType: "", batteryType: "" }));
+      setIsAlreadyActive(false);
+      setLastQueriedVin("");
+    } finally {
+      setCheckingVin(false);
+    }
+  };
+
+  // Đăng ký xe: VIN + token
   const handleRegisterVehicle = async () => {
-    const { vin, vehicleType, batteryType } = formData;
+    const { vin } = formData;
 
-    if (!vin || !vehicleType || !batteryType) {
+    if (!vin || vin.length !== 17) {
       toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng nhập đủ VIN, dòng xe và loại pin.",
+        title: "Thiếu/không hợp lệ VIN",
+        description: "Vui lòng nhập VIN đủ 17 ký tự.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast({
+        title: "Thiếu token",
+        description: "Chưa có token đăng nhập. Vui lòng đăng nhập lại.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isAlreadyActive) {
+      toast({
+        title: "Không thể đăng ký",
+        description: "⚠️ Xe này đã được đăng ký.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await vehicleRegisterAPI(vin, vehicleType, batteryType, token || undefined);
+      const res = await registerVehicleByVin(vin, token);
+      const payload = res?.data ?? res;
+      const httpStatus = res?.status ?? payload?.status;
 
-      // DÙ HTTP 2xx vẫn kiểm tra body lỗi
-      const data = res;
-      const bodyIsError =
-        data?.messages?.business ||
-        data?.messages?.vin ||
-        data?.error ||
-        (typeof data?.status === "number" && data.status >= 400);
+      const isError =
+        (typeof httpStatus === "number" && httpStatus >= 400) ||
+        !!payload?.error ||
+        !!payload?.messages?.auth ||
+        !!payload?.messages?.business ||
+        !!payload?.messages?.vin;
 
-      if (bodyIsError) {
-        const msg =
-          data?.messages?.business ||
-          data?.messages?.vin ||
-          data?.message ||
-          data?.error ||
-          "Vui lòng kiểm tra lại thông tin.";
-        toast({ title: "Đăng ký xe thất bại !", description: msg, variant: "destructive" });
+      if (isError) {
+        const msg = pickApiMessage(payload, httpStatus);
+        toast({ title: "Đăng ký xe thất bại", description: msg, variant: "destructive" });
         return;
       }
 
-      // Thành công thực sự
+      // Thành công
       toast({
         title: "Đăng ký xe thành công!",
-        description: (data && (data.messages?.success || data.message)) || "Xe đã được đăng ký vào hệ thống.",
+        description: payload?.messages?.success || payload?.message || "Xe đã được đăng ký vào hệ thống.",
       });
-      setFormData({ vin: "", vehicleType: "", batteryType: "" });
+
+      // Nếu BE trả active=true sau khi đăng ký, set lại flag
+      if (payload?.active === true) setIsAlreadyActive(true);
+
+      // (Tuỳ bạn) reset form
+      // setFormData({ vin: "", vehicleType: "", batteryType: "" });
+      // setIsAlreadyActive(false);
+      // setLastQueriedVin("");
     } catch (err) {
-      // HTTP non-2xx vào đây
+      console.log(err);
       const d = err?.response?.data;
-      const msg =
-        d?.messages?.business ??
-        d?.messages?.vin ??
-        d?.message ??
-        d?.error ??
-        err?.message ??
-        "Vui lòng kiểm tra lại thông tin.";
-      toast({ title: "Đăng ký xe thất bại !", description: msg, variant: "destructive" });
+      const msg = pickApiMessage(d, err?.response?.status, err?.message);
+      toast({ title: "Đăng ký xe thất bại", description: msg, variant: "destructive" });
     }
   };
 
@@ -159,6 +240,7 @@ export default function VehicleRegistration() {
               </CardHeader>
 
               <CardContent className="space-y-6">
+                {/* VIN */}
                 <div className="space-y-3">
                   <Label htmlFor="vin" className="text-sm font-semibold text-gray-700">
                     Mã VIN
@@ -167,61 +249,76 @@ export default function VehicleRegistration() {
                     id="vin"
                     placeholder="Nhập mã VIN của xe"
                     value={formData.vin}
-                    onChange={(e) => setFormData({ ...formData, vin: e.target.value })}
+                    onChange={(e) => {
+                      const nextVin = e.target.value.trim();
+                      setFormData({ ...formData, vin: nextVin });
+                      if (nextVin.length === 17 && lastQueriedVin !== nextVin) {
+                        lookupVin(nextVin);
+                      } else if (nextVin.length < 17 && lastQueriedVin) {
+                        setLastQueriedVin("");
+                        setFormData((prev) => ({ ...prev, vehicleType: "", batteryType: "" }));
+                        setIsAlreadyActive(false);
+                      }
+                    }}
+                    maxLength={17}
                     className="h-12 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
                   />
+                  {checkingVin && (
+                    <div className="text-xs text-gray-500">Đang kiểm tra VIN…</div>
+                  )}
                 </div>
 
+                {/* Dòng xe (read-only, icon bên trong input) */}
                 <div className="space-y-3">
-                  <Label htmlFor="vehicleType" className="text-sm font-semibold text-gray-700">
-                    Dòng xe VINFAST
+                  <Label className="text-sm font-semibold text-gray-700">
+                    Dòng xe VINFAST (tự nhận)
                   </Label>
-                  <Select
-                    value={formData.vehicleType}
-                    onValueChange={(value) => setFormData({ ...formData, vehicleType: value })}
-                  >
-                    <SelectTrigger className="h-12 bg-gray-50 border-gray-200 focus:border-blue-500 rounded-xl">
-                      <SelectValue placeholder="Chọn dòng xe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vinFastModels.map((model) => (
-                        <SelectItem key={model} value={model} className="py-3">
-                          🚗 {model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <Car className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                    <Input
+                      value={formData.vehicleType || "—"}
+                      readOnly
+                      className="h-12 bg-gray-100 border-gray-200 text-gray-800 rounded-xl pl-9"
+                    />
+                  </div>
                 </div>
 
+                {/* Loại pin (read-only, icon bên trong input) */}
                 <div className="space-y-3">
-                  <Label htmlFor="batteryType" className="text-sm font-semibold text-gray-700">
-                    Loại pin
+                  <Label className="text-sm font-semibold text-gray-700">
+                    Loại pin (tự nhận)
                   </Label>
-                  <Select
-                    value={formData.batteryType}
-                    onValueChange={(value) => setFormData({ ...formData, batteryType: value })}
-                  >
-                    <SelectTrigger className="h-12 bg-gray-50 border-gray-200 focus:border-blue-500 rounded-xl">
-                      <SelectValue placeholder="Chọn loại pin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {batteryTypes.map((type) => (
-                        <SelectItem key={type} value={type} className="py-3">
-                          <div className="flex items-center">
-                            <Battery className="h-4 w-4 mr-2 text-blue-600" />
-                            {type}
-                            {type === "LITHIUM_ION" && " (Khuyến nghị)"}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <Battery className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                    <Input
+                      value={formData.batteryType || "—"}
+                      readOnly
+                      className="h-12 bg-gray-100 border-gray-200 text-gray-800 rounded-xl pl-9"
+                    />
+                  </div>
                 </div>
+
+                {/* Cảnh báo nếu xe đã active */}
+                {isAlreadyActive && (
+                  <div className="text-sm font-semibold text-red-600 flex items-center gap-2">
+                    ⚠️ Xe này đã được đăng ký.
+                  </div>
+                )}
 
                 <div className="flex gap-4 pt-6">
                   <Button
                     onClick={handleRegisterVehicle}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                    disabled={
+                      !formData.vin ||
+                      formData.vin.length !== 17 ||
+                      isAlreadyActive
+                    }
+                    title={
+                      isAlreadyActive
+                        ? "Xe này đã được đăng ký — không thể đăng ký lại"
+                        : (formData.vin.length !== 17 ? "VIN phải đủ 17 ký tự" : "")
+                    }
                   >
                     <Zap className="h-5 w-5 mr-2" />
                     Đăng ký xe

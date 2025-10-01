@@ -10,19 +10,7 @@ const registerAPI = (fullName, email, phone, address, password, confirmPassword)
     }
     return axios.post("/auth/register", data);
 }
-// Đăng ký xe mới, cần token ở header
-const vehicleRegisterAPI = (vin, vehicleType, batteryType, token) => {
-    const data = {
-        vin,
-        vehicleType,
-        batteryType
-    };
-    return axios.post("/v1/vehicles/register", data, {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    });
-}
+
 
 const loginAPI = (email, password) => {
     const data = {
@@ -34,4 +22,16 @@ const loginAPI = (email, password) => {
 const getInfoByToken = () => {
     return axios.get("/auth/me",);
 }
-export { registerAPI, loginAPI, getInfoByToken, vehicleRegisterAPI };
+
+
+const getVehicleInfoByVin = (vin) => {
+    return axios.get(`/v1/vehicles/${vin}`);
+};
+
+const registerVehicleByVin = (vin, token) => {
+    if (!vin) throw new Error("VIN is required");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    return axios.post(`/v1/vehicles/assign`, { vin }, { headers });
+}
+
+export { registerAPI, loginAPI, getInfoByToken, registerVehicleByVin, getVehicleInfoByVin };

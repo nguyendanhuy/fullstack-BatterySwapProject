@@ -10,6 +10,8 @@ const registerAPI = (fullName, email, phone, address, password, confirmPassword)
     }
     return axios.post("/auth/register", data);
 }
+
+
 const loginAPI = (email, password) => {
     const data = {
         email: email,
@@ -18,6 +20,18 @@ const loginAPI = (email, password) => {
     return axios.post("/auth/login", data);
 }
 const getInfoByToken = () => {
-    return axios.get("/auth/me", );
+    return axios.get("/auth/me",);
 }
-export { registerAPI, loginAPI, getInfoByToken };
+
+
+const getVehicleInfoByVin = (vin) => {
+    return axios.get(`/v1/vehicles/${vin}`);
+};
+
+const registerVehicleByVin = (vin, token) => {
+    if (!vin) throw new Error("VIN is required");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    return axios.post(`/v1/vehicles/assign`, { vin }, { headers });
+}
+
+export { registerAPI, loginAPI, getInfoByToken, registerVehicleByVin, getVehicleInfoByVin };

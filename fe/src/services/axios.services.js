@@ -28,10 +28,14 @@ const getVehicleInfoByVin = (vin) => {
     return axios.get(`/v1/vehicles/${vin}`);
 };
 
-const registerVehicleByVin = (vin, token) => {
+const registerVehicleByVin = (vin) => {
     if (!vin) throw new Error("VIN is required");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    return axios.post(`/v1/vehicles/assign`, { vin }, { headers });
+    return axios.post(`/v1/vehicles/assign`, { vin });
 }
-
-export { registerAPI, loginAPI, getInfoByToken, registerVehicleByVin, getVehicleInfoByVin };
+const viewUserVehicles = () => {
+    return axios.get("/v1/vehicles/my-vehicles");
+}
+const deactivateVehicleByVin = (vin) => {
+    return axios.post(`/v1/vehicles/${vin}/deactivate`);
+}
+export { registerAPI, loginAPI, getInfoByToken, registerVehicleByVin, getVehicleInfoByVin, viewUserVehicles,deactivateVehicleByVin};

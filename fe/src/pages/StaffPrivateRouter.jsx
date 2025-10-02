@@ -5,7 +5,7 @@ import { notification } from "antd";
 
 const StaffPrivateRoute = (props) => {
     const { userData } = useContext(SystemContext);
-    if (userData && userData.role === "staff") {
+    if (userData && userData.role === "STAFF") {
         return (
             <>
                 {props.children}

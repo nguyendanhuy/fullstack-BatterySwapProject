@@ -54,13 +54,10 @@ const Login = () => {
       // Save token first
       localStorage.setItem("token", res.token);
 
-      // Method 1: Set user data directly from login response
+
       setUserData(res);
 
-      // Method 2: Or fetch fresh user data from token (optional, for consistency)
-      // const userInfo = await getInfoByToken();
-      // if (userInfo) setUserData(userInfo);
-      // Chuyển hướng theo role trả về từ response
+
       switch (res.role) {
         case "DRIVER":
           navigate("/driver");

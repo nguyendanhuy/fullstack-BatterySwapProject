@@ -25,6 +25,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+
 export default function VehicleRegistration() {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -43,6 +44,10 @@ export default function VehicleRegistration() {
     loadUserVehicles();
   }, []);
 
+
+  // Kiểm tra VIN hợp lệ (17 ký tự, không chứa I, O, Q) và để kích hoạt nút liên kết xe
+  const isValidVin = (vin) => /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
+
   const loadUserVehicles = async () => {
     const res = await viewUserVehicles();
     if (res) {
@@ -60,30 +65,35 @@ export default function VehicleRegistration() {
   const pickApiMessage = (p, status, fallback) =>
     p?.messages?.auth ??
     p?.messages?.business ??
-    p?.messages?.vin ??
     p?.message ??
     p?.error ??
-    (typeof status === "number" ? `Lỗi ${status}` : fallback ?? "Đã xảy ra lỗi");
+    (typeof status === "number" ? `Lỗi ${status}` : fallback ?? "Đã xảy ra lỗi không xác định");
 
 
   const lookupVin = async (vin) => {
     try {
       setCheckingVin(true);
       const res = await getVehicleInfoByVin(vin);
-      const payload = res?.data ?? res;                  // chịu mọi kiểu interceptor
-      const httpStatus = res?.status ?? payload?.status;
+      const payload = res;
+      const httpStatus = payload?.status;
 
-      // Xác định request lỗi
+
+      // console.log("[Dữ liệu xe nhận được từ VIN]", payload);
+
+      // Nếu có lỗi khi gửi request lấy thông tin xe từ VIN
       const isError =
         (typeof httpStatus === "number" && httpStatus >= 400) ||
         !!payload?.error ||
         !!payload?.messages?.auth ||
-        !!payload?.messages?.business ||
-        !!payload?.messages?.vin;
-
-      // console.log("[VIN lookup payload]", payload);
+        !!payload?.messages?.business;
 
       if (isError) {
+        console.warn("+------Get Info VIN Error-----+");
+        console.log("Status : " + httpStatus);
+        console.log("Error : " + payload?.error);
+        console.log(payload?.messages?.business ?? payload?.messages?.auth);
+        console.warn("+-----------------------------+");
+
         const msg = pickApiMessage(payload, httpStatus);
         // Không fill UI khi lỗi
         setFormData((prev) => ({ ...prev, vehicleType: "", batteryType: "" }));
@@ -94,14 +104,16 @@ export default function VehicleRegistration() {
       }
 
       // Thành công
-      const vehicleType = payload?.vehicleType ?? payload?.model ?? "";
-      const batteryType = payload?.batteryType ?? payload?.battery ?? "";
+      const vehicleType = payload?.vehicleType;
+      const batteryType = payload?.batteryType;
       const activeFlag = !!payload?.active;
 
       setFormData((prev) => ({ ...prev, vehicleType, batteryType }));
       setIsAlreadyActive(activeFlag);
       setLastQueriedVin(vin);
 
+
+      //nếu trạng thái xe đã active tức là không được đăng ký nữa
       if (activeFlag) {
         toast({
           title: "Cảnh báo",
@@ -110,23 +122,23 @@ export default function VehicleRegistration() {
         });
       } else {
         toast({
-          title: "Đã tra cứu VIN",
-          description: "Đã tự nhận dòng xe và loại pin từ BE.",
+          title: "Tra cứu VIN thành công!",
+          description: "Đã tự nhận dòng xe và loại pin !",
+          className: "bg-green-500 text-white",
         });
       }
     } catch (err) {
-      const d = err?.response?.data;
-      const msg = pickApiMessage(d, err?.response?.status, err?.message);
-      toast({ title: "Tra cứu VIN thất bại", description: msg, variant: "destructive" });
-      setFormData((p) => ({ ...p, vehicleType: "", batteryType: "" }));
-      setIsAlreadyActive(false);
-      setLastQueriedVin("");
-    } finally {
-      setCheckingVin(false);
+      toast({
+        // Đã handle xong cái lỗi 400~500 ở trên
+        // => Nên lỗi server,timeout, mạng
+        title: "Tra cứu VIN thất bại (có thể do mạng)",
+        description: "Không thể kết nối đến server. Vui lòng thử lại.",
+        variant: "destructive",
+      });
     }
   };
 
-  // Đăng ký xe: VIN + token
+  // Đăng ký xe
   const handleRegisterVehicle = async () => {
 
     const { vin } = formData;
@@ -138,16 +150,7 @@ export default function VehicleRegistration() {
       });
       return;
     }
-    //Không cần phần này vì login đã có token rồi.
-    // const token = localStorage.getItem("token");
-    // if (!token) {
-    //   toast({
-    //     title: "Thiếu token",
-    //     description: "Chưa có token đăng nhập. Vui lòng đăng nhập lại.",
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
+
 
     if (isAlreadyActive) {
       toast({
@@ -160,15 +163,14 @@ export default function VehicleRegistration() {
 
     try {
       const res = await registerVehicleByVin(vin);
-      const payload = res?.data ?? res;
-      const httpStatus = res?.status ?? payload?.status;
+      const payload = res;
+      const httpStatus = payload?.status;
 
       const isError =
         (typeof httpStatus === "number" && httpStatus >= 400) ||
         !!payload?.error ||
         !!payload?.messages?.auth ||
-        !!payload?.messages?.business ||
-        !!payload?.messages?.vin;
+        !!payload?.messages?.business;
 
       if (isError) {
         const msg = pickApiMessage(payload, httpStatus);
@@ -180,7 +182,7 @@ export default function VehicleRegistration() {
       toast({
         title: "Đăng ký xe thành công!",
         description: payload?.messages?.success || payload?.message || "Xe đã được đăng ký vào hệ thống.",
-        variant: "success",
+        className: "bg-green-500 text-white"
       });
       // Tải lại danh sách xe
       await loadUserVehicles();
@@ -205,8 +207,7 @@ export default function VehicleRegistration() {
       const isError =
         !!res?.error ||
         !!res?.messages?.auth ||
-        !!res?.messages?.business ||
-        !!res?.messages?.vin;
+        !!res?.messages?.business;
 
       if (isError) {
         const msg = pickApiMessage(res);
@@ -217,6 +218,7 @@ export default function VehicleRegistration() {
       toast({
         title: "Hủy đăng ký xe thành công!",
         description: res?.messages?.success || res?.message || "Xe đã được hủy đăng ký.",
+        className: "bg-green-500 text-white"
       });
       await loadUserVehicles();
     } catch (err) {
@@ -301,7 +303,7 @@ export default function VehicleRegistration() {
                   </Label>
                   <Input
                     id="vin"
-                    placeholder="Nhập mã VIN của xe"
+                    placeholder="Nhập mã VIN của xe (17 ký tự gồm cả chữ và số trừ O, I, Q)"
                     value={formData.vin}
                     onChange={(e) => {
                       const nextVin = e.target.value.trim();
@@ -362,17 +364,15 @@ export default function VehicleRegistration() {
                 <div className="flex gap-4 pt-6">
                   <Button
                     onClick={handleRegisterVehicle}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                     disabled={
-                      !formData.vin ||
-                      formData.vin.length !== 17 ||
-                      isAlreadyActive
+                      !isValidVin(formData.vin) || isAlreadyActive
                     }
                     title={
                       isAlreadyActive
                         ? "Xe này đã được đăng ký — không thể đăng ký lại"
-                        : (formData.vin.length !== 17 ? "VIN phải đủ 17 ký tự" : "")
+                        : (!isValidVin(formData.vin) ? "VIN phải đúng 17 ký tự (không chứa I, O, Q)" : "")
                     }
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <Zap className="h-5 w-5 mr-2" />
                     Đăng ký xe

@@ -1,8 +1,9 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.dto.VehicleRegistrationRequest;
 import BatterySwapStation.dto.ApiResponseDto;
-import BatterySwapStation.entity.User; // <-- CẦN IMPORT ENTITY USER CỦA BẠN
+import BatterySwapStation.dto.AssignVehicleRequest;
+import BatterySwapStation.dto.VehicleRegistrationRequest;
+import BatterySwapStation.entity.User;
 import BatterySwapStation.entity.Vehicle;
 import BatterySwapStation.service.VehicleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,7 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal; // <-- IMPORT MỚI
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,43 +22,47 @@ import java.util.List;
 @Tag(name = "Vehicle", description = "Vehicle management APIs")
 @CrossOrigin
 public class VehicleController {
+
     private final VehicleService vehicleService;
 
-    @PostMapping("/register")
-    @Operation(summary = "Register a new VinFast vehicle")
-    // Thay thế Principal bằng @AuthenticationPrincipal User
-    public ResponseEntity<Vehicle> registerVehicle(
-            @Valid @RequestBody VehicleRegistrationRequest request,
-            @AuthenticationPrincipal User user) { // <-- Lấy trực tiếp đối tượng User
-
-        String userId = user.getUserId(); // <-- Dùng getter chuẩn của Entity User
-        Vehicle vehicle = vehicleService.registerVehicle(userId, request);
+    @GetMapping("/{vin}")
+    @Operation(summary = "Get vehicle information by VIN")
+    public ResponseEntity<Vehicle> getVehicleByVin(@PathVariable String vin) {
+        Vehicle vehicle = vehicleService.getVehicleInfoByVin(vin);
         return ResponseEntity.ok(vehicle);
     }
 
+    @PostMapping("/assign")
+    @Operation(summary = "Assign an existing vehicle to the current user")
+    public ResponseEntity<ApiResponseDto> assignVehicle(
+            @Valid @RequestBody AssignVehicleRequest request,
+            @AuthenticationPrincipal User user) {
+        vehicleService.assignVehicleToUser(user.getUserId(), request.getVin());
+        return ResponseEntity.ok(new ApiResponseDto(true, "Vehicle assigned successfully."));
+    }
+
+    @PostMapping("/register")
+    @Operation(summary = "Register a new vehicle and assign it to the current user")
+    public ResponseEntity<ApiResponseDto> registerNewVehicle(
+            @Valid @RequestBody VehicleRegistrationRequest request,
+            @AuthenticationPrincipal User user) {
+        vehicleService.registerNewVehicle(user.getUserId(), request);
+        return ResponseEntity.ok(new ApiResponseDto(true, "Vehicle registered successfully."));
+    }
+
     @GetMapping("/my-vehicles")
-    @Operation(summary = "Get all vehicles registered by the current user")
-    // Thay thế Principal bằng @AuthenticationPrincipal User
-    public ResponseEntity<List<Vehicle>> getUserVehicles(@AuthenticationPrincipal User user) {
-        String userId = user.getUserId(); // <-- Lấy trực tiếp userId
-        List<Vehicle> vehicles = vehicleService.getUserVehicles(userId);
+    @Operation(summary = "Get all active vehicles for the current user")
+    public ResponseEntity<List<Vehicle>> getMyActiveVehicles(@AuthenticationPrincipal User user) {
+        List<Vehicle> vehicles = vehicleService.getActiveUserVehicles(user.getUserId());
         return ResponseEntity.ok(vehicles);
     }
 
-    @PutMapping("/{vehicleId}/deactivate")
-    @Operation(summary = "Deactivate a registered vehicle, returns success message or error if already deactivated")
-    // Thay thế Principal bằng @AuthenticationPrincipal User
+    @PostMapping("/{vehicleId}/deactivate")
+    @Operation(summary = "Deactivate a vehicle belonging to the current user")
     public ResponseEntity<ApiResponseDto> deactivateVehicle(
             @PathVariable int vehicleId,
             @AuthenticationPrincipal User user) {
-
-        String userId = user.getUserId(); // <-- Lấy trực tiếp userId
-
-        // 1. Gọi Service để thực hiện logic ngắt kết nối/deactivate
-        vehicleService.deactivateVehicle(vehicleId, userId);
-
-        // 2. Nếu service không ném ra exception nào (tức là thành công), trả về thông báo.
-        ApiResponseDto response = new ApiResponseDto(true, "Ngắt kết nối phương tiện thành công.");
-        return ResponseEntity.ok(response);
+        vehicleService.deactivateVehicle(vehicleId, user.getUserId());
+        return ResponseEntity.ok(new ApiResponseDto(true, "Vehicle deactivated successfully."));
     }
 }

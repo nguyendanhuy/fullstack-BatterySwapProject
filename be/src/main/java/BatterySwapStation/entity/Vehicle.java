@@ -20,7 +20,7 @@ public class Vehicle {
     private int vehicleId;
 
     @ManyToOne
-    @JoinColumn(name = "UserId", nullable = false, columnDefinition = "VARCHAR(20)")
+    @JoinColumn(name = "UserId", columnDefinition = "VARCHAR(20)")
     @JsonBackReference
     private User user;
 
@@ -59,5 +59,5 @@ public class Vehicle {
     private BatteryType batteryType;
 
     @Column(nullable = false)
-    private boolean isActive = true;
+    private boolean isActive = false;
 }

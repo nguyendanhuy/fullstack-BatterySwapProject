@@ -6,67 +6,83 @@ import BatterySwapStation.entity.Vehicle;
 import BatterySwapStation.repository.UserRepository;
 import BatterySwapStation.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class VehicleService {
+
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
 
-    @Autowired
-    public VehicleService(VehicleRepository vehicleRepository, UserRepository userRepository) {
-        this.vehicleRepository = vehicleRepository;
-        this.userRepository = userRepository;
+    private boolean validateVIN(String vin) {
+        return vin != null && vin.length() == 17 && vin.matches("^[A-HJ-NPR-Z0-9]{17}$");
+    }
+
+    @Transactional(readOnly = true)
+    public Vehicle getVehicleInfoByVin(String vin) {
+        if (!validateVIN(vin)) {
+            throw new IllegalArgumentException("Invalid VIN format.");
+        }
+        return vehicleRepository.findByVIN(vin)
+                .orElseThrow(() -> new EntityNotFoundException("Vehicle with VIN " + vin + " not found."));
     }
 
     @Transactional
-    public Vehicle registerVehicle(String userId, VehicleRegistrationRequest request) {
-        // Validate user exists
+    public Vehicle assignVehicleToUser(String userId, String vin) {
+        if (!validateVIN(vin)) {
+            throw new IllegalArgumentException("Invalid VIN format.");
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+        Vehicle vehicle = getVehicleInfoByVin(vin);
 
-        // Check if VIN is already registered
-        if (vehicleRepository.findByVIN(request.getVin()).isPresent()) {
-            throw new IllegalArgumentException("Vehicle with VIN " + request.getVin() + " is already registered");
+        if (vehicle.getUser() != null || vehicle.isActive()) {
+            throw new IllegalStateException("Vehicle with VIN " + vin + " is already assigned.");
         }
 
-        // Create new vehicle
-        Vehicle vehicle = new Vehicle();
         vehicle.setUser(user);
-        vehicle.setVIN(request.getVin());
-        vehicle.setVehicleType(request.getVehicleType());
-        vehicle.setBatteryType(request.getBatteryType());
         vehicle.setActive(true);
-
         return vehicleRepository.save(vehicle);
     }
 
-    public List<Vehicle> getUserVehicles(String userId) {
+    @Transactional
+    public Vehicle registerNewVehicle(String userId, VehicleRegistrationRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
-        return vehicleRepository.findByUser(user);
+
+        if (vehicleRepository.findByVIN(request.getVin()).isPresent()) {
+            throw new IllegalStateException("Vehicle with VIN " + request.getVin() + " already exists.");
+        }
+
+        Vehicle newVehicle = new Vehicle();
+        newVehicle.setUser(user);
+        newVehicle.setVIN(request.getVin());
+        newVehicle.setVehicleType(request.getVehicleType());
+        newVehicle.setBatteryType(request.getBatteryType());
+        newVehicle.setActive(true);
+
+        return vehicleRepository.save(newVehicle);
     }
 
-    public Vehicle getVehicleById(int vehicleId) {
-        return vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found with ID: " + vehicleId));
+    @Transactional(readOnly = true)
+    public List<Vehicle> getActiveUserVehicles(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+        return vehicleRepository.findByUserAndIsActiveTrue(user);
     }
 
     @Transactional
     public void deactivateVehicle(int vehicleId, String userId) {
-        Vehicle vehicle = (Vehicle) vehicleRepository.findByVehicleIdAndUserUserId(vehicleId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found or does not belong to user"));
-        vehicle.setActive(false);
-        vehicleRepository.save(vehicle);
-    }
+        Vehicle vehicle = vehicleRepository.findByVehicleIdAndUser_UserId(vehicleId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found or does not belong to the user."));
 
-    public boolean validateVIN(String vin) {
-        return vin != null &&
-               vin.length() == 17 &&
-               vin.matches("^[A-HJ-NPR-Z0-9]{17}$");
+        vehicle.setActive(false);
+        vehicle.setUser(null);
+        vehicleRepository.save(vehicle);
     }
 }

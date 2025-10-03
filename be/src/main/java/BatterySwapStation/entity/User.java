@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -42,10 +44,31 @@ public class User implements UserDetails {
     @Column(name = "IsActive", nullable = false)
     private boolean isActive;
 
+    @CreationTimestamp
+    @Column(name = "CreateAt", nullable = false)
+    private LocalDateTime createAt;
+
+    @UpdateTimestamp
+    @Column(name = "UpdateAt", nullable = false)
+    private LocalDateTime updateAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createAt = LocalDateTime.now();
+        this.updateAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updateAt = LocalDateTime.now();
+    }
+
+
     // N-1: User thuộc về 1 Role
     @ManyToOne
     @JoinColumn(name = "RoleId", nullable = false)
     private Role role;
+
 
     // 1 User có nhiều StaffAssign
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

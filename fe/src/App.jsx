@@ -42,7 +42,6 @@ const App = () => (<QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/dashboard" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             {/* Driver routes */}
@@ -67,7 +66,6 @@ const App = () => (<QueryClientProvider client={queryClient}>
             <Route path="/admin/battery-dispatch" element={<AdminPrivateRoute><BatteryDispatch /></AdminPrivateRoute>} />
             <Route path="/admin/staff-management" element={<AdminPrivateRoute><StaffManagement /></AdminPrivateRoute>} />
 
-            <Route path="*" element={<NotFound />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

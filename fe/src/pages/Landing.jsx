@@ -1,54 +1,82 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { Battery, Zap, Users, BarChart3, LogIn, UserPlus, Star, ArrowRight, CheckCircle, Globe, Phone, Clock, MapPin, Shield, Sparkles, Smartphone, Network, HeadphonesIcon } from "lucide-react";
+import { Battery, Zap, Users, BarChart3, LogIn, UserPlus, Star, ArrowRight, CheckCircle, Phone, Shield, Sparkles, Smartphone, Network, HeadphonesIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/electric-scooter-hero.jpg";
+import evStationImage from "@/assets/ev-station-hero.jpg";
+import dashboardBgImage from "@/assets/dashboard-bg.jpg";
 import Autoplay from "embla-carousel-autoplay";
 import React from "react";
+
 const Landing = () => {
   console.log("Landing component rendering...");
-  const plugin = React.useRef(
-    Autoplay({ delay: 4000, stopOnInteraction: true })
-  );
+
+  // Autoplay plugins (pattern theo shadcn/ui – dễ điều khiển hover)
+  const heroPlugin = React.useRef(Autoplay({ delay: 4000, stopOnInteraction: true }));
+  const featuresPlugin = React.useRef(Autoplay({ delay: 3000, stopOnInteraction: true }));
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <div className="relative min-h-screen overflow-hidden">
-        {/* Hero Background */}
+        {/* Hero Background Carousel */}
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-electric-blue/80 to-electric-blue-dark/90 z-10 animate-pulse-glow"></div>
-          <img src={heroImage} alt="EV Charging Station" className="w-full h-full object-cover animate-scale-in" />
-          {/* Animated background elements - nhiều hơn và đẹp hơn */}
-          <div className="absolute top-20 left-10 w-3 h-3 bg-white/40 rounded-full animate-float"></div>
-          <div className="absolute top-40 right-20 w-4 h-4 bg-electric-blue-light/50 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute bottom-32 left-1/4 w-2 h-2 bg-white/50 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
-          <div className="absolute top-1/3 right-1/4 w-3 h-3 bg-electric-blue/40 rounded-full animate-float" style={{ animationDelay: '1.5s' }}></div>
-          <div className="absolute bottom-1/4 right-1/3 w-2 h-2 bg-white/30 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute top-1/2 left-1/3 w-4 h-4 bg-electric-blue-light/30 rounded-full animate-float" style={{ animationDelay: '0.8s' }}></div>
+          <Carousel
+            opts={{ align: "center", loop: true }}
+            plugins={[heroPlugin.current]}
+            onMouseEnter={heroPlugin.current.stop}
+            onMouseLeave={heroPlugin.current.reset}
+            className="w-full h-full"
+          >
+            <CarouselContent className="h-full">
+              {[
+                { src: heroImage, alt: "Electric Scooter", gradient: "from-primary/90 via-electric-blue/80 to-electric-blue-dark/90" },
+                { src: evStationImage, alt: "EV Station", gradient: "from-electric-blue/90 via-primary/80 to-electric-blue-light/90" },
+                { src: dashboardBgImage, alt: "Battery Swap Service", gradient: "from-electric-blue-dark/90 via-electric-blue/80 to-primary/90" },
+              ].map((item, idx) => (
+                <CarouselItem key={idx} className="h-[100dvh] p-0">
+                  <div className="relative h-full w-full">
+                    <img src={item.src} alt={item.alt} className="h-full w-full object-cover" />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient}`} />
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
 
-          {/* Floating Icons - Animated continuously */}
-          <div className="absolute top-32 left-1/4 animate-float opacity-20">
-            <Battery className="h-8 w-8 text-white animate-pulse" />
-          </div>
-          <div className="absolute top-1/3 right-1/3 animate-float opacity-20" style={{ animationDelay: '1.2s' }}>
-            <Zap className="h-10 w-10 text-electric-blue-light animate-pulse" />
-          </div>
-          <div className="absolute bottom-1/3 left-1/3 animate-float opacity-20" style={{ animationDelay: '2.5s' }}>
-            <Sparkles className="h-7 w-7 text-white animate-pulse" />
-          </div>
-          <div className="absolute top-1/2 right-1/4 animate-float opacity-20" style={{ animationDelay: '1.8s' }}>
-            <Battery className="h-6 w-6 text-electric-blue-light animate-pulse" />
-          </div>
+            {/* Nút điều hướng (ẩn trên mobile) */}
+            <CarouselPrevious className="hidden md:flex left-6" />
+            <CarouselNext className="hidden md:flex right-6" />
+          </Carousel>
 
-          {/* Thêm gradient circles lớn */}
-          <div className="absolute -top-20 -right-20 w-96 h-96 bg-electric-blue/20 rounded-full blur-3xl animate-pulse-glow"></div>
-          <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1.5s' }}></div>
+          {/* Animated overlay elements */}
+          <div className="absolute inset-0 z-20 pointer-events-none">
+            <div className="absolute top-20 left-10 w-3 h-3 bg-white/40 rounded-full animate-float"></div>
+            <div className="absolute top-40 right-20 w-4 h-4 bg-electric-blue-light/50 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute bottom-32 left-1/4 w-2 h-2 bg-white/50 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
+            <div className="absolute top-1/3 right-1/4 w-3 h-3 bg-electric-blue/40 rounded-full animate-float" style={{ animationDelay: '1.5s' }}></div>
+            <div className="absolute bottom-1/4 right-1/3 w-2 h-2 bg-white/30 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
+            <div className="absolute top-1/2 left-1/3 w-4 h-4 bg-electric-blue-light/30 rounded-full animate-float" style={{ animationDelay: '0.8s' }}></div>
 
-          {/* Animated lines moving across */}
-          <div className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent animate-slide-in-right"></div>
-          <div className="absolute top-2/3 left-0 w-full h-px bg-gradient-to-r from-transparent via-electric-blue-light/30 to-transparent animate-slide-in-right" style={{ animationDelay: '2s' }}></div>
+            {/* Floating Icons */}
+            <div className="absolute top-32 left-1/4 animate-float opacity-20">
+              <Battery className="h-8 w-8 text-white animate-pulse" />
+            </div>
+            <div className="absolute top-1/3 right-1/3 animate-float opacity-20" style={{ animationDelay: '1.2s' }}>
+              <Zap className="h-10 w-10 text-electric-blue-light animate-pulse" />
+            </div>
+            <div className="absolute bottom-1/3 left-1/3 animate-float opacity-20" style={{ animationDelay: '2.5s' }}>
+              <Sparkles className="h-7 w-7 text-white animate-pulse" />
+            </div>
+
+            {/* Gradient circles */}
+            <div className="absolute -top-20 -right-20 w-96 h-96 bg-electric-blue/20 rounded-full blur-3xl animate-pulse-glow"></div>
+            <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1.5s' }}></div>
+
+            {/* Animated lines */}
+            <div className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent animate-slide-in-right"></div>
+            <div className="absolute top-2/3 left-0 w-full h-px bg-gradient-to-r from-transparent via-electric-blue-light/30 to-transparent animate-slide-in-right" style={{ animationDelay: '2s' }}></div>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -238,10 +266,13 @@ const Landing = () => {
       {/* Carousel Section */}
       <section className="py-20 bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-0 left-0 w-full h-full" style={{
-            backgroundImage: 'radial-gradient(circle at 50% 50%, hsl(var(--electric-blue)) 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
-          }}></div>
+          <div
+            className="absolute top-0 left-0 w-full h-full"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 50% 50%, hsl(var(--electric-blue)) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }}
+          ></div>
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
@@ -253,103 +284,36 @@ const Landing = () => {
           </div>
 
           <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-            }}
-            plugins={[plugin.current]}
+            opts={{ align: "start", loop: true }}
+            plugins={[featuresPlugin.current]}
+            onMouseEnter={featuresPlugin.current.stop}
+            onMouseLeave={featuresPlugin.current.reset}
             className="w-full max-w-5xl mx-auto"
           >
-            <CarouselContent>
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-4">
-                  <Card className="group hover:scale-105 transition-all duration-500 border-0 shadow-xl overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-electric-blue to-electric-blue-dark p-8 aspect-square flex flex-col items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300"></div>
-                      <Zap className="h-20 w-20 text-white mb-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                      <h3 className="text-2xl font-bold text-white text-center relative z-10">Quy trình nhanh</h3>
-                    </div>
-                    <CardContent className="p-6">
-                      <p className="text-gray-600 text-center">Đổi pin tự động chỉ trong 5 phút với công nghệ tiên tiến</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
-
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-4">
-                  <Card className="group hover:scale-105 transition-all duration-500 border-0 shadow-xl overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-primary to-electric-blue-dark p-8 aspect-square flex flex-col items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300"></div>
-                      <Smartphone className="h-20 w-20 text-white mb-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                      <h3 className="text-2xl font-bold text-white text-center relative z-10">Ứng dụng di động</h3>
-                    </div>
-                    <CardContent className="p-6">
-                      <p className="text-gray-600 text-center">Đặt lịch và thanh toán dễ dàng qua ứng dụng thông minh</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
-
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-4">
-                  <Card className="group hover:scale-105 transition-all duration-500 border-0 shadow-xl overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-electric-blue-light to-primary p-8 aspect-square flex flex-col items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300"></div>
-                      <Network className="h-20 w-20 text-white mb-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                      <h3 className="text-2xl font-bold text-white text-center relative z-10">Mạng lưới rộng</h3>
-                    </div>
-                    <CardContent className="p-6">
-                      <p className="text-gray-600 text-center">Hơn 100 trạm đổi pin trên toàn quốc</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
-
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-4">
-                  <Card className="group hover:scale-105 transition-all duration-500 border-0 shadow-xl overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-primary to-electric-blue p-8 aspect-square flex flex-col items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300"></div>
-                      <HeadphonesIcon className="h-20 w-20 text-white mb-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                      <h3 className="text-2xl font-bold text-white text-center relative z-10">Hỗ trợ 24/7</h3>
-                    </div>
-                    <CardContent className="p-6">
-                      <p className="text-gray-600 text-center">Đội ngũ hỗ trợ sẵn sàng phục vụ mọi lúc mọi nơi</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
-
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-4">
-                  <Card className="group hover:scale-105 transition-all duration-500 border-0 shadow-xl overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-electric-blue-dark to-primary p-8 aspect-square flex flex-col items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300"></div>
-                      <Shield className="h-20 w-20 text-white mb-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                      <h3 className="text-2xl font-bold text-white text-center relative z-10">An toàn tuyệt đối</h3>
-                    </div>
-                    <CardContent className="p-6">
-                      <p className="text-gray-600 text-center">Kiểm tra chất lượng pin nghiêm ngặt và bảo hành toàn diện</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
-
-              <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                <div className="p-4">
-                  <Card className="group hover:scale-105 transition-all duration-500 border-0 shadow-xl overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-primary to-electric-blue-light p-8 aspect-square flex flex-col items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300"></div>
-                      <Battery className="h-20 w-20 text-white mb-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                      <h3 className="text-2xl font-bold text-white text-center relative z-10">Pin chất lượng cao</h3>
-                    </div>
-                    <CardContent className="p-6">
-                      <p className="text-gray-600 text-center">Pin VINFAST chính hãng với hiệu suất vượt trội</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {[
+                { Icon: Zap, title: "Quy trình nhanh", text: "Đổi pin tự động chỉ trong 5 phút với công nghệ tiên tiến", bg: "from-electric-blue to-electric-blue-dark" },
+                { Icon: Smartphone, title: "Ứng dụng di động", text: "Đặt lịch và thanh toán dễ dàng qua ứng dụng thông minh", bg: "from-primary to-electric-blue-dark" },
+                { Icon: Network, title: "Mạng lưới rộng", text: "Hơn 100 trạm đổi pin trên toàn quốc", bg: "from-electric-blue-light to-primary" },
+                { Icon: HeadphonesIcon, title: "Hỗ trợ 24/7", text: "Đội ngũ hỗ trợ sẵn sàng phục vụ mọi lúc mọi nơi", bg: "from-primary to-electric-blue" },
+                { Icon: Shield, title: "An toàn tuyệt đối", text: "Kiểm tra chất lượng pin nghiêm ngặt và bảo hành toàn diện", bg: "from-electric-blue-dark to-primary" },
+                { Icon: Battery, title: "Pin chất lượng cao", text: "Pin VINFAST chính hãng với hiệu suất vượt trội", bg: "from-primary to-electric-blue-light" },
+              ].map(({ Icon, title, text, bg }, i) => (
+                <CarouselItem key={i} className="pl-2 md:pl-4 basis-[85%] sm:basis-1/2 lg:basis-1/3">
+                  <div className="h-full">
+                    <Card className="group h-full border-0 shadow-xl overflow-hidden transition-transform duration-300 hover:scale-[1.02]">
+                      <div className={`bg-gradient-to-br ${bg} p-8 min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden`}>
+                        <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300" />
+                        <Icon className="h-16 w-16 text-white mb-4 group-hover:rotate-12 transition-transform duration-300 relative z-10" />
+                        <h3 className="text-2xl font-bold text-white text-center relative z-10">{title}</h3>
+                      </div>
+                      <CardContent className="p-6">
+                        <p className="text-gray-600 text-center">{text}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
             </CarouselContent>
             <CarouselPrevious className="hidden md:flex" />
             <CarouselNext className="hidden md:flex" />
@@ -359,12 +323,14 @@ const Landing = () => {
 
       {/* Stats Section */}
       <section className="py-20 bg-gradient-to-r from-electric-blue via-primary to-electric-blue-dark relative overflow-hidden">
-        {/* Animated background patterns */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-full" style={{
-            backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)',
-            backgroundSize: '50px 50px'
-          }}></div>
+          <div
+            className="absolute top-0 left-0 w-full h-full"
+            style={{
+              backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px)",
+              backgroundSize: "50px 50px",
+            }}
+          ></div>
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
@@ -391,17 +357,14 @@ const Landing = () => {
 
       {/* Role Cards */}
       <section className="py-20 bg-white relative overflow-hidden">
-        {/* Animated decorations */}
         <div className="absolute top-20 right-20 w-40 h-40 bg-electric-blue/5 rounded-full animate-float"></div>
         <div className="absolute bottom-40 left-20 w-32 h-32 bg-primary/5 rounded-full animate-float" style={{ animationDelay: '1.5s' }}></div>
 
-        {/* Floating particles continuously */}
         <div className="absolute top-1/3 left-1/4 w-2 h-2 bg-electric-blue/30 rounded-full animate-float"></div>
         <div className="absolute top-1/2 right-1/3 w-3 h-3 bg-primary/30 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
         <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-electric-blue/20 rounded-full animate-float" style={{ animationDelay: '2s' }}></div>
         <div className="absolute top-2/3 right-1/4 w-3 h-3 bg-primary/20 rounded-full animate-float" style={{ animationDelay: '0.5s' }}></div>
 
-        {/* Rotating elements in background */}
         <div className="absolute top-1/4 right-10 w-24 h-24 border-2 border-electric-blue/10 rounded-full animate-spin" style={{ animationDuration: '15s' }}></div>
         <div className="absolute bottom-1/4 left-10 w-32 h-32 border-2 border-primary/10 rounded-full animate-spin" style={{ animationDuration: '20s', animationDirection: 'reverse' }}></div>
 
@@ -516,7 +479,6 @@ const Landing = () => {
 
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-br from-gray-50 to-electric-blue/5 relative overflow-hidden" id="contact">
-        {/* Animated background */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-electric-blue/10 rounded-full blur-3xl animate-pulse-glow"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }}></div>
 

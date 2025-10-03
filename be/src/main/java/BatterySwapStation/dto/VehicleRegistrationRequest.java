@@ -16,9 +16,7 @@ public class VehicleRegistrationRequest {
     @Pattern(regexp = "^[A-HJ-NPR-Z0-9]{17}$", message = "Invalid VIN format")
     private String vin;
 
-    @NotNull(message = "Vehicle type must be specified")
     private Vehicle.VehicleType vehicleType;
 
-    @NotNull(message = "Battery type must be specified")
     private Vehicle.BatteryType batteryType;
 }

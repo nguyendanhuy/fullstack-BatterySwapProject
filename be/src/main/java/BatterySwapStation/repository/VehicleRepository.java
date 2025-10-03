@@ -10,9 +10,10 @@ import java.util.Optional;
 
 @Repository
 public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
-    List<Vehicle> findByUser(User user);
+
     Optional<Vehicle> findByVIN(String vin);
+
     List<Vehicle> findByUserAndIsActiveTrue(User user);
 
-    Optional<Object> findByVehicleIdAndUserUserId(int vehicleId, String userId);
+    Optional<Vehicle> findByVehicleIdAndUser_UserId(int vehicleId, String userId);
 }

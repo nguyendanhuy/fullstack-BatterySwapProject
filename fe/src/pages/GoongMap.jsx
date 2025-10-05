@@ -118,7 +118,6 @@ export default function SimpleGoongMap({
                 addOrUpdateCircle([center.lng, center.lat], 500);
             });
         };
-
         if (map.isStyleLoaded()) apply();
         else map.once("styledata", apply);
         // eslint-disable-next-line react-hooks/exhaustive-deps

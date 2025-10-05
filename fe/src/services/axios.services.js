@@ -38,4 +38,15 @@ const viewUserVehicles = () => {
 const deactivateVehicleByVin = (vin) => {
     return axios.post(`/v1/vehicles/${vin}/deactivate`);
 }
-export { registerAPI, loginAPI, getInfoByToken, registerVehicleByVin, getVehicleInfoByVin, viewUserVehicles,deactivateVehicleByVin};
+const getAllStations = () => {
+    return axios.get("/stations");
+}
+export { registerAPI, 
+    loginAPI, 
+    getInfoByToken, 
+    registerVehicleByVin, 
+    getVehicleInfoByVin, 
+    viewUserVehicles,
+    deactivateVehicleByVin,
+    getAllStations
+};

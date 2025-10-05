@@ -321,19 +321,19 @@ const StationFinder = () => {
                 </div>
 
                 {/* Amenities */}
-                <div className="mb-8">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    ⭐ Tiện ích & Dịch vụ
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {station.amenities.map((amenity, idx) => (<Badge key={idx} variant="outline" className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors px-3 py-1 rounded-full">
-                      {amenity}
-                    </Badge>))}
-                  </div>
-                </div>
+                {/* <div className="mb-8">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        ⭐ Tiện ích & Dịch vụ
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {station.amenities.map((amenity, idx) => (<Badge key={idx} variant="outline" className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors px-3 py-1 rounded-full">
+                            {amenity}
+                          </Badge>))}
+                      </div>
+                    </div> */}
 
                 {/* Action Buttons */}
-                <div className="flex gap-4">
+                <div div className="flex gap-4" >
                   <Link to="/driver/reservation" className="flex-1">
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
                       <Battery className="h-5 w-5 mr-3" />
@@ -344,13 +344,13 @@ const StationFinder = () => {
                     <MapPin className="h-5 w-5 mr-2" />
                     Chỉ đường
                   </Button>
-                </div>
-              </CardContent>
-            </Card>))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>);
+                </div >
+              </CardContent >
+            </Card >))}
+          </div >
+        </div >
+      </div >
+    </div >
+  </div >);
 };
 export default StationFinder;

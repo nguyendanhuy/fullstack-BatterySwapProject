@@ -6,75 +6,106 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { MapPin, ArrowLeft, Battery, Filter, Map, Navigation, Zap, Clock, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Modal } from "antd";
+import { List, Modal } from "antd";
 import SimpleGoongMap from "../GoongMap";
-import { getAllStations } from "../../services/axios.services";
+import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
+import { toast } from "sonner";
 const StationFinder = () => {
+  const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
   const [filters, setFilters] = useState({
     distance: "",
     batteryCount: ""
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [stations, setStations] = useState([]);
+  const [allStations, setAllStations] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const mockStations = [
-    {
-      id: 1,
-      name: "Trạm Quận 1 Premium",
-      address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
-      distance: "2.5 km",
-      batteries: { full: 8, charging: 3, empty: 1 },
-      batteryTypes: {
-        "Lithium-ion": { full: 5, charging: 2, empty: 1 },
-        "Pin LFP": { full: 3, charging: 1, empty: 0 },
-        "Ắc quy chì": { full: 0, charging: 0, empty: 0 }
-      },
-      status: "Hoạt động",
-      rating: 4.9,
-      estimatedTime: "2 phút",
-      amenities: ["WiFi", "Cà phê", "Chỗ đậu xe"]
-    },
-    {
-      id: 2,
-      name: "Trạm Quận 3 Express",
-      address: "456 Lê Văn Sỹ, Quận 3, TP.HCM",
-      distance: "4.2 km",
-      batteries: { full: 5, charging: 5, empty: 2 },
-      batteryTypes: {
-        "Lithium-ion": { full: 3, charging: 3, empty: 1 },
-        "Pin LFP": { full: 2, charging: 2, empty: 1 },
-        "Ắc quy chì": { full: 0, charging: 0, empty: 0 }
-      },
-      status: "Hoạt động",
-      rating: 4.7,
-      estimatedTime: "5 phút",
-      amenities: ["24/7", "An ninh"]
-    },
-    {
-      id: 3,
-      name: "Trạm Bình Thạnh Mega",
-      address: "789 Xô Viết Nghệ Tĩnh, Bình Thạnh, TP.HCM",
-      distance: "6.1 km",
-      batteries: { full: 12, charging: 2, empty: 1 },
-      batteryTypes: {
-        "Lithium-ion": { full: 8, charging: 1, empty: 1 },
-        "Pin LFP": { full: 4, charging: 1, empty: 0 },
-        "Ắc quy chì": { full: 0, charging: 0, empty: 0 }
-      },
-      status: "Hoạt động",
-      rating: 4.8,
-      estimatedTime: "3 phút",
-      amenities: ["Siêu sạc", "Rửa xe", "Cửa hàng tiện lợi"]
+
+
+  const distanceMatrixWithStations = async (origin, stations) => {
+    if (!origin?.lat || !origin?.lng || stations.length === 0) {
+      return stations ?? [];
     }
-  ];
+
+    // Lấy lat/lng của trạm 
+    const toLat = s => s?.latitude;
+    const toLng = s => s?.longitude;
+    // Tạo chuỗi destinations cho API goong map
+    const destinations = stations
+      .map(s => `${toLat(s)},${toLng(s)}`)
+      .join("|");
+    const url = `https://rsapi.goong.io/DistanceMatrix?origins=${origin.lat},${origin.lng}&destinations=${destinations}&vehicle=car&api_key=${API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const elems = data?.rows?.[0]?.elements ?? [];
+    return stations.map((station, index) => {
+      const el = elems[index] ?? {}
+      return {
+        ...station,
+        distance: el?.distance?.text ?? "—",
+        estimatedTime: el?.duration?.text ?? "—",
+      }
+    })
+  }
+
+
+
+  const autoLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    if (!selectedLocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setSelectedLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            address: "Vị trí hiện tại của bạn"
+          });
+        },
+        (err) => {
+          alert(err.message);
+        }
+      );
+    }
+  };
+
   useEffect(() => {
-    getStation();
+    autoLocation();
+    getAllStation();
   }, []);
 
-  const getStation = async () => {
-    const res = await getAllStations()
+  //kiểm tra selectedLocation thay đổi thì gọi API + selectLocation tồn tại trước.
+  useEffect(() => {
+    if (selectedLocation?.lat != null && selectedLocation?.lng != null) {
+      getStationNearby(selectedLocation.lat, selectedLocation.lng);
+    }
+  }, [selectedLocation]);
+
+  console.log("Selected Location:", selectedLocation);
+
+  const getStationNearby = async (lat, lng) => {
+    const res = await getStationNearbyLocation(lat, lng);
     if (res) {
-      setStations(res);
+      //Thêm vào nearby stations dữ liệu thời gian và khoảng cách trước khi in ra.
+      const stationsWithDistance = await distanceMatrixWithStations(selectedLocation, res);
+      console.log("thông tin trạm gần nhất:", stationsWithDistance);
+      setStations(stationsWithDistance);
+    } else if (res.error) {
+      toast({
+        title: "Lỗi gọi thông tin trạm gần nhất",
+        description: JSON.stringify(res.error),
+        variant: "destructive",
+      });
+    }
+  }
+
+  //GetAllStations này dùng cho bản đồ, không dùng cho danh sách trạm gần, để hiển thị thông tin tất cả các trạm trên bản đồ.
+  const getAllStation = async () => {
+    const res = await getAllStations();
+    if (res) {
+      setAllStations(res);
     } else if (res.error) {
       toast({
         title: "Lỗi gọi thông tin trạm",
@@ -90,8 +121,6 @@ const StationFinder = () => {
 
   const handleMapOk = () => {
     if (selectedLocation) {
-      console.log("Vị trí đã chọn:", selectedLocation);
-      // TODO: Cập nhật input hoặc tìm trạm gần vị trí này
     }
     setIsMapOpen(false);
   };
@@ -155,7 +184,7 @@ const StationFinder = () => {
             </CardHeader>
             <CardContent className="space-y-4"> <div className="relative">
               <Input
-                placeholder="Nhập địa chỉ hoặc chọn trên bản đồ..."
+                placeholder="Chọn địa chỉ của bạn trên bản đồ..."
                 className="pl-12 pr-4 py-3 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm"
                 value={selectedLocation?.address || ""}
                 readOnly
@@ -171,7 +200,7 @@ const StationFinder = () => {
                 open={isMapOpen}
                 onOk={handleMapOk}
                 onCancel={() => setIsMapOpen(false)}
-                width={900}
+                width={1200}
                 okText="Xác nhận"
                 cancelText="Hủy"
                 okButtonProps={{
@@ -179,9 +208,9 @@ const StationFinder = () => {
                   className: "bg-gradient-to-r from-blue-500 to-indigo-500"
                 }}
               >
-                <div className="w-full bg-gray-100 flex items-center justify-center" style={{ height: '60vh' }}>
+                <div className="w-full bg-gray-100 flex items-center justify-center" style={{ height: '80vh' }}>
                   <SimpleGoongMap
-                    station={stations}
+                    station={allStations}
                     selectMode={true}
                     onLocationSelect={handleLocationSelect}
                     heightClass="h-full"
@@ -257,116 +286,126 @@ const StationFinder = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Trạm pin gần bạn</h2>
             <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full">
-              {mockStations.length} trạm tìm thấy
+              {stations.length} trạm tìm thấy
             </Badge>
           </div>
 
           {/* Enhanced Station Cards */}
-          <div className="space-y-6">
-            {mockStations.map((station, index) => (<Card key={station.id} className="border-0 shadow-xl bg-white hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
-              {/* Card Header with Gradient */}
-              <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+          {/* Test list antd */}
+          <List
+            itemLayout="vertical"
+            dataSource={stations}
+            renderItem={(station, index) => (
+              <List.Item key={station.stationId}>
+                <Card className="space-y-6 border-0 shadow-xl bg-white hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
+                  {/* Card Header with Gradient */}
+                  <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
 
-              <CardContent className="p-8">
-                {/* Station Header */}
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-8 gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
-                        <Zap className="h-6 w-6 text-white" />
+                  <CardContent className="p-8">
+                    {/* Station Header */}
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-8 gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-3">
+                          <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+                            <Zap className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-800 mb-1">{station.stationName}</h3>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (<Star key={i} className={`h-4 w-4 ${i < Math.floor(station.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />))}
+                              </div>
+                              <span className="text-sm font-semibold text-yellow-600">{station.rating}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-sm text-gray-600">
+                          <p className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-gray-400" />
+                            {station.address}
+                          </p>
+                          <div className="flex items-center gap-6">
+                            <span className="flex items-center gap-1 font-medium text-blue-600">
+                              <Navigation className="h-4 w-4" />
+                              {station.distance}
+                            </span>
+                            <span className="flex items-center gap-1 font-medium text-green-600">
+                              <Clock className="h-4 w-4" />
+                              {station.estimatedTime}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                      {station.active ?
+                        <Badge
+                          variant="secondary"
+                          className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full font-semibold">
+                          ✅ {station.status}
+                        </Badge> :
+                        <Badge
+                          variant="secondary"
+                          className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-4 py-2 rounded-full font-semibold"
+                        >
+                          ❌ {station.status}
+                        </Badge>}
+                    </div>
+                    {/* Battery Status with Enhanced Design */}
+                    <div className="grid md:grid-cols-2 gap-8 mb-8">
+                      {/* Battery Counts */}
                       <div>
-                        <h3 className="text-2xl font-bold text-gray-800 mb-1">{station.name}</h3>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            {[...Array(5)].map((_, i) => (<Star key={i} className={`h-4 w-4 ${i < Math.floor(station.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />))}
+                        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <Battery className="h-5 w-5 text-blue-500" />
+                          Trạng thái pin
+                        </h4>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-2xl border border-green-200 text-center group-hover:scale-105 transition-transform duration-300">
+                            <div className="text-3xl font-bold text-green-600 mb-1">{station.batterySummary.AVAILABLE ?? 0}</div>
+                            <div className="text-xs font-medium text-green-700">Pin đầy</div>
+                            <div className="w-full h-2 bg-green-200 rounded-full mt-3 overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-pulse"></div>
+                            </div>
                           </div>
-                          <span className="text-sm font-semibold text-yellow-600">{station.rating}</span>
-                          <span className="text-sm text-gray-500">• 128 đánh giá</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        {station.address}
-                      </p>
-                      <div className="flex items-center gap-6">
-                        <span className="flex items-center gap-1 font-medium text-blue-600">
-                          <Navigation className="h-4 w-4" />
-                          {station.distance}
-                        </span>
-                        <span className="flex items-center gap-1 font-medium text-green-600">
-                          <Clock className="h-4 w-4" />
-                          {station.estimatedTime}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full font-semibold">
-                    ✅ {station.status}
-                  </Badge>
-                </div>
-
-                {/* Battery Status with Enhanced Design */}
-                <div className="grid md:grid-cols-2 gap-8 mb-8">
-                  {/* Battery Counts */}
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <Battery className="h-5 w-5 text-blue-500" />
-                      Trạng thái pin
-                    </h4>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-2xl border border-green-200 text-center group-hover:scale-105 transition-transform duration-300">
-                        <div className="text-3xl font-bold text-green-600 mb-1">{station.batteries.full}</div>
-                        <div className="text-xs font-medium text-green-700">Pin đầy</div>
-                        <div className="w-full h-2 bg-green-200 rounded-full mt-3 overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-pulse"></div>
-                        </div>
-                      </div>
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-200 text-center group-hover:scale-105 transition-transform duration-300">
-                        <div className="text-3xl font-bold text-blue-600 mb-1">{station.batteries.charging}</div>
-                        <div className="text-xs font-medium text-blue-700">Đang sạc</div>
-                        <div className="w-full h-2 bg-blue-200 rounded-full mt-3 overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full animate-pulse" style={{ width: '75%' }}></div>
-                        </div>
-                      </div>
-                      <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-2xl border border-gray-200 text-center group-hover:scale-105 transition-transform duration-300">
-                        <div className="text-3xl font-bold text-gray-500 mb-1">{station.batteries.empty}</div>
-                        <div className="text-xs font-medium text-gray-600">Pin rỗng</div>
-                        <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
-                          <div className="h-full bg-gray-400 rounded-full" style={{ width: '25%' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Battery Types */}
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-purple-500" />
-                      Loại pin có sẵn
-                    </h4>
-                    <div className="space-y-3">
-                      {Object.entries(station.batteryTypes).map(([type, counts]) => (counts.full > 0 && (<div key={type} className="flex items-center justify-between p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border border-gray-100 group-hover:shadow-md transition-all duration-300">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${type === "Lithium-ion" ? "bg-blue-100" : "bg-purple-100"}`}>
-                            <Battery className={`h-4 w-4 ${type === "Lithium-ion" ? "text-blue-600" : "text-purple-600"}`} />
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-200 text-center group-hover:scale-105 transition-transform duration-300">
+                            <div className="text-3xl font-bold text-blue-600 mb-1">{station.batterySummary.CHARGING ?? 0}</div>
+                            <div className="text-xs font-medium text-blue-700">Đang sạc</div>
+                            <div className="w-full h-2 bg-blue-200 rounded-full mt-3 overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full animate-pulse" style={{ width: '75%' }}></div>
+                            </div>
                           </div>
-                          <span className="font-medium text-gray-700">{type}</span>
+                          <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-2xl border border-gray-200 text-center group-hover:scale-105 transition-transform duration-300">
+                            <div className="text-3xl font-bold text-gray-500 mb-1">{station.batterySummary.DAMAGED ?? 0}</div>
+                            <div className="text-xs font-medium text-gray-600">Pin rỗng</div>
+                            <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
+                              <div className="h-full bg-gray-400 rounded-full" style={{ width: '25%' }}></div>
+                            </div>
+                          </div>
                         </div>
-                        <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 font-semibold px-3 py-1 rounded-full">
-                          {counts.full} pin
-                        </Badge>
-                      </div>)))}
+                      </div>
+                      {/* Battery Types */}
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <Zap className="h-5 w-5 text-purple-500" />
+                          Loại pin có sẵn
+                        </h4>
+                        <div className="space-y-3">
+                          {Object.entries(station.batteryTypes).map(([type, counts]) => (counts > 0 && (<div key={type} className="flex items-center justify-between p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border border-gray-100 group-hover:shadow-md transition-all duration-300">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg ${type === "LITHIUM_ION" ? "bg-blue-100" : "bg-purple-100"}`}>
+                                <Battery className={`h-4 w-4 ${type === "LITHIUM_ION" ? "text-blue-600" : "text-purple-600"}`} />
+                              </div>
+                              <span className="font-medium text-gray-700">{type}</span>
+                            </div>
+                            <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 font-semibold px-3 py-1 rounded-full">
+                              {counts} pin
+                            </Badge>
+                          </div>)))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Amenities */}
-                {/* <div className="mb-8">
+                    {/* Amenities */}
+                    {/* <div className="mb-8">
                       <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                         ⭐ Tiện ích & Dịch vụ
                       </h4>
@@ -377,22 +416,24 @@ const StationFinder = () => {
                       </div>
                     </div> */}
 
-                {/* Action Buttons */}
-                <div className="flex gap-4" >
-                  <Link to="/driver/reservation" className="flex-1">
-                    <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
-                      <Battery className="h-5 w-5 mr-3" />
-                      Đặt lịch ngay
-                    </Button>
-                  </Link>
-                  <Button variant="outline" className="px-8 py-4 border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-105 font-semibold">
-                    <MapPin className="h-5 w-5 mr-2" />
-                    Chỉ đường
-                  </Button>
-                </div >
-              </CardContent >
-            </Card >))}
-          </div >
+                    {/* Action Buttons */}
+                    <div className="flex gap-4" >
+                      <Link to="/driver/reservation" className="flex-1">
+                        <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                          <Battery className="h-5 w-5 mr-3" />
+                          Đặt lịch ngay
+                        </Button>
+                      </Link>
+                      <Button variant="outline" className="px-8 py-4 border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-105 font-semibold">
+                        <MapPin className="h-5 w-5 mr-2" />
+                        Chỉ đường
+                      </Button>
+                    </div >
+                  </CardContent >
+                </Card >
+              </List.Item>
+            )}
+          />
         </div >
       </div >
     </div >

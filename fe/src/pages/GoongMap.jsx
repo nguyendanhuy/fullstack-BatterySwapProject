@@ -167,20 +167,6 @@ export default function SimpleGoongMap({
         fetch(STYLE_URL)
             .then(res => res.json())
             .then(style => {
-                // Xóa sprite và glyphs hoàn toàn
-                delete style.sprite;
-                delete style.glyphs;
-
-                // Xóa tất cả text layers (vì không có glyphs)
-                if (style.layers) {
-                    style.layers = style.layers.filter(layer => {
-                        if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
-                            return false; // bỏ text layer
-                        }
-                        return true;
-                    });
-                }
-
                 setMapStyle(style);
             })
             .catch(err => {
@@ -205,7 +191,7 @@ export default function SimpleGoongMap({
         map.addControl(new maplibregl.NavigationControl(), "top-right");
         map.addControl(new maplibregl.GeolocateControl({
             trackUserLocation: true,
-            showAccuracyCircle: false // Tắt vòng tròn accuracy to
+            showAccuracyCircle: false
         }), "top-right");
 
         // Nếu selectMode = true, cho phép click map để chọn vị trí
@@ -228,9 +214,7 @@ export default function SimpleGoongMap({
                     border-radius: 50%;
                     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
                     cursor: pointer;
-                    animation: bounce 0.5s ease;
                 `;
-
                 selectedMarkerRef.current = new maplibregl.Marker({ element: el })
                     .setLngLat([lng, lat])
                     .addTo(map);
@@ -370,7 +354,7 @@ export default function SimpleGoongMap({
                                 <h4 className="font-semibold text-gray-800 mb-1">Vị trí đã chọn</h4>
                                 <p className="text-sm text-gray-600">{selectedLocation.address}</p>
                                 <p className="text-xs text-gray-400 mt-1">
-                                    📍 {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                                    {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                                 </p>
                             </div>
                         </div>

@@ -9,6 +9,7 @@ import { Battery, Eye, EyeOff, User, Mail, Phone, MapPin } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { registerAPI } from "../services/axios.services";
+import { MouseSparkles } from "@/components/MouseSparkles";
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -107,53 +108,55 @@ const SignUp = () => {
     }
   };
 
-  return (<div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
-    <Card className="w-full max-w-lg bg-white/95 backdrop-blur border-0">
-      <CardHeader className="text-center">
-        <div className="flex items-center justify-center mb-4">
-          <Battery className="h-8 w-8 text-electric-blue mr-2" />
-          <span className="text-2xl font-bold text-electric-blue">EV Battery Swap</span>
-        </div>
-        <CardTitle className="text-2xl">Đăng ký tài khoản</CardTitle>
-        <CardDescription>
-          Tạo tài khoản mới để sử dụng hệ thống
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSignUp} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Họ và tên</Label>
-            <div className="relative">
-              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input id="fullName" type="text" placeholder="Nguyễn Văn A" value={formData.fullName} onChange={(e) => handleInputChange("fullName", e.target.value)} className="pl-10" required />
-            </div>
+  return (
+    <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+      <MouseSparkles />
+      <Card className="w-full max-w-lg bg-white/95 backdrop-blur border-0">
+        <CardHeader className="text-center">
+          <div className="flex items-center justify-center mb-4">
+            <Battery className="h-8 w-8 text-electric-blue mr-2" />
+            <span className="text-2xl font-bold text-electric-blue">EV Battery Swap</span>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input id="email" type="email" placeholder="your@email.com" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} className="pl-10" required />
+          <CardTitle className="text-2xl">Đăng ký tài khoản</CardTitle>
+          <CardDescription>
+            Tạo tài khoản mới để sử dụng hệ thống
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Họ và tên</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="fullName" type="text" placeholder="Nguyễn Văn A" value={formData.fullName} onChange={(e) => handleInputChange("fullName", e.target.value)} className="pl-10" required />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Số điện thoại</Label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input id="phone" type="tel" placeholder="0123456789" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} className="pl-10" required />
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="email" type="email" placeholder="your@email.com" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} className="pl-10" required />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="address">Địa chỉ</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input id="address" type="text" placeholder="123 Đường ABC, Quận XYZ, TP.HCM" value={formData.address} onChange={(e) => handleInputChange("address", e.target.value)} className="pl-10" required />
+            <div className="space-y-2">
+              <Label htmlFor="phone">Số điện thoại</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="phone" type="tel" placeholder="0123456789" value={formData.phone} onChange={(e) => handleInputChange("phone", e.target.value)} className="pl-10" required />
+              </div>
             </div>
-          </div>
 
-          {/* <div className="space-y-2">
+            <div className="space-y-2">
+              <Label htmlFor="address">Địa chỉ</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="address" type="text" placeholder="123 Đường ABC, Quận XYZ, TP.HCM" value={formData.address} onChange={(e) => handleInputChange("address", e.target.value)} className="pl-10" required />
+              </div>
+            </div>
+
+            {/* <div className="space-y-2">
             <Label htmlFor="userType">Loại tài khoản</Label>
             <Select value={formData.userType} onValueChange={(value) => handleInputChange("userType", value)} required>
               <SelectTrigger>
@@ -167,58 +170,58 @@ const SignUp = () => {
             </Select>
           </div> */}
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Mật khẩu</Label>
-            <div className="relative">
-              <Input id="password" type={showPassword ? "text" : "password"} placeholder="Nhập mật khẩu (ít nhất 6 ký tự)" value={formData.password} onChange={(e) => handleInputChange("password", e.target.value)} required />
-              <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? (<EyeOff className="h-4 w-4" />) : (<Eye className="h-4 w-4" />)}
-              </Button>
+            <div className="space-y-2">
+              <Label htmlFor="password">Mật khẩu</Label>
+              <div className="relative">
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="Nhập mật khẩu (ít nhất 6 ký tự)" value={formData.password} onChange={(e) => handleInputChange("password", e.target.value)} required />
+                <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? (<EyeOff className="h-4 w-4" />) : (<Eye className="h-4 w-4" />)}
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
-            <div className="relative">
-              <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="Nhập lại mật khẩu" value={formData.confirmPassword} onChange={(e) => handleInputChange("confirmPassword", e.target.value)} required />
-              <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                {showConfirmPassword ? (<EyeOff className="h-4 w-4" />) : (<Eye className="h-4 w-4" />)}
-              </Button>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+              <div className="relative">
+                <Input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="Nhập lại mật khẩu" value={formData.confirmPassword} onChange={(e) => handleInputChange("confirmPassword", e.target.value)} required />
+                <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  {showConfirmPassword ? (<EyeOff className="h-4 w-4" />) : (<Eye className="h-4 w-4" />)}
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox id="agreeTerms" checked={formData.agreeTerms} onCheckedChange={(checked) => handleInputChange("agreeTerms", checked)} />
-            <Label htmlFor="agreeTerms" className="text-sm">
-              Tôi đồng ý với{" "}
-              <Link to="#" className="text-electric-blue hover:underline">
-                điều khoản sử dụng
-              </Link>{" "}
-              và{" "}
-              <Link to="#" className="text-electric-blue hover:underline">
-                chính sách bảo mật
+            <div className="flex items-center space-x-2">
+              <Checkbox id="agreeTerms" checked={formData.agreeTerms} onCheckedChange={(checked) => handleInputChange("agreeTerms", checked)} />
+              <Label htmlFor="agreeTerms" className="text-sm">
+                Tôi đồng ý với{" "}
+                <Link to="#" className="text-electric-blue hover:underline">
+                  điều khoản sử dụng
+                </Link>{" "}
+                và{" "}
+                <Link to="#" className="text-electric-blue hover:underline">
+                  chính sách bảo mật
+                </Link>
+              </Label>
+            </div>
+
+            <Button type="submit" className="w-full bg-electric-blue hover:bg-electric-blue-dark">
+              Đăng ký
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Đã có tài khoản?{" "}
+              <Link to="/login" className="text-electric-blue hover:underline">
+                Đăng nhập ngay
               </Link>
-            </Label>
-          </div>
-
-          <Button type="submit" className="w-full bg-electric-blue hover:bg-electric-blue-dark">
-            Đăng ký
-          </Button>
-        </form>
-
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Đã có tài khoản?{" "}
-            <Link to="/login" className="text-electric-blue hover:underline">
-              Đăng nhập ngay
+            </p>
+            <Link to="/" className="text-sm text-muted-foreground hover:underline block">
+              ← Quay về trang chủ
             </Link>
-          </p>
-          <Link to="/" className="text-sm text-muted-foreground hover:underline block">
-            ← Quay về trang chủ
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  </div>);
+          </div>
+        </CardContent>
+      </Card>
+    </div>);
 };
 export default SignUp;

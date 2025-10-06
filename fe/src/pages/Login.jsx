@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useContext } from "react";
 import { SystemContext } from "../contexts/system.context";
 import { loginAPI, getInfoByToken } from "../services/axios.services";
+import { MouseSparkles } from "@/components/MouseSparkles";
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -81,6 +82,7 @@ const Login = () => {
   };
   return (
     <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+      <MouseSparkles />
       <Card className="w-full max-w-md bg-white/95 backdrop-blur border-0">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">

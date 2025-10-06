@@ -41,14 +41,15 @@ const deactivateVehicleByVin = (vin) => {
 const getAllStations = () => {
     return axios.get("/stations");
 }
-const getStationNearbyLocation = (lat, lng) => {
-    return axios.get(`/stations/nearby?lat=${lat}&lng=${lng}&radiusKm=50`);
+const getStationNearbyLocation = (lat, lng, radiusKm = 50) => {
+    return axios.get(`/stations/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
 }
-export { registerAPI, 
-    loginAPI, 
-    getInfoByToken, 
-    registerVehicleByVin, 
-    getVehicleInfoByVin, 
+export {
+    registerAPI,
+    loginAPI,
+    getInfoByToken,
+    registerVehicleByVin,
+    getVehicleInfoByVin,
     viewUserVehicles,
     deactivateVehicleByVin,
     getAllStations,

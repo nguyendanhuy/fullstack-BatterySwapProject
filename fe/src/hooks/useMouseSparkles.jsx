@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export const useMouseSparkles = (enabled = true) => {
     const [particles, setParticles] = useState([]);
     const [lastSparkleTime, setLastSparkleTime] = useState(0);
+    const particleIdCounter = useRef(0);
 
     const createParticle = useCallback((x, y) => {
         const now = Date.now();
@@ -17,7 +18,7 @@ export const useMouseSparkles = (enabled = true) => {
 
         for (let i = 0; i < count; i++) {
             newParticles.push({
-                id: now + i,
+                id: `particle-${particleIdCounter.current++}`,
                 x: x + (Math.random() - 0.5) * 20,
                 y: y + (Math.random() - 0.5) * 20,
                 size: Math.random() * 4 + 4,

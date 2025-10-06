@@ -13,18 +13,46 @@ import { toast } from "sonner";
 const StationFinder = () => {
   const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
   const [filters, setFilters] = useState({
-    distance: "",
+    distance: "50", //default 50km
     batteryCount: ""
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [stations, setStations] = useState([]);
   const [allStations, setAllStations] = useState([]);
+  const [primaryStation, setPrimaryStation] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
 
 
+  //filter các trạm dựa trên khoảng cách và số lượng
+  const filteredStations = stations.filter(station => {
+    //theo battery count
+    if (filters.batteryCount) {
+      const minBatteryCount = parseInt(filters.batteryCount, 10); //parse sang Int hệ 10
+      const availableBatteries = station.batterySummary?.AVAILABLE || 0;
+      if (availableBatteries < minBatteryCount) return false; //trả về false nếu pin ít hơn value chọn
+    }
+
+    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
+    if (filters.distance && station.distance && station.distance !== "—") {
+      const maxDistance = parseInt(filters.distance, 10);
+
+      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
+      if (distanceMatch) {
+        const stationDistance = parseFloat(distanceMatch[1]);
+        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
+      }
+    }
+
+    return true;
+  });
+
+
+
+  //Dùng để trả về thêm khoảng cách và thời gian ước lượng và mảng trạm
   const distanceMatrixWithStations = async (origin, stations) => {
-    if (!origin?.lat || !origin?.lng || stations.length === 0) {
-      return stations ?? [];
+
+    if (!Array.isArray(stations) || stations.length === 0 || !origin?.lat || !origin?.lng) {
+      return Array.isArray(stations) ? stations : [];
     }
 
     // Lấy lat/lng của trạm 
@@ -35,17 +63,38 @@ const StationFinder = () => {
       .map(s => `${toLat(s)},${toLng(s)}`)
       .join("|");
     const url = `https://rsapi.goong.io/DistanceMatrix?origins=${origin.lat},${origin.lng}&destinations=${destinations}&vehicle=car&api_key=${API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const elems = data?.rows?.[0]?.elements ?? [];
-    return stations.map((station, index) => {
-      const el = elems[index] ?? {}
-      return {
-        ...station,
-        distance: el?.distance?.text ?? "—",
-        estimatedTime: el?.duration?.text ?? "—",
+
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        // If map API fails, return stations with fallback values but don't crash
+        toast.error?.({
+          title: "Lỗi lấy khoảng cách",
+          description: `Map API lỗi: ${res.status} ${res.statusText}`,
+          variant: "destructive",
+        });
+        return stations.map((station) => ({ ...station, distance: "—", estimatedTime: "—" }));
       }
-    })
+      const data = await res.json();
+      const elems = data?.rows?.[0]?.elements ?? [];
+      return stations.map((station, index) => {
+        const el = elems[index] ?? {}
+        return {
+          ...station,
+          distance: el?.distance?.text ?? "—",
+          estimatedTime: el?.duration?.text ?? "—",
+        }
+      })
+    } catch (err) {
+      // Network or parsing error
+      toast({
+        title: "Lỗi kết nối bản đồ",
+        description: String(err.message ?? err),
+        variant: "destructive",
+      });
+      return stations.map((station) => ({ ...station, distance: "—", estimatedTime: "—" }));
+    }
   }
 
 
@@ -76,30 +125,87 @@ const StationFinder = () => {
     getAllStation();
   }, []);
 
-  //kiểm tra selectedLocation thay đổi thì gọi API + selectLocation tồn tại trước.
+  // Cập nhật primaryStation khi filter thay đổi
+  useEffect(() => {
+    setPrimaryStation(filteredStations && filteredStations.length > 0 ? filteredStations[0] : null);
+  }, [filteredStations]);
+
+
+
+  //Chạy khi thay đổi vị trí hoặc filter
   useEffect(() => {
     if (selectedLocation?.lat != null && selectedLocation?.lng != null) {
-      getStationNearby(selectedLocation.lat, selectedLocation.lng);
+      const radius = filters.distance ? parseInt(filters.distance, 10) : 50; //dùng bán kính từ filter hoặc mặc định 50km
+      getStationNearby(selectedLocation.lat, selectedLocation.lng, radius);
     }
-  }, [selectedLocation]);
+  }, [selectedLocation, filters.distance]);
 
   console.log("Selected Location:", selectedLocation);
 
+
+
+
+
   const getStationNearby = async (lat, lng) => {
-    const res = await getStationNearbyLocation(lat, lng);
-    if (res) {
+    try {
+      const res = await getStationNearbyLocation(lat, lng, filters.distance ? parseInt(filters.distance, 10) : 50);
+      // Expecting an array of stations from backend
+      if (!res) {
+        toast({ title: "Lỗi", description: "Không nhận được dữ liệu trạm", variant: "destructive" });
+        setStations([]);
+        return;
+      }
+      if (res.error) {
+        toast({
+          title: "Lỗi gọi thông tin trạm gần nhất",
+          description: JSON.stringify(res.error),
+          variant: "destructive",
+        });
+        setStations([]);
+        return;
+      }
+      if (!Array.isArray(res)) {
+        // Backend or proxy returned an unexpected shape (e.g., 502 proxied error object)
+        toast({
+          title: "Dữ liệu trạm không hợp lệ",
+          description: JSON.stringify(res),
+          variant: "destructive",
+        });
+        setStations([]);
+        return;
+      }
+
       //Thêm vào nearby stations dữ liệu thời gian và khoảng cách trước khi in ra.
       const stationsWithDistance = await distanceMatrixWithStations(selectedLocation, res);
-      console.log("thông tin trạm gần nhất:", stationsWithDistance);
-      setStations(stationsWithDistance);
-    } else if (res.error) {
-      toast({
-        title: "Lỗi gọi thông tin trạm gần nhất",
-        description: JSON.stringify(res.error),
-        variant: "destructive",
+
+
+
+      // Mảng các trạm đã sort
+      const sortedStations = stationsWithDistance.sort((a, b) => {
+        const getDistanceValue = (distanceText) => {
+          if (!distanceText || distanceText === "—") return Infinity; // set vô cực => đẩy xuống cuối sort
+          const match = distanceText.match(/(\d+\.?\d*)/); // lấy dạng số.số
+          return match ? parseFloat(match[1]) : Infinity; //match[1] là do 1 cặp ngoặc
+        };
+
+        const distanceA = getDistanceValue(a.distance);
+        const distanceB = getDistanceValue(b.distance);
+
+        return distanceA - distanceB; // sắp xếp theo tăng dần
       });
+
+      console.log("thông tin trạm gần nhất (đã sắp xếp):", sortedStations);
+      setStations(sortedStations);
+      setPrimaryStation(sortedStations.length ? sortedStations[0] : null);
+    } catch (err) {
+      // axios/service could throw; show readable error
+      toast({ title: "Lỗi khi gọi trạm gần nhất", description: String(err.message ?? err), variant: "destructive" });
+      setStations([]);
     }
   }
+
+
+
 
   //GetAllStations này dùng cho bản đồ, không dùng cho danh sách trạm gần, để hiển thị thông tin tất cả các trạm trên bản đồ.
   const getAllStation = async () => {
@@ -237,22 +343,28 @@ const StationFinder = () => {
                     <SelectValue placeholder="Chọn khoảng cách" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="10000000">📍 Tất cả</SelectItem>
                     <SelectItem value="1">📍 Dưới 1 km</SelectItem>
                     <SelectItem value="5">🚗 Dưới 5 km</SelectItem>
                     <SelectItem value="10">🏃 Dưới 10 km</SelectItem>
+                    <SelectItem value="20">🛴 Dưới 20 km</SelectItem>
+                    <SelectItem value="50">🚗 Dưới 50 km</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-semibold mb-3 block text-gray-700">Số lượng pin</label>
+                <label className="text-sm font-semibold mb-3 block text-gray-700">Số lượng pin đầy</label>
                 <Select onValueChange={(value) => setFilters({ ...filters, batteryCount: value })}>
                   <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-purple-500 rounded-xl">
                     <SelectValue placeholder="Chọn số lượng pin" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="0"> Tất cả</SelectItem>
+                    <SelectItem value="2">🔋 Trên 2 pin</SelectItem>
                     <SelectItem value="5">🔋 Trên 5 pin</SelectItem>
                     <SelectItem value="10">🔋🔋 Trên 10 pin</SelectItem>
                     <SelectItem value="15">🔋🔋🔋 Trên 15 pin</SelectItem>
+                    <SelectItem value="50">🔋🔋🔋 Trên 50 pin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -266,15 +378,35 @@ const StationFinder = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Trạm gần nhất</span>
-                  <span className="font-semibold text-green-600">2.5 km</span>
+                  <span className="font-semibold text-green-600">{primaryStation ? primaryStation.stationName : '—'}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Pin có sẵn</span>
-                  <span className="font-semibold text-blue-600">25 pin</span>
+                  <span className="text-sm text-gray-600">Khoảng cách</span>
+                  <span className="font-semibold text-blue-600">{primaryStation ? primaryStation.distance ?? '—' : '—'}</span>
+                </div>
+                <div className="space-y-2">
+                  <span className="text-sm text-gray-600 block">Pin có sẵn</span>
+                  {primaryStation ? (
+                    <div className="space-y-1">
+                      {Object.entries(primaryStation.batteryTypes || {}).map(([type, count]) =>
+                        count > 0 && (
+                          <div key={type} className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500">{type === 'LITHIUM_ION' ? 'Li-ion' : type}</span>
+                            <span className="font-semibold text-blue-600">{count} pin</span>
+                          </div>
+                        )
+                      )}
+                      {Object.values(primaryStation.batteryTypes || {}).every(count => count === 0) && (
+                        <span className="font-semibold text-blue-600 text-xs">Không có pin</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="font-semibold text-blue-600 text-xs">—</span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Thời gian ước tính</span>
-                  <span className="font-semibold text-purple-600">2-5 phút</span>
+                  <span className="font-semibold text-purple-600">{primaryStation ? primaryStation.estimatedTime ?? '—' : '—'}</span>
                 </div>
               </div>
             </CardContent>
@@ -286,7 +418,7 @@ const StationFinder = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Trạm pin gần bạn</h2>
             <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full">
-              {stations.length} trạm tìm thấy
+              {filteredStations.length} trạm tìm thấy
             </Badge>
           </div>
 
@@ -294,7 +426,7 @@ const StationFinder = () => {
           {/* Test list antd */}
           <List
             itemLayout="vertical"
-            dataSource={stations}
+            dataSource={filteredStations}
             renderItem={(station, index) => (
               <List.Item key={station.stationId}>
                 <Card className="space-y-6 border-0 shadow-xl bg-white hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
@@ -373,13 +505,13 @@ const StationFinder = () => {
                               <div className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full animate-pulse" style={{ width: '75%' }}></div>
                             </div>
                           </div>
-                          <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-2xl border border-gray-200 text-center group-hover:scale-105 transition-transform duration-300">
+                          {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-2xl border border-gray-200 text-center group-hover:scale-105 transition-transform duration-300">
                             <div className="text-3xl font-bold text-gray-500 mb-1">{station.batterySummary.DAMAGED ?? 0}</div>
                             <div className="text-xs font-medium text-gray-600">Pin rỗng</div>
                             <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
                               <div className="h-full bg-gray-400 rounded-full" style={{ width: '25%' }}></div>
                             </div>
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                       {/* Battery Types */}

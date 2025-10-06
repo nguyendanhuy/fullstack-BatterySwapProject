@@ -7,7 +7,9 @@ import BatterySwapStation.service.*;
 import BatterySwapStation.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
+@PreAuthorize("permitAll()")
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 
@@ -25,12 +28,13 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
-        
         User user = userService.registerUser(req);
-        return ResponseEntity.ok(Map.of(
-                "message", "Đăng ký thành công",
-                "userId", user.getUserId()
-        ));
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(Map.of(
+                        "message", "Đăng ký thành công",
+                        "userId", user.getUserId()
+                ));
     }
 
 
@@ -61,9 +65,11 @@ public class AuthController {
                 "userId", user.getUserId(),
                 "email", user.getEmail(),
                 "fullName", user.getFullName(),
+                "phone", user.getPhone(),
                 "role", user.getRole().getRoleName()
         ));
     }
+
 
 
 

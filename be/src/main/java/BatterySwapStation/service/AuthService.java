@@ -34,29 +34,7 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 
-    //    // Đăng ký
-    public User registerUser(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email đã tồn tại!");
-        }
 
-        Role role = roleRepository.findByRoleId(1); // 🔧 CHANGED: mặc định Driver
-        if (role == null) {
-            throw new RuntimeException("Role mặc định (Driver) không tồn tại!");
-        }
-
-        User user = new User();
-        user.setUserId("U" + System.currentTimeMillis()); // hoặc dùng UserIdGenerator
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPhone(request.getPhone());
-        user.setAddress(request.getAddress());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(role);
-        user.setActive(true);
-
-        return userRepository.save(user);
-    }
 
 
     // Đăng nhập
@@ -74,6 +52,7 @@ public class AuthService {
         String token = jwtService.generateToken(
                 user.getUserId(),
                 user.getEmail(),
+                user.getPhone(),
                 user.getRole().getRoleName()
         );
 
@@ -81,6 +60,7 @@ public class AuthService {
                 "Đăng nhập thành công",
                 user.getUserId(),
                 user.getEmail(),
+                user.getPhone(),
                 user.getRole().getRoleName(),
                 token
         );

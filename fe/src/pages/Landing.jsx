@@ -13,13 +13,13 @@ const Landing = () => {
   console.log("Landing component rendering...");
 
   // Autoplay plugins (pattern theo shadcn/ui – dễ điều khiển hover)
-  const heroPlugin = React.useRef(Autoplay({ delay: 4000, stopOnInteraction: true }));
-  const featuresPlugin = React.useRef(Autoplay({ delay: 3000, stopOnInteraction: true }));
+  const heroPlugin = React.useRef(Autoplay({ delay: 2000, stopOnInteraction: true }));
+  const featuresPlugin = React.useRef(Autoplay({ delay: 2000, stopOnInteraction: true }));
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="relative min-h-screen overflow-hidden">
+      <div className="relative h-[120dvh] overflow-hidden">
         {/* Hero Background Carousel */}
         <div className="absolute inset-0">
           <Carousel
@@ -44,9 +44,7 @@ const Landing = () => {
               ))}
             </CarouselContent>
 
-            {/* Nút điều hướng (ẩn trên mobile) */}
-            <CarouselPrevious className="hidden md:flex left-6" />
-            <CarouselNext className="hidden md:flex right-6" />
+
           </Carousel>
 
           {/* Animated overlay elements */}

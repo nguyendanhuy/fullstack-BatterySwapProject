@@ -11,8 +11,9 @@ import {
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { getVehicleInfoByVin, registerVehicleByVin } from "@/services/axios.services";
-import { Carousel } from 'antd';
 import { deactivateVehicleByVin, viewUserVehicles } from "../../services/axios.services";
+import { Carousel } from 'antd';
+
 //Thư viện cho dialog xác nhận xóa đăng ký xe
 import {
   AlertDialog,
@@ -37,6 +38,7 @@ export default function VehicleRegistration() {
   const [checkingVin, setCheckingVin] = useState(false);
   const [lastQueriedVin, setLastQueriedVin] = useState("");
   const [isAlreadyActive, setIsAlreadyActive] = useState(false); // BE active: true
+  const [canRegister, setCanRegister] = useState(false); // Chỉ true khi tra cứu VIN thành công
   //useState của hiển thị xe và xóa xe
   const [registeredVehicles, setRegisteredVehicles] = useState([]);
 
@@ -98,6 +100,7 @@ export default function VehicleRegistration() {
         // Không fill UI khi lỗi
         setFormData((prev) => ({ ...prev, vehicleType: "", batteryType: "" }));
         setIsAlreadyActive(false);
+        setCanRegister(false); // Reset khi lỗi
         setLastQueriedVin("");
         toast({ title: "Tra cứu VIN thất bại", description: msg, variant: "destructive" });
         return;
@@ -112,15 +115,15 @@ export default function VehicleRegistration() {
       setIsAlreadyActive(activeFlag);
       setLastQueriedVin(vin);
 
-
-      //nếu trạng thái xe đã active tức là không được đăng ký nữa
       if (activeFlag) {
+        setCanRegister(false); // Xe đã đăng ký, không cho đăng ký lại
         toast({
           title: "Cảnh báo",
           description: "⚠️ Xe này đã được đăng ký.",
           variant: "destructive",
         });
       } else {
+        setCanRegister(true); // CHỈ KHI NÀO ĐÂY MỚI ENABLE NÚT
         toast({
           title: "Tra cứu VIN thành công!",
           description: "Đã tự nhận dòng xe và loại pin !",
@@ -128,6 +131,7 @@ export default function VehicleRegistration() {
         });
       }
     } catch (err) {
+      setCanRegister(false); // Reset khi lỗi mạng
       toast({
         // Đã handle xong cái lỗi 400~500 ở trên
         // => Nên lỗi server,timeout, mạng
@@ -135,27 +139,19 @@ export default function VehicleRegistration() {
         description: "Không thể kết nối đến server. Vui lòng thử lại.",
         variant: "destructive",
       });
+    } finally {
+      setCheckingVin(false);
     }
   };
 
   // Đăng ký xe
   const handleRegisterVehicle = async () => {
-
     const { vin } = formData;
+
     if (!vin || vin.length !== 17) {
       toast({
         title: "Thiếu/không hợp lệ VIN",
         description: "Vui lòng nhập VIN đủ 17 ký tự.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-
-    if (isAlreadyActive) {
-      toast({
-        title: "Không thể đăng ký",
-        description: "⚠️ Xe này đã được đăng ký.",
         variant: "destructive",
       });
       return;
@@ -314,6 +310,7 @@ export default function VehicleRegistration() {
                         setLastQueriedVin("");
                         setFormData((prev) => ({ ...prev, vehicleType: "", batteryType: "" }));
                         setIsAlreadyActive(false);
+                        setCanRegister(false); // Reset khi VIN thay đổi
                       }
                     }}
                     maxLength={17}
@@ -364,13 +361,11 @@ export default function VehicleRegistration() {
                 <div className="flex gap-4 pt-6">
                   <Button
                     onClick={handleRegisterVehicle}
-                    disabled={
-                      !isValidVin(formData.vin) || isAlreadyActive
-                    }
+                    disabled={!canRegister}
                     title={
-                      isAlreadyActive
-                        ? "Xe này đã được đăng ký — không thể đăng ký lại"
-                        : (!isValidVin(formData.vin) ? "VIN phải đúng 17 ký tự (không chứa I, O, Q)" : "")
+                      !canRegister
+                        ? "Vui lòng nhập VIN hợp lệ và chờ hệ thống xác nhận xe có thể đăng ký"
+                        : "Đăng ký xe vào hệ thống"
                     }
                     className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                   >

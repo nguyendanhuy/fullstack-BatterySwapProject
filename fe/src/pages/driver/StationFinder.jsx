@@ -15,6 +15,8 @@ const StationFinder = () => {
     batteryCount: ""
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [stations, setStations] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const mockStations = [
     {
       id: 1,
@@ -71,8 +73,28 @@ const StationFinder = () => {
 
   const getStation = async () => {
     const res = await getAllStations()
-    console.log(res);
+    if (res) {
+      setStations(res);
+    } else if (res.error) {
+      toast({
+        title: "Lỗi gọi thông tin trạm",
+        description: JSON.stringify(res.error),
+        variant: "destructive",
+      });
+    }
   }
+
+  const handleLocationSelect = (location) => {
+    setSelectedLocation(location);
+  };
+
+  const handleMapOk = () => {
+    if (selectedLocation) {
+      console.log("Vị trí đã chọn:", selectedLocation);
+      // TODO: Cập nhật input hoặc tìm trạm gần vị trí này
+    }
+    setIsMapOpen(false);
+  };
 
   return (<div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
     {/* Enhanced Header with Glass Effect */}
@@ -132,15 +154,38 @@ const StationFinder = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4"> <div className="relative">
-              <Input placeholder="Nhập địa chỉ hoặc chọn trên bản đồ..." className="pl-12 pr-4 py-3 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm" defaultValue="123 Lê Lợi, Quận 1, TP.HCM" />
+              <Input
+                placeholder="Nhập địa chỉ hoặc chọn trên bản đồ..."
+                className="pl-12 pr-4 py-3 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm"
+                value={selectedLocation?.address || ""}
+                readOnly
+              />
               <div className="absolute left-4 top-1/2 -translate-y-1/2">
                 <MapPin className="h-4 w-4 text-gray-400" /> </div>
             </div>
               <Button onClick={() => setIsMapOpen(true)} className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl py-3 transition-all duration-300 hover:scale-105 shadow-lg">
                 <Map className="h-4 w-4 mr-2" /> Chọn trên bản đồ </Button>
-              <Modal title="Chọn vị trí trên bản đồ" centered open={isMapOpen} onOk={() => setIsMapOpen(false)} onCancel={() => setIsMapOpen(false)} width={900} bodyStyle={{ padding: 0, height: '60vh' }} >
-                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                  <SimpleGoongMap />
+              <Modal
+                title="Chọn vị trí trên bản đồ"
+                centered
+                open={isMapOpen}
+                onOk={handleMapOk}
+                onCancel={() => setIsMapOpen(false)}
+                width={900}
+                okText="Xác nhận"
+                cancelText="Hủy"
+                okButtonProps={{
+                  disabled: !selectedLocation,
+                  className: "bg-gradient-to-r from-blue-500 to-indigo-500"
+                }}
+              >
+                <div className="w-full bg-gray-100 flex items-center justify-center" style={{ height: '60vh' }}>
+                  <SimpleGoongMap
+                    station={stations}
+                    selectMode={true}
+                    onLocationSelect={handleLocationSelect}
+                    heightClass="h-full"
+                  />
                 </div>
               </Modal>
             </CardContent>
@@ -333,7 +378,7 @@ const StationFinder = () => {
                     </div> */}
 
                 {/* Action Buttons */}
-                <div div className="flex gap-4" >
+                <div className="flex gap-4" >
                   <Link to="/driver/reservation" className="flex-1">
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
                       <Battery className="h-5 w-5 mr-3" />

@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import static BatterySwapStation.utils.NameFormatter.formatFullName;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -41,7 +43,8 @@ public class UserService {
 
         User user = new User();
         user.setUserId(generatedId);
-        user.setFullName(req.getFullName());
+        String formattedName = formatFullName(req.getFullName());
+        user.setFullName(formattedName);
         user.setEmail(req.getEmail());
         user.setPhone(req.getPhone());
         user.setAddress(req.getAddress());

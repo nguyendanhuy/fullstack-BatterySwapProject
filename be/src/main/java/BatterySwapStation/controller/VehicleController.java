@@ -3,6 +3,7 @@ package BatterySwapStation.controller;
 import BatterySwapStation.dto.ApiResponseDto;
 import BatterySwapStation.dto.AssignVehicleRequest;
 import BatterySwapStation.dto.VehicleRegistrationRequest;
+import BatterySwapStation.dto.VehicleInfoResponse;
 import BatterySwapStation.entity.User;
 import BatterySwapStation.entity.Vehicle;
 import BatterySwapStation.service.VehicleService;
@@ -11,12 +12,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@PreAuthorize("permitAll()")
 @RequestMapping("/api/v1/vehicles")
 @RequiredArgsConstructor
 @Tag(name = "Vehicle", description = "Vehicle management APIs")
@@ -27,10 +30,11 @@ public class VehicleController {
 
     @GetMapping("/{vin}")
     @Operation(summary = "Get vehicle information by VIN")
-    public ResponseEntity<Vehicle> getVehicleByVin(@PathVariable String vin) {
-        Vehicle vehicle = vehicleService.getVehicleInfoByVin(vin);
-        return ResponseEntity.ok(vehicle);
+    public ResponseEntity<VehicleInfoResponse> getVehicleByVIN(@PathVariable("vin") String vin) {
+        VehicleInfoResponse response = vehicleService.getVehicleInfoResponseByVin(vin);
+        return ResponseEntity.ok(response);
     }
+
 
     @PostMapping("/assign")
     @Operation(summary = "Assign an existing vehicle to the current user")

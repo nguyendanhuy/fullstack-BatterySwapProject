@@ -1,15 +1,17 @@
 package BatterySwapStation.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 
 @Entity
-@Table(name = "Vehicle")
-@Data
+@Table(name = "Vehicle", indexes = {
+        @Index(name = "idx_vehicle_vin", columnList = "VIN", unique = true)
+})
+@Getter
+@Setter
+@ToString
 @AllArgsConstructor
 @NoArgsConstructor
 public class Vehicle {
@@ -19,45 +21,48 @@ public class Vehicle {
     @Column(name = "VehicleId", nullable = false)
     private int vehicleId;
 
-    @ManyToOne
-    @JoinColumn(name = "UserId", columnDefinition = "VARCHAR(20)")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "UserId")
     @JsonBackReference
+    @ToString.Exclude
     private User user;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "VIN", nullable = false, length = 100, unique = true)
     private String VIN;
 
     public enum VehicleType {
-        // Xe máy điện
-        THEON,          // VinFast Theon
-        FELIZ,          // VinFast Feliz
-        KLARA_S,        // VinFast Klara S
-        KLARA_A2,       // VinFast Klara A2
-        TEMPEST,        // VinFast Tempest
-        VENTO,          // VinFast Vento
-
-        // Ô tô điện
-        VF_5,           // VinFast VF 5
-        VF_6,           // VinFast VF 6
-        VF_7,           // VinFast VF 7
-        VF_8,           // VinFast VF 8
-        VF_9            // VinFast VF 9
+        THEON, FELIZ, KLARA_S, KLARA_A2, TEMPEST, VENTO,
+        VF_5, VF_6, VF_7, VF_8, VF_9
     }
 
     public enum BatteryType {
-        LITHIUM_ION,
-        NICKEL_METAL_HYDRIDE,
-        LEAD_ACID
+        LITHIUM_ION, NICKEL_METAL_HYDRIDE, LEAD_ACID
     }
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private VehicleType vehicleType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private BatteryType batteryType;
 
     @Column(nullable = false)
     private boolean isActive = false;
+
+    // 1–1 với VehiclePurchaseInvoice, nối qua VIN
+    @OneToOne(mappedBy = "vehicle", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private VehiclePurchaseInvoice purchaseInvoice;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Vehicle vehicle = (Vehicle) o;
+        return vehicleId > 0 && vehicleId == vehicle.vehicleId;
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

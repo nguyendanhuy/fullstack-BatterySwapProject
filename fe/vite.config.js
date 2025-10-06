@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     host: true,              // hoặc '0.0.0.0' (thay cho '::' bị ghi đè trước đó)
-    port: 8080,              // sẽ thật sự áp dụng
+    port: 5173,              // sẽ thật sự áp dụng
     proxy: {
       "/api": {
         target: "https://batteryswap-be-production.up.railway.app",

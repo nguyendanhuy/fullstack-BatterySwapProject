@@ -189,10 +189,6 @@ export default function SimpleGoongMap({
         mapRef.current = map;
 
         map.addControl(new maplibregl.NavigationControl(), "top-right");
-        map.addControl(new maplibregl.GeolocateControl({
-            trackUserLocation: true,
-            showAccuracyCircle: false
-        }), "top-right");
 
         // Nếu selectMode = true, cho phép click map để chọn vị trí
         if (selectMode) {

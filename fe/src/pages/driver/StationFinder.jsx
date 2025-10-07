@@ -63,8 +63,6 @@ const StationFinder = () => {
       .map(s => `${toLat(s)},${toLng(s)}`)
       .join("|");
     const url = `https://rsapi.goong.io/DistanceMatrix?origins=${origin.lat},${origin.lng}&destinations=${destinations}&vehicle=car&api_key=${API_KEY}`;
-
-
     try {
       const res = await fetch(url);
       if (!res.ok) {
@@ -229,6 +227,11 @@ const StationFinder = () => {
     if (selectedLocation) {
     }
     setIsMapOpen(false);
+  };
+  // Mở Google Maps với chỉ đường đến trạm đã chọn
+  const handleShowWayBtn = (lat, lng) => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    window.open(url, "_blank");
   };
 
   return (<div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -427,6 +430,11 @@ const StationFinder = () => {
           <List
             itemLayout="vertical"
             dataSource={filteredStations}
+            pagination={{
+              defaultCurrent: 1,
+              pageSize: 5,
+              showSizeChanger: false,
+            }}
             renderItem={(station, index) => (
               <List.Item key={station.stationId}>
                 <Card className="space-y-6 border-0 shadow-xl bg-white hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
@@ -556,7 +564,7 @@ const StationFinder = () => {
                           Đặt lịch ngay
                         </Button>
                       </Link>
-                      <Button variant="outline" className="px-8 py-4 border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-105 font-semibold">
+                      <Button onClick={() => handleShowWayBtn(station.latitude, station.longitude)} variant="outline" className="px-8 py-4 border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-105 font-semibold">
                         <MapPin className="h-5 w-5 mr-2" />
                         Chỉ đường
                       </Button>

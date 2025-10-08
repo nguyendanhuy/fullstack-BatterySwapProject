@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import { SystemContext } from "../../contexts/system.context";
 const StationFinder = () => {
   const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
@@ -23,6 +23,8 @@ const StationFinder = () => {
   const [primaryStation, setPrimaryStation] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const { userVehicles } = useContext(SystemContext);
+  const [gpsAvailable, setGpsAvailable] = useState(true);
+
   //filter các trạm dựa trên khoảng cách và số lượng
   const filteredStations = stations.filter(station => {
     //theo battery count
@@ -42,7 +44,6 @@ const StationFinder = () => {
         if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
       }
     }
-
     return true;
   });
 
@@ -98,28 +99,41 @@ const StationFinder = () => {
 
 
   const autoLocation = () => {
+    // Nếu trình duyệt không hỗ trợ GPS
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      console.log("[GPS] not supported");
+      setGpsAvailable(false);
+      getAllStation(true);
       return;
     }
-    if (!selectedLocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fetch(`https://rsapi.goong.io/geocode?latlng=${position.coords.latitude},${position.coords.longitude}&api_key=${API_KEY}`)
-            .then(res => res.json())
-            .then(data => {
-              const address = data?.results?.[0]?.formatted_address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-              setSelectedLocation({ lat: position.coords.latitude, lng: position.coords.longitude, address });
-            }).catch(() => {
-              setSelectedLocation({ lat: position.coords.latitude, lng: position.coords.longitude, address: `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}` });
-            });
-        },
-        (err) => {
-          console.log(err.message);
+
+    // Thử lấy vị trí hiện tại
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setGpsAvailable(true);
+
+        try {
+          const res = await fetch(`https://rsapi.goong.io/geocode?latlng=${lat},${lng}&api_key=${API_KEY}`);
+          const data = await res.json();
+          const address = data?.results?.[0]?.formatted_address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          setSelectedLocation({ lat, lng, address });
+        } catch {
+          setSelectedLocation({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
         }
-      );
-    }
+      },
+      (err) => {
+        console.warn("[GPS] error:", err.message);
+        // Khi bị chặn hoặc lỗi -> hiển thị tất cả trạm
+        setGpsAvailable(false);
+        getAllStation(true);
+      },
+      { enableHighAccuracy: false, timeout: 5000 }
+    );
   };
+
+
 
   useEffect(() => {
     autoLocation();
@@ -142,9 +156,6 @@ const StationFinder = () => {
   }, [selectedLocation, filters.distance]);
 
   console.log("Selected Location:", selectedLocation);
-
-
-
 
 
   const getStationNearby = async (lat, lng) => {
@@ -194,8 +205,6 @@ const StationFinder = () => {
 
         return distanceA - distanceB; // sắp xếp theo tăng dần
       });
-
-      console.log("thông tin trạm gần nhất (đã sắp xếp):", sortedStations);
       setStations(sortedStations);
       setPrimaryStation(sortedStations.length ? sortedStations[0] : null);
     } catch (err) {
@@ -209,7 +218,7 @@ const StationFinder = () => {
 
 
   //GetAllStations này dùng cho bản đồ, không dùng cho danh sách trạm gần, để hiển thị thông tin tất cả các trạm trên bản đồ.
-  const getAllStation = async () => {
+  const getAllStation = async (loadToList = false) => {
     const res = await getAllStations();
     if (res) {
       setAllStations(res);
@@ -220,7 +229,11 @@ const StationFinder = () => {
         variant: "destructive",
       });
     }
+    if (res && loadToList) {
+      setStations(res);
+    }
   }
+
 
   const handleLocationSelect = (location) => {
     setSelectedLocation(location);
@@ -442,6 +455,14 @@ const StationFinder = () => {
 
         {/* Right Column - Station List */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Thông báo khi mất GPS */}
+          {
+            !gpsAvailable && (
+              <div className="rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-800 px-4 py-3">
+                ⚠️ GPS đang tắt/không được cấp quyền. Đang hiển thị <b>tất cả</b> trạm (không có khoảng cách & thời gian ước tính).
+              </div>
+            )
+          }
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Trạm pin gần bạn</h2>
             <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full">

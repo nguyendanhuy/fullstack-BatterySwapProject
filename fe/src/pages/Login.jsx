@@ -12,6 +12,7 @@ import { loginAPI, getInfoByToken } from "../services/axios.services";
 import { MouseSparkles } from "@/components/MouseSparkles";
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -28,6 +29,7 @@ const Login = () => {
   };
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (loading) return;
     if (!formData.email || !formData.password) {
       toast({
         title: "Lỗi",
@@ -44,40 +46,54 @@ const Login = () => {
       });
       return;
     }
-    const res = await loginAPI(formData.email, formData.password);
-    if (res && res.token) {
+
+    setLoading(true);
+    try {
+      const res = await loginAPI(formData.email.trim(), formData.password);
+
+      console.log("Login response:", res);
+      const pickApiMessage = (p) =>
+        p?.messages?.auth ||
+        p?.messages?.business ||
+        p?.error ||
+        'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
+
+      const httpStatus = typeof res?.status === 'number' ? res.status : undefined;
+      const isError =
+        !res?.token ||
+        (typeof httpStatus === 'number' && httpStatus >= 400) ||
+        !!res?.error ||
+        !!res?.messages?.auth ||
+        !!res?.messages?.business
+
+      if (isError) {
+        toast({
+          title: 'Đăng nhập thất bại!',
+          description: pickApiMessage(res),
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
-        title: "Đăng nhập thành công!",
-        description: `Chào mừng, ${res.email}`,
-        className: "bg-green-500 text-white",
+        title: 'Đăng nhập thành công!',
+        description: `Chào mừng, ${res.email || formData.email}`,
+        className: 'bg-green-500 text-white',
       });
 
-      // Save token first
-      localStorage.setItem("token", res.token);
-
-
+      localStorage.setItem('token', res.token);
       setUserData(res);
 
-
-      switch (res.role) {
-        case "DRIVER":
-          navigate("/driver");
-          break;
-        case "STAFF":
-          navigate("/staff");
-          break;
-        case "ADMIN":
-          navigate("/admin");
-          break;
-        default:
-          navigate("/");
-      }
-    } else {
+      const roleRoute = { DRIVER: '/driver', STAFF: '/staff', ADMIN: '/admin' }[res.role] || '/';
+      navigate(roleRoute);
+    } catch (err) {
       toast({
-        title: "Đăng nhập thất bại!",
-        description: res.messages.auth == null ? "Vui lòng kiểm tra lại thông tin." : res.messages.auth,
-        variant: "destructive",
+        title: 'Đăng nhập thất bại!',
+        description: err?.message || 'Không thể kết nối máy chủ.',
+        variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
   return (
@@ -112,8 +128,12 @@ const Login = () => {
                 </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-electric-blue hover:bg-electric-blue-dark">
-              Đăng nhập
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-electric-blue hover:bg-electric-blue-dark disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
           </form>
           <div className="mt-6 text-center space-y-2">

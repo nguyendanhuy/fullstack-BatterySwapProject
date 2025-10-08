@@ -73,13 +73,16 @@ export default function VehicleRegistration() {
     }
   };
 
-  // Helper lấy thông điệp lỗi đúng ý
-  const pickApiMessage = (p, status, fallback) =>
+  // Helper lấy thông điệp lỗi (rút gọn 1 tham số)
+  const pickApiMessage = (p) =>
     p?.messages?.auth ??
     p?.messages?.business ??
-    p?.message ??
     p?.error ??
-    (typeof status === "number" ? `Lỗi ${status}` : fallback ?? "Đã xảy ra lỗi không xác định");
+    (typeof p?.status === "number"
+      ? `Lỗi ${p.status}`
+      : typeof p?.code === "number"
+        ? `Lỗi ${p.code}`
+        : "Đã xảy ra lỗi không xác định");
 
   const lookupVin = async (vin) => {
     try {
@@ -97,7 +100,7 @@ export default function VehicleRegistration() {
         !!payload?.messages?.business;
 
       if (isError) {
-        const msg = pickApiMessage(payload, httpStatus);
+        const msg = pickApiMessage(payload);
         // Xóa toàn bộ thông tin tự nhận (giữ nguyên VIN người dùng đã nhập)
         setFormData((prev) => ({
           ...prev,
@@ -192,7 +195,7 @@ export default function VehicleRegistration() {
         !!payload?.messages?.business;
 
       if (isError) {
-        const msg = pickApiMessage(payload, httpStatus);
+        const msg = pickApiMessage(payload);
         toast({ title: "Đăng ký xe thất bại", description: msg, variant: "destructive" });
         return;
       }
@@ -222,7 +225,7 @@ export default function VehicleRegistration() {
       setCanRegister(false);
     } catch (err) {
       const d = err?.response?.data;
-      const msg = pickApiMessage(d, err?.response?.status, err?.message);
+      const msg = pickApiMessage(d);
       toast({ title: "Đăng ký xe thất bại", description: msg, variant: "destructive" });
     }
   };
@@ -249,7 +252,7 @@ export default function VehicleRegistration() {
       await loadUserVehicles();
     } catch (err) {
       const d = err?.response?.data;
-      const msg = pickApiMessage(d, err?.response?.status, err?.message);
+      const msg = pickApiMessage(d);
       toast({ title: "Xóa xe thất bại", description: msg, variant: "destructive" });
     }
   };

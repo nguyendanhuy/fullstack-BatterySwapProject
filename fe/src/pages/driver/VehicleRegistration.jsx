@@ -471,6 +471,41 @@ export default function VehicleRegistration() {
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
+
+
+                              {/* Test */}
+                              {/* <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    onClick={handleRegisterVehicle}
+                                    disabled={!canRegister}
+                                    title={
+                                      !canRegister
+                                        ? "Vui lòng nhập VIN hợp lệ và chờ hệ thống xác nhận xe có thể đăng ký"
+                                        : "Đăng ký xe vào hệ thống"
+                                    }
+                                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                                  >
+                                    <Zap className="h-5 w-5 mr-2" />
+                                    Đăng ký xe
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Xác nhận đăng ký xe</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Bạn có chắc muốn hủy đăng ký xe có VIN: <div class="font-semibold">{item.vin}</div>
+                                      <div>Hành động này sẽ khiến xe không còn liên kết với hệ thống.</div>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Không</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleUnregisterVehicle(item.vehicleId)}>
+                                      Đồng ý
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog> */}
                             </div>
                           </div>
                         </div>

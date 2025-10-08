@@ -5,7 +5,6 @@ import { notification } from "antd";
 
 const DriverPrivateRoute = (props) => {
     const { userData } = useContext(SystemContext);
-    console.log(">>> check userData in DriverPrivateRoute: ", userData);
     if (userData && userData.role === "DRIVER") {
         return (
             <>

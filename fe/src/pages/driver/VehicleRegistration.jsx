@@ -365,16 +365,19 @@ export default function VehicleRegistration() {
                         ? "Vui lòng nhập VIN hợp lệ và chờ hệ thống xác nhận xe có thể đăng ký"
                         : "Đăng ký xe vào hệ thống"
                     }
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
+                    className="flex-1 w-full  rounded-xl py-4 text-lg font-semibold shadow-lg 
+             transition-all duration-300 hover:scale-105
+             bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 
+             text-white disabled:opacity-60 disabled:cursor-not-allowed"                  >
                     <Zap className="h-5 w-5 mr-2" />
                     Đăng ký xe
                   </Button>
                   <Link to="/driver" className="flex-1">
                     <Button
                       variant="outline"
-                      className="w-full h-full border-2 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105"
-                    >
+                      className="flex-1 w-full rounded-xl py-4 text-lg font-semibold shadow-lg 
+             transition-all duration-300 hover:scale-105
+             border-2 border-gray-200 text-gray-700 bg-white hover:bg-gray-50"                    >
                       Hủy bỏ
                     </Button>
                   </Link>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
 import { toast } from "sonner";
+import { SystemContext } from "../../contexts/system.context";
 const StationFinder = () => {
   const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
   const [filters, setFilters] = useState({
@@ -21,8 +22,7 @@ const StationFinder = () => {
   const [allStations, setAllStations] = useState([]);
   const [primaryStation, setPrimaryStation] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
-
-
+  const { userVehicles } = useContext(SystemContext);
   //filter các trạm dựa trên khoảng cách và số lượng
   const filteredStations = stations.filter(station => {
     //theo battery count
@@ -373,6 +373,25 @@ const StationFinder = () => {
                     <SelectItem value="10">🔋🔋 Trên 10 pin</SelectItem>
                     <SelectItem value="15">🔋🔋🔋 Trên 15 pin</SelectItem>
                     <SelectItem value="50">🔋🔋🔋 Trên 50 pin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-semibold mb-3 block text-gray-700">Xe của bạn</label>
+                <Select onValueChange={(value) => setFilters({ ...filters, batteryCount: value })}>
+                  <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-purple-500 rounded-xl">
+                    <SelectValue placeholder="Chọn xe của bạn" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userVehicles && userVehicles.length > 0 ? (
+                      userVehicles.map((vehicle) => (
+                        <SelectItem key={vehicle.vehicleId} value={vehicle.vehicleType}>
+                          {vehicle.vehicleType}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="0">Vui lòng đăng ký xe</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

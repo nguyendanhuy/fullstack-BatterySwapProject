@@ -10,7 +10,10 @@ export const SystemProvider = (props) => {
             role: "",
             userId: "",
         });
-    const value = { userData, setUserData };
+    const [userVehicles, setUserVehicles] = useState(
+        {}
+    );
+    const value = { userData, setUserData, userVehicles, setUserVehicles };
     console.log(">>> check userData in SystemProvider: ", userData);
     return (
         <SystemContext.Provider value={value}>

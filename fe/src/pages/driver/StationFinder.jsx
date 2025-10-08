@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { MapPin, ArrowLeft, Battery, Filter, Map, Navigation, Zap, Clock, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import { List, Modal } from "antd";
+import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
 import { toast } from "sonner";
@@ -105,14 +105,17 @@ const StationFinder = () => {
     if (!selectedLocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setSelectedLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            address: "Vị trí hiện tại của bạn"
-          });
+          fetch(`https://rsapi.goong.io/geocode?latlng=${position.coords.latitude},${position.coords.longitude}&api_key=${API_KEY}`)
+            .then(res => res.json())
+            .then(data => {
+              const address = data?.results?.[0]?.formatted_address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+              setSelectedLocation({ lat: position.coords.latitude, lng: position.coords.longitude, address });
+            }).catch(() => {
+              setSelectedLocation({ lat: position.coords.latitude, lng: position.coords.longitude, address: `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}` });
+            });
         },
         (err) => {
-          alert(err.message);
+          console.log(err.message);
         }
       );
     }
@@ -292,12 +295,14 @@ const StationFinder = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4"> <div className="relative">
-              <Input
-                placeholder="Chọn địa chỉ của bạn trên bản đồ..."
-                className="pl-12 pr-4 py-3 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm"
-                value={selectedLocation?.address || ""}
-                readOnly
-              />
+              <Tooltip color='blue' title={selectedLocation?.address}>
+                <Input
+                  placeholder="Chọn địa chỉ của bạn trên bản đồ..."
+                  className="pl-12 pr-4 py-3 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm"
+                  value={selectedLocation?.address || ""}
+                  readOnly
+                />
+              </Tooltip>
               <div className="absolute left-4 top-1/2 -translate-y-1/2">
                 <MapPin className="h-4 w-4 text-gray-400" /> </div>
             </div>
@@ -435,6 +440,7 @@ const StationFinder = () => {
               pageSize: 5,
               showSizeChanger: false,
             }}
+
             renderItem={(station, index) => (
               <List.Item key={station.stationId}>
                 <Card className="space-y-6 border-0 shadow-xl bg-white hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
@@ -481,81 +487,86 @@ const StationFinder = () => {
                         <Badge
                           variant="secondary"
                           className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full font-semibold">
-                          ✅ {station.status}
+                          ✅ Trạm đang hoạt động
                         </Badge> :
                         <Badge
                           variant="secondary"
                           className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-4 py-2 rounded-full font-semibold"
                         >
-                          ❌ {station.status}
+                          ❌ Trạm tạm ngưng
                         </Badge>}
                     </div>
-                    {/* Battery Status with Enhanced Design */}
-                    <div className="grid md:grid-cols-2 gap-8 mb-8">
-                      {/* Battery Counts */}
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <Battery className="h-5 w-5 text-blue-500" />
-                          Trạng thái pin
+                    {/* Sửa code */}
+                    {/* Battery Information Section - Combined */}
+                    <div className="mb-6">
+                      {/* Header with Total Batteries */}
+                      <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                        <h4 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                          <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
+                            <Battery className="h-4 w-4 text-white" />
+                          </div>
+                          Thông tin pin
                         </h4>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-2xl border border-green-200 text-center group-hover:scale-105 transition-transform duration-300">
-                            <div className="text-3xl font-bold text-green-600 mb-1">{station.batterySummary.AVAILABLE ?? 0}</div>
-                            <div className="text-xs font-medium text-green-700">Pin đầy</div>
-                            <div className="w-full h-2 bg-green-200 rounded-full mt-3 overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-pulse"></div>
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-200 text-center group-hover:scale-105 transition-transform duration-300">
-                            <div className="text-3xl font-bold text-blue-600 mb-1">{station.batterySummary.CHARGING ?? 0}</div>
-                            <div className="text-xs font-medium text-blue-700">Đang sạc</div>
-                            <div className="w-full h-2 bg-blue-200 rounded-full mt-3 overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full animate-pulse" style={{ width: '75%' }}></div>
-                            </div>
-                          </div>
-                          {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-2xl border border-gray-200 text-center group-hover:scale-105 transition-transform duration-300">
-                            <div className="text-3xl font-bold text-gray-500 mb-1">{station.batterySummary.DAMAGED ?? 0}</div>
-                            <div className="text-xs font-medium text-gray-600">Pin rỗng</div>
-                            <div className="w-full h-2 bg-gray-200 rounded-full mt-3 overflow-hidden">
-                              <div className="h-full bg-gray-400 rounded-full" style={{ width: '25%' }}></div>
-                            </div>
-                          </div> */}
-                        </div>
+                        <Badge
+                          variant="secondary"
+                          className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm px-4 py-1.5 rounded-full font-semibold"
+                        >
+                          <Battery className="h-3.5 w-3.5 mr-1.5 inline" />
+                          {station.totalBatteries} pin
+                        </Badge>
                       </div>
-                      {/* Battery Types */}
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <Zap className="h-5 w-5 text-purple-500" />
-                          Loại pin có sẵn
-                        </h4>
-                        <div className="space-y-3">
-                          {Object.entries(station.batteryTypes).map(([type, counts]) => (counts > 0 && (<div key={type} className="flex items-center justify-between p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border border-gray-100 group-hover:shadow-md transition-all duration-300">
-                            <div className="flex items-center gap-3">
-                              <div className={`p-2 rounded-lg ${type === "LITHIUM_ION" ? "bg-blue-100" : "bg-purple-100"}`}>
-                                <Battery className={`h-4 w-4 ${type === "LITHIUM_ION" ? "text-blue-600" : "text-purple-600"}`} />
-                              </div>
-                              <span className="font-medium text-gray-700">{type}</span>
-                            </div>
-                            <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 font-semibold px-3 py-1 rounded-full">
-                              {counts} pin
-                            </Badge>
-                          </div>)))}
-                        </div>
+                      {/* Battery Types List */}
+                      <div className="space-y-2.5">
+                        {station.batteries && station.batteries.length > 0 ? (
+                          station.batteries
+                            .filter((battery) => battery.available > 0 || battery.charging > 0)
+                            .map((battery, idx) => {
+                              // Map battery type names                          
+                              const displayName = battery.batteryType;
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between p-3 bg-gradient-to-r from-white to-blue-50/50 rounded-lg border border-blue-100 hover:border-blue-300 transition-all duration-200 hover:shadow-md group"
+                                >
+                                  {/* Battery Type Name */}
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <div className={`p-1.5 rounded-md 
+                                      ${battery.batteryType === "LITHIUM_ION" ? "bg-gradient-to-r from-blue-400 to-blue-600" :
+                                        battery.batteryType === "NICKEL_METAL_HYDRIDE" ? "bg-gradient-to-r from-purple-400 to-purple-600" :
+                                          "bg-gradient-to-r from-orange-400 to-orange-600"
+                                      }`}>
+                                      <Battery className="h-3.5 w-3.5 text-white" />
+                                    </div>
+                                    <span className="font-semibold text-gray-800 text-sm">{displayName}</span>
+                                  </div>
+
+                                  {/* Battery Counts */}
+                                  <div className="flex items-center gap-3">
+                                    {/* Available Batteries */}
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-md border border-green-200">
+                                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                      <span className="text-xs font-medium text-gray-600">Sẵn sàng:</span>
+                                      <span className="text-sm font-bold text-green-600">{battery.available}</span>
+                                    </div>
+
+                                    {/* Charging Batteries */}
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md border border-blue-200">
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                      <span className="text-xs font-medium text-gray-600">Sạc:</span>
+                                      <span className="text-sm font-bold text-blue-600">{battery.charging}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                        ) : (
+                          <div className="text-center text-gray-500 py-4 text-sm">
+                            Không có thông tin pin
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    {/* Amenities */}
-                    {/* <div className="mb-8">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        ⭐ Tiện ích & Dịch vụ
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {station.amenities.map((amenity, idx) => (<Badge key={idx} variant="outline" className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors px-3 py-1 rounded-full">
-                            {amenity}
-                          </Badge>))}
-                      </div>
-                    </div> */}
-
                     {/* Action Buttons */}
                     <div className="flex gap-4" >
                       <Link to="/driver/reservation" className="flex-1">

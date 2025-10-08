@@ -3,9 +3,28 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Car, MapPin, Calendar, CreditCard, Battery, Home, Settings, Zap, Star, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import AccountSettings from "@/components/AccountSettings";
+import { viewUserVehicles } from "../../services/axios.services";
+import { SystemContext } from "../../contexts/system.context";
 const DriverDashboard = () => {
+  const { userVehicles, setUserVehicles } = useContext(SystemContext);
+  useEffect(() => {
+    loadUserVehicles();
+  }, []);
+  const loadUserVehicles = async () => {
+    const res = await viewUserVehicles();
+    if (res) {
+      setUserVehicles(res);
+    } else if (res.error) {
+      toast({
+        title: "Lỗi gọi hiển thị xe",
+        description: JSON.stringify(res.error),
+        variant: "destructive",
+      });
+    }
+  }
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   return (<div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
     {/* Enhanced Header with Glass Effect */}

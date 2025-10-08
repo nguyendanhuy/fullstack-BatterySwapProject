@@ -45,8 +45,6 @@ export default function VehicleRegistration() {
   useEffect(() => {
     loadUserVehicles();
   }, []);
-
-
   // Kiểm tra VIN hợp lệ (17 ký tự, không chứa I, O, Q) và để kích hoạt nút liên kết xe
   const isValidVin = (vin) => /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
 

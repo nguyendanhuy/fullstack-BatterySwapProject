@@ -6,11 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { MapPin, ArrowLeft, Battery, Filter, Map, Navigation, Zap, Clock, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import { List, Modal, Tooltip } from "antd";
+import { List, Modal, Tooltip, Button as AntButton } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 import SimpleGoongMap from "../GoongMap";
+import { Progress } from "@/components/ui/progress";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
 import { toast, Toaster } from "sonner";
 import { SystemContext } from "../../contexts/system.context";
+import ProvinceDistrictWardSelect from "../../components/ProvinceDistrictWardSelect";
 const StationFinder = () => {
   const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
   const [filters, setFilters] = useState({
@@ -470,6 +473,23 @@ const StationFinder = () => {
             </Badge>
           </div>
 
+          {/* Province District Ward Select with Search Button */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <ProvinceDistrictWardSelect />
+              </div>
+              <Button
+                onClick={() => {
+                  toast.success("Đang tìm kiếm trạm theo địa chỉ...");
+                }}
+                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-6 py-1 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
+              >
+                <SearchOutlined /><span className="font-semibold">Tìm kiếm</span>
+              </Button>
+            </div>
+          </div>
+
           {/* Enhanced Station Cards */}
           {/* Test list antd */}
           <List
@@ -605,6 +625,27 @@ const StationFinder = () => {
                             Không có thông tin pin
                           </div>
                         )}
+                      </div>
+                      {/* Total Battery Progress Bar */}
+                      <div className="mt-6">
+                        {(() => {
+                          const totalFull = station.availableCount;
+                          const totalBatteries = station.totalBatteries;
+                          const percentage = totalBatteries > 0 ? (totalFull / totalBatteries) * 100 : 0;
+
+                          return (
+                            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-semibold text-gray-700">Tình trạng pin sẵn sàng</span>
+                                <span className="text-sm font-bold text-green-700">{totalFull}/{totalBatteries} pin đầy</span>
+                              </div>
+                              <Progress
+                                value={percentage}
+                                className="h-3 bg-green-100"
+                              />
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                     {/* Action Buttons */}

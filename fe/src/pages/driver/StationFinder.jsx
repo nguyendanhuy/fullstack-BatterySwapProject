@@ -29,6 +29,7 @@ const StationFinder = () => {
   const [gpsAvailable, setGpsAvailable] = useState(true);
   const [filterAddress, setFilterAddress] = useState({})
 
+  console.log("Filter Address:", filterAddress);
 
   // --- Chuẩn hoá & tách địa chỉ thành các mảnh theo dấu phẩy ---
   const normalizeVi = (s = "") =>
@@ -41,7 +42,7 @@ const StationFinder = () => {
   const stripPrefixes = (s = "") => {
     let x = " " + normalizeVi(s) + " ";
     //Bỏ tiền tố phổ biến để tránh nhầm lẫn khi so khớp.
-    const prefixes = ["phuong", "xa", "thi tran", "quan", "huyen", "thi xa", "thanh pho", "tp", "tp ho chi minh", "tp hcm"];
+    const prefixes = ["phuong", "xa", "thi tran", "quan", "huyen", "thi xa", "thanh pho", "tp", "tp ho chi minh", "tp hcm",];
     prefixes.forEach(p => { x = x.replace(new RegExp(`\\s${p}\\s`, "g"), " "); });
     //Bỏ khoảng cách trắng thừa.
     return x.trim().replace(/\s+/g, " ");
@@ -52,19 +53,17 @@ const StationFinder = () => {
     address.split(",").map(p => stripPrefixes(p)).filter(Boolean);
 
   // Giữ hàm này cho district/ward (khớp nguyên cụm, có boundary)
-  // esc để xóa các ký tự đặc biệt trong regex
-  const esc = (s = "") => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   // Kiểm tra xem chuỗi hay có chứa nguyên cụm needle không (có boundary) tranh trường hợp Quận 1 khớp với Quận 10
   const containsWholePhrase = (hay = "", needle = "") => {
     if (!needle) return true;
     const H = stripPrefixes(hay);
-    const pattern = needle
+    const pattern = stripPrefixes(needle)
       .split(/\s+/)
-      .map(t => esc(stripPrefixes(t)))
       .filter(Boolean)
       .join("\\W+");
     if (!pattern) return true;
+    //cờ "i": không phân biệt hoa/thường (thực ra đã lowercase rồi).
     const re = new RegExp(`(?:^|\\W)${pattern}(?:\\W|$)`, "i");
     return re.test(H);
   };
@@ -91,7 +90,6 @@ const StationFinder = () => {
     if (fa?.wardName) {
       if (!containsWholePhrase(wardPart, fa.wardName)) return false;
     }
-
     return true;
   };
 

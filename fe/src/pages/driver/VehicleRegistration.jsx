@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Car, ArrowLeft, Battery, CheckCircle, Star, Home, X
+  Car, ArrowLeft, Battery, CheckCircle, Star, Home, X, Eye
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -502,68 +502,7 @@ export default function VehicleRegistration() {
                       >
                         <div className="flex items-center space-x-4">
                           <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-
-                                <Car className="h-6 w-6 text-white cursor-pointer motion-safe:animate-pulse hover:opacity-95 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-white/40 drop-shadow-[0_0_10px_rgba(34,197,94,0.9)] motion-reduce:animate-none" />
-
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Thông tin chi tiết xe {item.vehicleType}</AlertDialogTitle>
-                                  <AlertDialogDescription>Chi tiết thông số của xe:</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 px-1">
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">VIN</div>
-                                    <div className="font-medium text-gray-900">{item.vin || '—'}</div>
-                                  </div>
-
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Chủ xe</div>
-                                    <div className="font-medium text-gray-900">{item.ownername || item.ownerName || '—'}</div>
-                                  </div>
-
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Dòng xe</div>
-                                    <div className="font-medium text-gray-900">{item.vehicleType || '—'}</div>
-                                  </div>
-
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Loại pin</div>
-                                    <div className="font-medium text-gray-900">{item.batteryType || '—'}</div>
-                                  </div>
-
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Số lượng pin</div>
-                                    <div className="font-medium text-gray-900">{item.batteryCount ?? '—'}</div>
-                                  </div>
-
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Ngày sản xuất</div>
-                                    <div className="font-medium text-gray-900">{item.manufactureDate || '—'}</div>
-                                  </div>
-
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Ngày mua</div>
-                                    <div className="font-medium text-gray-900">{item.purchaseDate || '—'}</div>
-                                  </div>
-
-                                  <div className="bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Màu</div>
-                                    <div className="font-medium text-gray-900">{item.color || '—'}</div>
-                                  </div>
-
-                                  <div className="sm:col-span-2 bg-gray-50 p-2 rounded">
-                                    <div className="text-xs text-gray-500">Biển số</div>
-                                    <div className="font-medium text-gray-900">{item.licensePlate || '—'}</div>
-                                  </div>
-                                </div>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Ok</AlertDialogCancel>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <Car className="h-6 w-6 text-white" />
                           </div>
                           <div>
                             <h3 className="font-semibold text-gray-800">{item.vehicleType}</h3>
@@ -573,24 +512,54 @@ export default function VehicleRegistration() {
                         </div>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" className="opacity-100 transition-opacity duration-150">
-                              <X className="h-4 w-4 mr-1" />
-                              Hủy
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="relative group px-4 py-2 font-medium rounded-lg bg-white/60 backdrop-blur hover:bg-white shadow-sm border border-emerald-200 text-emerald-700 hover:text-emerald-800 hover:shadow-md transition-all duration-300 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                            >
+                              <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-emerald-400/10 to-green-500/10" />
+                              <Eye className="h-4 w-4 mr-1.5 text-emerald-500 group-hover:scale-110 transition-transform duration-300" />
+                              <span>Chi tiết</span>
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Xác nhận hủy đăng ký xe</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Bạn có chắc muốn hủy đăng ký xe có VIN: <span className="font-semibold">{item.vin}</span><br />
-                                Hành động này sẽ khiến xe không còn liên kết với hệ thống.
-                              </AlertDialogDescription>
+                              <AlertDialogTitle>Chi tiết xe {item.vehicleType}</AlertDialogTitle>
+                              <AlertDialogDescription>Thông tin và hành động dành cho xe này.</AlertDialogDescription>
                             </AlertDialogHeader>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 px-1 mb-4">
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">VIN</div><div className="font-medium text-gray-900">{item.vin || '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Chủ xe</div><div className="font-medium text-gray-900">{item.ownername || item.ownerName || '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Dòng xe</div><div className="font-medium text-gray-900">{item.vehicleType || '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Loại pin</div><div className="font-medium text-gray-900">{item.batteryType || '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Số lượng pin</div><div className="font-medium text-gray-900">{item.batteryCount ?? '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Ngày sản xuất</div><div className="font-medium text-gray-900">{item.manufactureDate || '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Ngày mua</div><div className="font-medium text-gray-900">{item.purchaseDate || '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Màu</div><div className="font-medium text-gray-900">{item.color || '—'}</div></div>
+                              <div className="sm:col-span-2 bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Biển số</div><div className="font-medium text-gray-900">{item.licensePlate || '—'}</div></div>
+                            </div>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Không</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleUnregisterVehicle(item.vehicleId)}>
-                                Đồng ý
-                              </AlertDialogAction>
+                              <AlertDialogCancel>Đóng</AlertDialogCancel>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive">Hủy đăng ký</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Xác nhận hủy đăng ký</AlertDialogTitle>
+                                  </AlertDialogHeader>
+                                  <p>
+                                    Bạn có chắc chắn muốn hủy đăng ký xe này không? <br />
+                                    Hành động này sẽ ngắt liên kết xe khỏi tài khoản của bạn.
+                                  </p>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Không</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleUnregisterVehicle(item.vehicleId)}>
+                                      Có
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

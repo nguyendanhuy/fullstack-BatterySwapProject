@@ -4,30 +4,108 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, ArrowLeft, Battery, Filter, Map, Navigation, Zap, Clock, Star } from "lucide-react";
+import { MapPin, ArrowLeft, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import { List, Modal, Tooltip, Button as AntButton } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { Progress } from "@/components/ui/progress";
-import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
-import { toast, Toaster } from "sonner";
+import { getAllStations, getStationNearbyLocation, viewUserVehicles } from "../../services/axios.services";
+import { toast } from "sonner";
 import { SystemContext } from "../../contexts/system.context";
 import ProvinceDistrictWardSelect from "../../components/ProvinceDistrictWardSelect";
 const StationFinder = () => {
   const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
   const [filters, setFilters] = useState({
-    distance: "50", //default 50km
-    batteryCount: ""
+    distance: "50",
+    batteryType: "",
   });
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [stations, setStations] = useState([]);
   const [allStations, setAllStations] = useState([]);
   const [primaryStation, setPrimaryStation] = useState(null);
+  const [uniqueVehicleTypes, setUniqueVehicleTypes] = useState([]); //
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const { userVehicles } = useContext(SystemContext);
+  const { userVehicles, setUserVehicles, userData } = useContext(SystemContext);
   const [gpsAvailable, setGpsAvailable] = useState(true);
   const [filterAddress, setFilterAddress] = useState({})
+  //Tránh trùng value vì nhiều loại xe trùng value pin type
+  const [vehicleSelectValue, setVehicleSelectValue] = useState('ALL');
+
+  // Auto-select batteryType của xe đầu tiên nếu chưa chọn (chỉ chạy khi danh sách thay đổi lần đầu)
+  useEffect(() => {
+    if (!filters.batteryType && uniqueVehicleTypes.length > 0) {
+      const first = uniqueVehicleTypes[0];
+      setFilters(f => ({ ...f, batteryType: first.batteryType }));
+      setVehicleSelectValue(`0_${first.batteryType}`);
+    }
+  }, [uniqueVehicleTypes]);
+
+  //Reload page mà danh sách xe trước đó bị null thì load lại
+  const loadUserVehicles = async () => {
+    try {
+      const res = await viewUserVehicles();
+      if (Array.isArray(res)) {
+        setUserVehicles(res);
+      } else if (res?.error) {
+        toast({
+          title: "Lỗi gọi hiển thị xe",
+          description: JSON.stringify(res.error),
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi mạng khi tải xe",
+        description: String(err?.message ?? err),
+        variant: "destructive",
+      });
+    }
+  };
+  const vehiclesEmpty = !Array.isArray(userVehicles) || userVehicles.length === 0;
+  useEffect(() => {
+    if (vehiclesEmpty && userData?.userId) {
+      loadUserVehicles();
+    }
+  }, [vehiclesEmpty, userData?.userId]);
+
+  // Lấy danh sách loại xe duy nhất từ userVehicles để hiển thị trong bộ lọc
+  useEffect(() => {
+    if (Array.isArray(userVehicles) && userVehicles.length > 0) {
+      // Map theo vehicleType -> lấy chiếc đầu tiên của mỗi loại
+      const uniqueTypes = [...new Map(userVehicles.map(v => [v.vehicleType, v])).values()];
+      setUniqueVehicleTypes(uniqueTypes);
+    } else {
+      setUniqueVehicleTypes([]);
+    }
+  }, [userVehicles]);
+
+
+  //filter các trạm dựa trên khoảng cách và loại xe
+  const filteredStations = stations.filter(station => {
+    //theo địa chỉ
+    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
+      if (!matchByFilterAddress(station.address, filterAddress)) return false;
+    }
+    //theo battery type
+    if (filters.batteryType) {
+      const match = station.batteries.some(
+        b => b.batteryType === filters.batteryType
+      );
+      if (!match) return false;
+    }
+
+    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
+    if (filters.distance && station.distance && station.distance !== "—") {
+      const maxDistance = parseInt(filters.distance, 10);
+
+      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
+      if (distanceMatch) {
+        const stationDistance = parseFloat(distanceMatch[1]);
+        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
+      }
+    }
+    return true;
+  });
 
   console.log("Filter Address:", filterAddress);
 
@@ -94,35 +172,6 @@ const StationFinder = () => {
   };
 
   // --- End Utils ---
-
-
-
-
-  //filter các trạm dựa trên khoảng cách và số lượng
-  const filteredStations = stations.filter(station => {
-    //theo địa chỉ
-    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
-      if (!matchByFilterAddress(station.address, filterAddress)) return false;
-    }
-    //theo battery count
-    if (filters.batteryCount) {
-      const minBatteryCount = parseInt(filters.batteryCount, 10); //parse sang Int hệ 10
-      const availableBatteries = station.batterySummary?.AVAILABLE || 0;
-      if (availableBatteries < minBatteryCount) return false; //trả về false nếu pin ít hơn value chọn
-    }
-
-    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
-    if (filters.distance && station.distance && station.distance !== "—") {
-      const maxDistance = parseInt(filters.distance, 10);
-
-      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
-      if (distanceMatch) {
-        const stationDistance = parseFloat(distanceMatch[1]);
-        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
-      }
-    }
-    return true;
-  });
 
 
 
@@ -224,10 +273,10 @@ const StationFinder = () => {
 
 
 
-  //Chạy khi thay đổi vị trí hoặc filter
+  //Chạy khi thay đổi vị trí hoặc distance
   useEffect(() => {
     if (selectedLocation?.lat != null && selectedLocation?.lng != null) {
-      const radius = filters.distance ? parseInt(filters.distance, 10) : 50; //dùng bán kính từ filter hoặc mặc định 50km
+      const radius = filters.distance ? parseInt(filters.distance, 10) : 50; // mặc định 50km nếu chưa có
       getStationNearby(selectedLocation.lat, selectedLocation.lng, radius);
     }
   }, [selectedLocation, filters.distance]);
@@ -235,9 +284,9 @@ const StationFinder = () => {
   console.log("Selected Location:", selectedLocation);
 
 
-  const getStationNearby = async (lat, lng) => {
+  const getStationNearby = async (lat, lng, radius) => {
     try {
-      const res = await getStationNearbyLocation(lat, lng, filters.distance ? parseInt(filters.distance, 10) : 50);
+      const res = await getStationNearbyLocation(lat, lng, radius);
       // Expecting an array of stations from backend
       if (!res) {
         toast({ title: "Lỗi", description: "Không nhận được dữ liệu trạm", variant: "destructive" });
@@ -348,15 +397,15 @@ const StationFinder = () => {
             </div>
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">Trạm Pin Thông Minh</h1>
-              <p className="text-white/90 text-lg">Tìm kiếm và đặt lịch trạm pin gần bạn</p>
+              <p className="text-white/90 text-lg">Tìm kiếm và đặt lịch đổi pin gần bạn</p>
               <div className="flex items-center mt-2 space-x-4 text-white/80 text-sm">
                 <span className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  15 trạm đang hoạt động
+                  {allStations?.length ?? "--/"} trạm đang hoạt động
                 </span>
                 <span className="flex items-center gap-1">
                   <Zap className="h-4 w-4" />
-                  Sạc nhanh 2-5 phút
+                  Đổi pin chỉ trong vài phút
                 </span>
               </div>
             </div>
@@ -395,7 +444,7 @@ const StationFinder = () => {
                 <MapPin className="h-4 w-4 text-gray-400" /> </div>
             </div>
               <Button onClick={() => setIsMapOpen(true)} className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl py-3 transition-all duration-300 hover:scale-105 shadow-lg">
-                <Map className="h-4 w-4 mr-2" /> Chọn trên bản đồ </Button>
+                <MapIcon className="h-4 w-4 mr-2" /> Chọn trên bản đồ </Button>
               <Modal
                 title="Chọn vị trí trên bản đồ"
                 centered
@@ -439,7 +488,7 @@ const StationFinder = () => {
                     <SelectValue placeholder="Chọn khoảng cách" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10000000">📍 Tất cả</SelectItem>
+                    <SelectItem value="10000000">🥀 Tất cả</SelectItem>
                     <SelectItem value="1">📍 Dưới 1 km</SelectItem>
                     <SelectItem value="5">🚗 Dưới 5 km</SelectItem>
                     <SelectItem value="10">🏃 Dưới 10 km</SelectItem>
@@ -448,37 +497,44 @@ const StationFinder = () => {
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
-                <label className="text-sm font-semibold mb-3 block text-gray-700">Số lượng pin đầy</label>
-                <Select onValueChange={(value) => setFilters({ ...filters, batteryCount: value })}>
-                  <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-purple-500 rounded-xl">
-                    <SelectValue placeholder="Chọn số lượng pin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0"> Tất cả</SelectItem>
-                    <SelectItem value="2">🔋 Trên 2 pin</SelectItem>
-                    <SelectItem value="5">🔋 Trên 5 pin</SelectItem>
-                    <SelectItem value="10">🔋🔋 Trên 10 pin</SelectItem>
-                    <SelectItem value="15">🔋🔋🔋 Trên 15 pin</SelectItem>
-                    <SelectItem value="50">🔋🔋🔋 Trên 50 pin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-semibold mb-3 block text-gray-700">Xe của bạn</label>
-                <Select onValueChange={(value) => setFilters({ ...filters, batteryCount: value })}>
+                <label className="text-sm font-semibold mb-3 block text-gray-700">Pin theo xe của bạn</label>
+                <Select
+                  value={vehicleSelectValue}
+                  onValueChange={(value) => {
+                    if (value === 'ALL') {
+                      setVehicleSelectValue('ALL');
+                      setFilters({ ...filters, batteryType: '' });
+                      return;
+                    }
+                    // value format: index_batteryType
+                    const parts = value.split('_');
+                    const bt = parts.slice(1).join('_'); // phòng trường hợp batteryType có '_'
+                    setVehicleSelectValue(value);
+                    setFilters({ ...filters, batteryType: bt });
+                  }}
+                >
                   <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-purple-500 rounded-xl">
                     <SelectValue placeholder="Chọn xe của bạn" />
                   </SelectTrigger>
                   <SelectContent>
-                    {userVehicles && userVehicles.length > 0 ? (
-                      userVehicles.map((vehicle) => (
-                        <SelectItem key={vehicle.vehicleId} value={vehicle.vehicleType}>
-                          {vehicle.vehicleType}
-                        </SelectItem>
-                      ))
+                    {uniqueVehicleTypes.length > 0 ? (
+                      <>
+                        <SelectItem value='ALL'>Tất cả</SelectItem>
+                        {uniqueVehicleTypes.map((vehicle, index) => {
+                          const composite = `${index}_${vehicle.batteryType}`;
+                          return (
+                            <SelectItem key={composite} value={composite}>
+                              🛵 {vehicle.vehicleType} - 🔋 {vehicle.batteryType}
+                            </SelectItem>
+                          );
+                        })}
+                      </>
                     ) : (
-                      <SelectItem value="0">Vui lòng đăng ký xe</SelectItem>
+                      <SelectItem value="0" disabled>
+                        Bạn chưa đăng ký xe nào
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -500,18 +556,25 @@ const StationFinder = () => {
                   <span className="font-semibold text-blue-600">{primaryStation ? primaryStation.distance ?? '—' : '—'}</span>
                 </div>
                 <div className="space-y-2">
-                  <span className="text-sm text-gray-600 block">Pin có sẵn</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Pin có sẵn</span>
+                    <span className="text-sm font-semibold text-green-700">{"Đầy " + primaryStation?.availableCount ?? '—'} / {+primaryStation?.totalBatteries ?? '—'}</span>
+                  </div>
+
                   {primaryStation ? (
                     <div className="space-y-1">
-                      {Object.entries(primaryStation.batteryTypes || {}).map(([type, count]) =>
-                        count > 0 && (
-                          <div key={type} className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500">{type === 'LITHIUM_ION' ? 'Li-ion' : type}</span>
-                            <span className="font-semibold text-blue-600">{count} pin</span>
+                      {Array.isArray(primaryStation.batteries) && primaryStation.batteries.length > 0 ? (
+                        primaryStation.batteries.map((b) => (
+                          <div key={b.batteryType} className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500">{b.batteryType}</span>
+                            <span className="font-medium">
+                              <span className="text-green-600">Đầy {b.available}</span>
+                              <span className="mx-1 text-gray-400"> ~ </span>
+                              <span className="text-blue-600">Sạc {b.charging}</span>
+                            </span>
                           </div>
-                        )
-                      )}
-                      {Object.values(primaryStation.batteryTypes || {}).every(count => count === 0) && (
+                        ))
+                      ) : (
                         <span className="font-semibold text-blue-600 text-xs">Không có pin</span>
                       )}
                     </div>

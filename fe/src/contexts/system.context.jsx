@@ -16,6 +16,7 @@ export const SystemProvider = (props) => {
     );
     const value = { userData, setUserData, userVehicles, setUserVehicles };
     console.log(">>> check userData in SystemProvider: ", userData);
+    console.log(">>> check userVehicles in SystemProvider: ", userVehicles);
     return (
         <SystemContext.Provider value={value}>
             {props.children}

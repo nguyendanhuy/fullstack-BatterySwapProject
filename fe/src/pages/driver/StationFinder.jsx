@@ -32,20 +32,30 @@ const StationFinder = () => {
 
   // --- Chuẩn hoá & tách địa chỉ thành các mảnh theo dấu phẩy ---
   const normalizeVi = (s = "") =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, "").toLowerCase().trim();
+    s.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")// bỏ dấu
+      .replace(/\./g, "")// bỏ dấu chấm
+      .toLowerCase()
+      .trim();
 
   const stripPrefixes = (s = "") => {
     let x = " " + normalizeVi(s) + " ";
+    //Bỏ tiền tố phổ biến để tránh nhầm lẫn khi so khớp.
     const prefixes = ["phuong", "xa", "thi tran", "quan", "huyen", "thi xa", "thanh pho", "tp", "tp ho chi minh", "tp hcm"];
     prefixes.forEach(p => { x = x.replace(new RegExp(`\\s${p}\\s`, "g"), " "); });
+    //Bỏ khoảng cách trắng thừa.
     return x.trim().replace(/\s+/g, " ");
   };
 
+  // Tách address thành các phần nhỏ hơn để so sánh theo từng phần.
   const splitAddr = (address = "") =>
     address.split(",").map(p => stripPrefixes(p)).filter(Boolean);
 
   // Giữ hàm này cho district/ward (khớp nguyên cụm, có boundary)
+  // esc để xóa các ký tự đặc biệt trong regex
   const esc = (s = "") => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Kiểm tra xem chuỗi hay có chứa nguyên cụm needle không (có boundary) tranh trường hợp Quận 1 khớp với Quận 10
   const containsWholePhrase = (hay = "", needle = "") => {
     if (!needle) return true;
     const H = stripPrefixes(hay);
@@ -62,11 +72,11 @@ const StationFinder = () => {
   // --- SO KHỚP THEO ĐUÔI ĐỊA CHỈ ---
   const matchByFilterAddress = (stationAddress = "", fa = {}) => {
     const parts = splitAddr(stationAddress);
-    const provincePart = parts.at(-1) || ""; // mảnh cuối
+    const provincePart = parts.at(-1) || ""; // mảnh cuối (lấy cái cuói cùng của mảng)
     const districtPart = parts.at(-2) || ""; // mảnh kế cuối
     const wardPart = parts.at(-3) || ""; // mảnh trước đó
 
-    // 1) Province: bắt buộc so sánh "bằng nhau" với mảnh cuối
+    // 1) Province: bắt buộc so sánh "bằng nhau" với mảnh cuối tránh trường hợp "Xa Lộ Hà Nội" với tỉnh "Hà Nội"
     if (fa?.provinceName) {
       const wantedProvince = stripPrefixes(fa.provinceName);
       if (provincePart !== wantedProvince) return false;
@@ -86,6 +96,8 @@ const StationFinder = () => {
   };
 
   // --- End Utils ---
+
+
 
 
   //filter các trạm dựa trên khoảng cách và số lượng

@@ -27,12 +27,91 @@ const StationFinder = () => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const { userVehicles } = useContext(SystemContext);
   const [gpsAvailable, setGpsAvailable] = useState(true);
+  const [filterAddress, setFilterAddress] = useState({})
+
+
+  // --- Chuẩn hoá & tách địa chỉ thành các mảnh theo dấu phẩy ---
+  const normalizeVi = (s = "") =>
+    s.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")// bỏ dấu
+      .replace(/\./g, "")// bỏ dấu chấm
+      .toLowerCase()
+      .trim();
+
+  const stripPrefixes = (s = "") => {
+    let x = " " + normalizeVi(s) + " ";
+    //Bỏ tiền tố phổ biến để tránh nhầm lẫn khi so khớp.
+    const prefixes = ["phuong", "xa", "thi tran", "quan", "huyen", "thi xa", "thanh pho", "tp", "tp ho chi minh", "tp hcm"];
+    prefixes.forEach(p => { x = x.replace(new RegExp(`\\s${p}\\s`, "g"), " "); });
+    //Bỏ khoảng cách trắng thừa.
+    return x.trim().replace(/\s+/g, " ");
+  };
+
+  // Tách address thành các phần nhỏ hơn để so sánh theo từng phần.
+  const splitAddr = (address = "") =>
+    address.split(",").map(p => stripPrefixes(p)).filter(Boolean);
+
+  // Giữ hàm này cho district/ward (khớp nguyên cụm, có boundary)
+  // esc để xóa các ký tự đặc biệt trong regex
+  const esc = (s = "") => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Kiểm tra xem chuỗi hay có chứa nguyên cụm needle không (có boundary) tranh trường hợp Quận 1 khớp với Quận 10
+  const containsWholePhrase = (hay = "", needle = "") => {
+    if (!needle) return true;
+    const H = stripPrefixes(hay);
+    const pattern = needle
+      .split(/\s+/)
+      .map(t => esc(stripPrefixes(t)))
+      .filter(Boolean)
+      .join("\\W+");
+    if (!pattern) return true;
+    const re = new RegExp(`(?:^|\\W)${pattern}(?:\\W|$)`, "i");
+    return re.test(H);
+  };
+
+  // --- SO KHỚP THEO ĐUÔI ĐỊA CHỈ ---
+  const matchByFilterAddress = (stationAddress = "", fa = {}) => {
+    const parts = splitAddr(stationAddress);
+    const provincePart = parts.at(-1) || ""; // mảnh cuối (lấy cái cuói cùng của mảng)
+    const districtPart = parts.at(-2) || ""; // mảnh kế cuối
+    const wardPart = parts.at(-3) || ""; // mảnh trước đó
+
+    // 1) Province: bắt buộc so sánh "bằng nhau" với mảnh cuối tránh trường hợp "Xa Lộ Hà Nội" với tỉnh "Hà Nội"
+    if (fa?.provinceName) {
+      const wantedProvince = stripPrefixes(fa.provinceName);
+      if (provincePart !== wantedProvince) return false;
+    }
+
+    // 2) District: nên khớp trong mảnh district, không quét toàn chuỗi
+    if (fa?.districtName) {
+      if (!containsWholePhrase(districtPart, fa.districtName)) return false;
+    }
+
+    // 3) Ward: khớp trong mảnh ward
+    if (fa?.wardName) {
+      if (!containsWholePhrase(wardPart, fa.wardName)) return false;
+    }
+
+    return true;
+  };
+
+  // --- End Utils ---
+
+
+
 
 
   //filter các trạm dựa trên khoảng cách và số lượng
   const filteredStations = stations.filter(station => {
+<<<<<<< HEAD
 
     console.log("Primary Station: ", primaryStation);
+=======
+    //theo địa chỉ
+    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
+      if (!matchByFilterAddress(station.address, filterAddress)) return false;
+    }
+>>>>>>> 59176ea5a9207c8d07c03c85664c10055a0d5748
     //theo battery count
     if (filters.batteryCount) {
       const minBatteryCount = parseInt(filters.batteryCount, 10); //parse sang Int hệ 10
@@ -195,8 +274,6 @@ const StationFinder = () => {
 
       //Thêm vào nearby stations dữ liệu thời gian và khoảng cách trước khi in ra.
       const stationsWithDistance = await distanceMatrixWithStations(selectedLocation, res);
-
-
 
       // Mảng các trạm đã sort
       const sortedStations = stationsWithDistance.sort((a, b) => {
@@ -476,16 +553,8 @@ const StationFinder = () => {
           <div className="mb-6">
             <div className="flex items-center gap-3">
               <div className="flex-1">
-                <ProvinceDistrictWardSelect />
+                <ProvinceDistrictWardSelect setFilterAddress={setFilterAddress} />
               </div>
-              <Button
-                onClick={() => {
-                  toast.success("Đang tìm kiếm trạm theo địa chỉ...");
-                }}
-                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-6 py-1 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg flex items-center gap-2"
-              >
-                <SearchOutlined /><span className="font-semibold">Tìm kiếm</span>
-              </Button>
             </div>
           </div>
 

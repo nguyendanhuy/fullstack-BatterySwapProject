@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,12 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setUserData } = useContext(SystemContext);
-
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      localStorage.removeItem("token");
+    } else return;
+  }, []);
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,

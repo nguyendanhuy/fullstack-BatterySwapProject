@@ -4,7 +4,7 @@ import { Select, Space, message } from "antd";
 
 const API = "https://provinces.open-api.vn/api/v1";
 
-export default function ProvinceDistrictWardSelect({ value = {}, onChange, style }) {
+export default function ProvinceDistrictWardSelect({ value = {}, setFilterAddress, style }) {
     const [pList, setPList] = useState([]);// danh sách tỉnh
     const [dList, setDList] = useState([]);// danh sách huyện
     const [wList, setWList] = useState([]);// danh sách xã
@@ -14,7 +14,12 @@ export default function ProvinceDistrictWardSelect({ value = {}, onChange, style
         [ld, setLd] = useState(false), //loading huyen
         [lw, setLw] = useState(false);// loading xa
     //dùng để cập nhật state & thông báo ra ngoài thong qua onChange.
-    const emit = (patch) => { const next = { ...v, ...patch }; setV(next); onChange?.(next); };
+    const emit = (patch) => {
+        const next = { ...v, ...patch };
+        setV(next);
+        const { provinceName, districtName, wardName } = next;
+        setFilterAddress({ provinceName, districtName, wardName });
+    };
     // Load danh sách tỉnh khi component được gắn vào DOM
     useEffect(() => {
         (async () => {
@@ -50,21 +55,45 @@ export default function ProvinceDistrictWardSelect({ value = {}, onChange, style
 
     return (
         <Space style={style}>
-            <Select style={{ minWidth: 220 }} placeholder="Tỉnh/TP" loading={lp}
+            <Select style={{ minWidth: 220 }} placeholder="Tỉnh/TP" loading={lp} allowClear
                 options={pList} value={v.provinceCode}
                 // Khi tỉnh thay đổi, xóa luôn huyện và xã đã chọn
-                onChange={(val) => emit({ provinceCode: val, districtCode: undefined, wardCode: undefined })}
+                onChange={(val) => {
+                    const selected = pList.find(p => p.value === val);
+                    emit({
+                        provinceCode: val,
+                        provinceName: selected?.label,
+                        districtCode: undefined,
+                        districtName: undefined,
+                        wardCode: undefined,
+                        wardName: undefined
+                    });
+                }}
                 showSearch filterOption={(i, o) => o.label.toLowerCase().includes(i.toLowerCase())}
             />
-            <Select style={{ minWidth: 220 }} placeholder="Quận/Huyện" loading={ld} disabled={!v.provinceCode}
+            <Select style={{ minWidth: 220 }} placeholder="Quận/Huyện" loading={ld} disabled={!v.provinceCode} allowClear
                 //Khi huyện thay đổi, xóa luôn xã đã chọn
                 options={dList} value={v.districtCode}
-                onChange={(val) => emit({ districtCode: val, wardCode: undefined })}
+                onChange={(val) => {
+                    const selected = dList.find(d => d.value === val);
+                    emit({
+                        districtCode: val,
+                        districtName: selected?.label,
+                        wardCode: undefined,
+                        wardName: undefined
+                    });
+                }}
                 showSearch filterOption={(i, o) => o.label.toLowerCase().includes(i.toLowerCase())}
             />
-            <Select style={{ minWidth: 220 }} placeholder="Phường/Xã" loading={lw} disabled={!v.districtCode}
+            <Select style={{ minWidth: 220 }} placeholder="Phường/Xã" loading={lw} disabled={!v.districtCode} allowClear
                 options={wList} value={v.wardCode}
-                onChange={(val) => emit({ wardCode: val })}
+                onChange={(val) => {
+                    const selected = wList.find(w => w.value === val);
+                    emit({
+                        wardCode: val,
+                        wardName: selected?.label
+                    });
+                }}
                 //showSearch cho phép gõ tìm nhanh cùng với filterOption để lọc.
                 showSearch filterOption={(i, o) => o.label.toLowerCase().includes(i.toLowerCase())}
             />

@@ -14,11 +14,13 @@ import { toast } from "sonner";
 import { SystemContext } from "../../contexts/system.context";
 import ProvinceDistrictWardSelect from "../../components/ProvinceDistrictWardSelect";
 const StationFinder = () => {
+  //Goong Map API key
   const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
   const [filters, setFilters] = useState({
     distance: "50",
     batteryType: "",
   });
+  const [selectedBatteries, setSelectedBatteries] = useState({});
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [stations, setStations] = useState([]);
   const [allStations, setAllStations] = useState([]);
@@ -61,6 +63,7 @@ const StationFinder = () => {
       });
     }
   };
+
   const vehiclesEmpty = !Array.isArray(userVehicles) || userVehicles.length === 0;
   useEffect(() => {
     if (vehiclesEmpty && userData?.userId) {
@@ -86,6 +89,7 @@ const StationFinder = () => {
     if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
       if (!matchByFilterAddress(station.address, filterAddress)) return false;
     }
+
     //theo battery type
     if (filters.batteryType) {
       const match = station.batteries.some(
@@ -93,7 +97,6 @@ const StationFinder = () => {
       );
       if (!match) return false;
     }
-
     //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
     if (filters.distance && station.distance && station.distance !== "—") {
       const maxDistance = parseInt(filters.distance, 10);
@@ -106,6 +109,7 @@ const StationFinder = () => {
     }
     return true;
   });
+
 
   console.log("Filter Address:", filterAddress);
 
@@ -358,6 +362,34 @@ const StationFinder = () => {
     }
   }
 
+  //Xử lý chọn số luợng pin tại trạm
+
+  const handleBatteryClick = (stationId, batteryType) => {
+    setSelectedBatteries(prev => {
+      const stationBats = prev[stationId] || {};
+      if (stationBats[batteryType]) {
+        // đang chọn -> bỏ chọn
+        const { [batteryType]: _, ...rest } = stationBats;
+        return { ...prev, [stationId]: rest };
+      }
+      // chưa chọn -> thêm với số lượng 1
+      return { ...prev, [stationId]: { ...stationBats, [batteryType]: 1 } };
+    });
+  };
+
+  const updateBatteryQuantity = (stationId, batteryType, delta) => {
+    setSelectedBatteries(prev => {
+      const stationBats = prev[stationId] || {};
+      const current = stationBats[batteryType] || 0;
+      const next = Math.max(0, current + delta);
+
+      if (next === 0) {
+        const { [batteryType]: _, ...rest } = stationBats;
+        return { ...prev, [stationId]: rest };
+      }
+      return { ...prev, [stationId]: { ...stationBats, [batteryType]: next } };
+    });
+  };
 
   const handleLocationSelect = (location) => {
     setSelectedLocation(location);
@@ -702,57 +734,100 @@ const StationFinder = () => {
                           {station.totalBatteries} pin
                         </Badge>
                       </div>
+
                       {/* Battery Types List */}
                       <div className="space-y-2.5">
                         {station.batteries && station.batteries.length > 0 ? (
                           station.batteries
-                            .filter((battery) => battery.available > 0 || battery.charging > 0)
+                            .filter(b => b.available > 0 || b.charging > 0)
                             .map((battery, idx) => {
-                              // Map battery type names                          
-                              const displayName = battery.batteryType;
+                              const type = battery.batteryType;                 // VD: "LITHIUM_ION"
+                              const displayName = type;                         // Đang hiển thị nguyên tên; nếu muốn map tên đẹp thì xử lý ở đây
+                              const selectedQty = selectedBatteries[station.stationId]?.[type] || 0;
+                              const isSelected = selectedQty > 0;
 
                               return (
-                                <div
-                                  key={idx}
-                                  className="flex items-center justify-between p-3 bg-gradient-to-r from-white to-blue-50/50 rounded-lg border border-blue-100 hover:border-blue-300 transition-all duration-200 hover:shadow-md group"
-                                >
-                                  {/* Battery Type Name */}
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <div className={`p-1.5 rounded-md 
-                                      ${battery.batteryType === "LITHIUM_ION" ? "bg-gradient-to-r from-blue-400 to-blue-600" :
-                                        battery.batteryType === "NICKEL_METAL_HYDRIDE" ? "bg-gradient-to-r from-purple-400 to-purple-600" :
-                                          "bg-gradient-to-r from-orange-400 to-orange-600"
-                                      }`}>
-                                      <Battery className="h-3.5 w-3.5 text-white" />
+                                <div key={idx} className="relative">
+                                  <div
+                                    onClick={() => handleBatteryClick(station.stationId, type)}
+                                    className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 cursor-pointer ${isSelected
+                                      ? "bg-gradient-to-r from-blue-100 to-purple-100 border-blue-400 shadow-lg"
+                                      : "bg-gradient-to-r from-white to-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-md"
+                                      }`}
+                                  >
+                                    {/* Tên loại pin hoặc số lượng đã chọn */}
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <div
+                                        className={`p-1.5 rounded-md transition-all duration-300 
+                                          ${type === "LITHIUM_ION"
+                                            ? "bg-gradient-to-r from-blue-400 to-blue-600"
+                                            : type === "NICKEL_METAL_HYDRIDE"
+                                              ? "bg-gradient-to-r from-purple-400 to-purple-600"
+                                              : "bg-gradient-to-r from-orange-400 to-orange-600"
+                                          }`}
+                                      >
+                                        <Battery className="h-3.5 w-3.5 text-white" />
+                                      </div>
+
+                                      <span
+                                        className={`font-semibold text-sm transition-all duration-300 ${isSelected ? "text-blue-700" : "text-gray-800"
+                                          }`}
+                                      >
+                                        {isSelected ? `Số lượng đặt pin: ${selectedQty}` : displayName}
+                                      </span>
                                     </div>
-                                    <span className="font-semibold text-gray-800 text-sm">{displayName}</span>
+
+                                    {/* Count "Sẵn sàng / Sạc" – chỉ hiện khi chưa chọn */}
+                                    {!isSelected && (
+                                      <div className="flex items-center gap-3">
+                                        {/* Sẵn sàng */}
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-md border border-green-200">
+                                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                          <span className="text-xs font-medium text-gray-600">Sẵn sàng:</span>
+                                          <span className="text-sm font-bold text-green-600">{battery.available}</span>
+                                        </div>
+
+                                        {/* Đang sạc */}
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md border border-blue-200">
+                                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                                          <span className="text-xs font-medium text-gray-600">Sạc:</span>
+                                          <span className="text-sm font-bold text-blue-600">{battery.charging}</span>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
 
-                                  {/* Battery Counts */}
-                                  <div className="flex items-center gap-3">
-                                    {/* Available Batteries */}
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-md border border-green-200">
-                                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                      <span className="text-xs font-medium text-gray-600">Sẵn sàng:</span>
-                                      <span className="text-sm font-bold text-green-600">{battery.available}</span>
+                                  {/* Nút +/- – chỉ hiện khi đã chọn */}
+                                  {isSelected && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          updateBatteryQuantity(station.stationId, type, -1);
+                                        }}
+                                        className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
+                                      >
+                                        −
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          updateBatteryQuantity(station.stationId, type, 1);
+                                        }}
+                                        className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
+                                      >
+                                        +
+                                      </button>
                                     </div>
-
-                                    {/* Charging Batteries */}
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md border border-blue-200">
-                                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                      <span className="text-xs font-medium text-gray-600">Sạc:</span>
-                                      <span className="text-sm font-bold text-blue-600">{battery.charging}</span>
-                                    </div>
-                                  </div>
+                                  )}
                                 </div>
                               );
                             })
                         ) : (
-                          <div className="text-center text-gray-500 py-4 text-sm">
-                            Không có thông tin pin
-                          </div>
+                          <div className="text-center text-gray-500 py-4 text-sm">Không có thông tin pin</div>
                         )}
                       </div>
+
                       {/* Total Battery Progress Bar */}
                       <div className="mt-6">
                         {(() => {

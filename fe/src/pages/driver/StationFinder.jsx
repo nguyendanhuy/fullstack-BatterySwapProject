@@ -83,36 +83,7 @@ const StationFinder = () => {
   }, [userVehicles]);
 
 
-  //filter các trạm dựa trên khoảng cách và loại xe
-  const filteredStations = stations.filter(station => {
-    //theo địa chỉ
-    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
-      if (!matchByFilterAddress(station.address, filterAddress)) return false;
-    }
-
-    //theo battery type
-    if (filters.batteryType) {
-      const match = station.batteries.some(
-        b => b.batteryType === filters.batteryType
-      );
-      if (!match) return false;
-    }
-    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
-    if (filters.distance && station.distance && station.distance !== "—") {
-      const maxDistance = parseInt(filters.distance, 10);
-
-      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
-      if (distanceMatch) {
-        const stationDistance = parseFloat(distanceMatch[1]);
-        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
-      }
-    }
-    return true;
-  });
-
-
-  console.log("Filter Address:", filterAddress);
-
+  // --- Utils cho so khớp địa chỉ ---
   // --- Chuẩn hoá & tách địa chỉ thành các mảnh theo dấu phẩy ---
   const normalizeVi = (s = "") =>
     s.normalize("NFD")
@@ -176,6 +147,35 @@ const StationFinder = () => {
   };
 
   // --- End Utils ---
+
+
+
+  //filter các trạm dựa trên khoảng cách và loại xe
+  const filteredStations = stations.filter(station => {
+    //theo địa chỉ
+    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
+      if (!matchByFilterAddress(station.address, filterAddress)) return false;
+    }
+
+    //theo battery type
+    if (filters.batteryType) {
+      const match = station.batteries.some(
+        b => b.batteryType === filters.batteryType
+      );
+      if (!match) return false;
+    }
+    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
+    if (filters.distance && station.distance && station.distance !== "—") {
+      const maxDistance = parseInt(filters.distance, 10);
+
+      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
+      if (distanceMatch) {
+        const stationDistance = parseFloat(distanceMatch[1]);
+        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
+      }
+    }
+    return true;
+  });
 
 
 
@@ -366,6 +366,16 @@ const StationFinder = () => {
 
   const handleBatteryClick = (stationId, batteryType) => {
     setSelectedBatteries(prev => {
+      //cách lấy thuộc tính của object động theo tên biến, không dùng dot notation vd: prev.stationId (sai)=>lấy thuộc tính tên stationId mà trong obj không tồn tại, 
+      // prev[stationId] (đúng) => lấy đúng thuộc tính có tên là giá trị của biến stationId vd: stationId=5 => prev[5]
+      //gia trị của SelectedBatteries lúc này đang có dạng:
+
+      // selectedBatteries = {
+      //   [stationId]: {
+      //     [batteryType]: quantity
+      //   }
+      // }
+
       const stationBats = prev[stationId] || {};
       if (stationBats[batteryType]) {
         // đang chọn -> bỏ chọn

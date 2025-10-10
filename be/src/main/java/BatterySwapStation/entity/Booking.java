@@ -1,68 +1,73 @@
 package BatterySwapStation.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 
 @Entity
 @Table(name = "Booking")
 @Getter
 @Setter
-@ToString
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Booking {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "BookingId")
-    private int bookingId;
+    private Long bookingId;
 
+    // N-1: 1 User có nhiều Booking
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "UserId", nullable = false)
-    @JsonBackReference
-    @ToString.Exclude
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "VehicleId", nullable = false)
-    @ToString.Exclude
-    private Vehicle vehicle;
-
+    // N-1: 1 Station có nhiều Booking
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "StationId", nullable = false)
-    @ToString.Exclude
     private Station station;
 
-    @Column(name = "BookingTime", nullable = false)
-    private LocalDateTime bookingTime;
+    @Column(name = "BookingDate", nullable = false)
+    private LocalDate bookingDate;
 
-    @Column(name = "ScheduledTime", nullable = false)
-    private LocalDateTime scheduledTime;
-
-    public enum BookingStatus {
-        PENDING,      // Chờ xác nhận
-        CONFIRMED,    // Đã xác nhận
-        COMPLETED,    // Đã hoàn thành
-        CANCELLED     // Đã hủy
-    }
+    @Column(name = "TimeSlot", nullable = false)
+    private LocalTime timeSlot;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "Status", nullable = false)
-    private BookingStatus status = BookingStatus.PENDING;
+    @Column(name = "BookingStatus", nullable = false, length = 20)
+    private BookingStatus bookingStatus = BookingStatus.PENDING;
 
-    @Column(name = "CompletedTime")
-    private LocalDateTime completedTime;
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookingBatteryItem> batteryItems;
 
-    @Column(name = "CancellationReason", length = 500)
-    private String cancellationReason;
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Payment payment;
 
-    @Column(name = "Notes", length = 1000)
-    private String notes;
-
-    @PrePersist
-    protected void onCreate() {
-        bookingTime = LocalDateTime.now();
+    public enum BookingStatus {
+        PENDING,
+        CONFIRMED,
+        CANCELLED,
+        COMPLETED
     }
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "VehicleId")
+    private Vehicle vehicle;
+
+
+    @Column(name = "CycleCount")
+    private Integer cycleCount; // số chu kỳ sạc xả
+
+    @Column(name = "StateOfHealth")
+    private Double stateOfHealth; // phần trăm SoH
+
+    @Column(name = "ManufactureDate")
+    private LocalDate manufactureDate;
+
+    @Column(name = "ExpiryDate")
+    private LocalDate expiryDate;
+
 }

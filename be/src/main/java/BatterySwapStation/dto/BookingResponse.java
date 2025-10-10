@@ -1,26 +1,47 @@
 package BatterySwapStation.dto;
 
+import BatterySwapStation.entity.Booking;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 
-// DTO response cho booking
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class BookingResponse {
-    private int bookingId;
+    private Long bookingId;
     private String userId;
-    private int vehicleId;
-    private String vehicleVin;
-    private int stationId;
+    private String userName;
+    private Integer stationId;
     private String stationName;
-    private LocalDateTime bookingTime;
-    private LocalDateTime scheduledTime;
-    private String status;
-    private LocalDateTime completedTime;
-    private String cancellationReason;
-    private String notes;
+    private String stationAddress;
+    private Integer vehicleId;
+    private String vehicleVin;
+    private LocalDate bookingDate;
+    private LocalTime timeSlot;
+    private String bookingStatus;
+    private List<BatteryItemResponse> batteryItems;
+    private PaymentInfo payment;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BatteryItemResponse {
+        private String batteryType;
+        private Integer quantity;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PaymentInfo {
+        private Long paymentId;
+        private String paymentMethod;
+        private Double amount;
+        private String paymentStatus;
+    }
 }

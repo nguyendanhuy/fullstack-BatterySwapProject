@@ -7,6 +7,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
+import { DriverLayout } from "@/components/DriverLayout";
 // Driver pages
 import DriverDashboard from "./pages/driver/Dashboard";
 import VehicleRegistration from "./pages/driver/VehicleRegistration";
@@ -43,15 +44,23 @@ const App = () => (<QueryClientProvider client={queryClient}>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
-            {/* Driver routes */}
-            <Route path="/driver" element={<DriverPrivateRoute><DriverDashboard /></DriverPrivateRoute>} />
-            <Route path="/driver/register-vehicle" element={<DriverPrivateRoute><VehicleRegistration /></DriverPrivateRoute>} />
-            <Route path="/driver/find-stations" element={<DriverPrivateRoute><StationFinder /></DriverPrivateRoute>} />
-            <Route path="/driver/reservation" element={<DriverPrivateRoute><Reservation /></DriverPrivateRoute>} />
-            <Route path="/driver/payment" element={<DriverPrivateRoute><Payment /></DriverPrivateRoute>} />
-            <Route path="/driver/subscriptions" element={<DriverPrivateRoute><Subscriptions /></DriverPrivateRoute>} />
-            <Route path="/driver/booking-history" element={<DriverPrivateRoute><BookingHistory /></DriverPrivateRoute>} />
-
+            {/* Driver (bảo vệ cả nhánh) */}
+            <Route
+              path="/driver"
+              element={
+                <DriverPrivateRoute>
+                  <DriverLayout />
+                </DriverPrivateRoute>
+              }
+            >
+              <Route index element={<DriverDashboard />} />
+              <Route path="register-vehicle" element={<VehicleRegistration />} />
+              <Route path="find-stations" element={<StationFinder />} />
+              <Route path="reservation" element={<Reservation />} />
+              <Route path="payment" element={<Payment />} />
+              <Route path="subscriptions" element={<Subscriptions />} />
+              <Route path="booking-history" element={<BookingHistory />} />
+            </Route>
             {/* Staff routes */}
             <Route path="/staff" element={<StaffPrivateRoute><StaffDashboard /></StaffPrivateRoute>} />
             <Route path="/staff/qr-checkin" element={<StaffPrivateRoute><QRCheckIn /></StaffPrivateRoute>} />

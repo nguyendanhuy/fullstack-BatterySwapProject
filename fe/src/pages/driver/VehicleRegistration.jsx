@@ -258,54 +258,13 @@ export default function VehicleRegistration() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float" />
-          <div
-            className="absolute top-10 right-1/4 w-72 h-72 bg-gradient-to-r from-indigo-400 to-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float"
-            style={{ animationDelay: "2s" }}
-          />
-        </div>
-
-        <div className="relative z-20 container mx-auto px-6 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <div className="relative p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                <Car className="h-10 w-10 text-white" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-ping" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold text-white mb-2">Đăng ký xe điện</h1>
-                <p className="text-white/90 text-lg">Liên kết xe VINFAST của bạn với hệ thống đổi pin</p>
-              </div>
-            </div>
-            <div className="flex space-x-2">
-              <Link to="/driver">
-                <Button
-                  variant="ghost"
-                  className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/20 px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
-                >
-                  <ArrowLeft className="h-5 w-5 mr-2" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link to="/">
-                <Button
-                  variant="ghost"
-                  className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/20 px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
-                >
-                  <Home className="h-5 w-5 mr-2" />
-                  Trang chủ
-                </Button>
-              </Link>
-            </div>
-          </div>
+      <header className="bg-white dark:bg-slate-900 border-b">
+        <div className="container mx-auto px-6 py-6">
+          <h1 className="text-3xl font-bold text-foreground">Đăng ký xe</h1>
         </div>
       </header>
-
       <div className="container mx-auto px-6 py-8 max-w-5xl">
         <div className="grid lg:grid-cols-2 gap-8 items-start lg:items-stretch">
           {/* Left: Registration Form */}

@@ -83,36 +83,6 @@ const StationFinder = () => {
   }, [userVehicles]);
 
 
-  //filter các trạm dựa trên khoảng cách và loại xe
-  const filteredStations = stations.filter(station => {
-    //theo địa chỉ
-    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
-      if (!matchByFilterAddress(station.address, filterAddress)) return false;
-    }
-
-    //theo battery type
-    if (filters.batteryType) {
-      const match = station.batteries.some(
-        b => b.batteryType === filters.batteryType
-      );
-      if (!match) return false;
-    }
-    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
-    if (filters.distance && station.distance && station.distance !== "—") {
-      const maxDistance = parseInt(filters.distance, 10);
-
-      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
-      if (distanceMatch) {
-        const stationDistance = parseFloat(distanceMatch[1]);
-        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
-      }
-    }
-    return true;
-  });
-
-
-  console.log("Filter Address:", filterAddress);
-
   // --- Chuẩn hoá & tách địa chỉ thành các mảnh theo dấu phẩy ---
   const normalizeVi = (s = "") =>
     s.normalize("NFD")
@@ -176,6 +146,38 @@ const StationFinder = () => {
   };
 
   // --- End Utils ---
+
+  //filter các trạm dựa trên khoảng cách và loại xe
+  const filteredStations = stations.filter(station => {
+    //theo địa chỉ
+    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
+      if (!matchByFilterAddress(station.address, filterAddress)) return false;
+    }
+
+    //theo battery type
+    if (filters.batteryType) {
+      const match = station.batteries.some(
+        b => b.batteryType === filters.batteryType
+      );
+      if (!match) return false;
+    }
+    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
+    if (filters.distance && station.distance && station.distance !== "—") {
+      const maxDistance = parseInt(filters.distance, 10);
+
+      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
+      if (distanceMatch) {
+        const stationDistance = parseFloat(distanceMatch[1]);
+        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
+      }
+    }
+    return true;
+  });
+
+
+  console.log("Filter Address:", filterAddress);
+
+
 
 
 
@@ -378,10 +380,15 @@ const StationFinder = () => {
   };
 
   const updateBatteryQuantity = (stationId, batteryType, delta) => {
+    // Tìm station để lấy số lượng pin available
+    const station = stations.find(s => s.stationId === stationId);
+    const batteryInfo = station?.batteries?.find(b => b.batteryType === batteryType);
+    const maxAvailable = batteryInfo?.available || 0;
+
     setSelectedBatteries(prev => {
       const stationBats = prev[stationId] || {};
       const current = stationBats[batteryType] || 0;
-      const next = Math.max(0, current + delta);
+      const next = Math.max(0, Math.min(maxAvailable, current + delta)); // Giới hạn tối đa
 
       if (next === 0) {
         const { [batteryType]: _, ...rest } = stationBats;
@@ -706,13 +713,13 @@ const StationFinder = () => {
                         <Badge
                           variant="secondary"
                           className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full font-semibold">
-                          ✅ Trạm đang hoạt động
+                          Trạm đang sẵn sàng
                         </Badge> :
                         <Badge
                           variant="secondary"
                           className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-4 py-2 rounded-full font-semibold"
                         >
-                          ❌ Trạm tạm ngưng
+                          Trạm tạm ngưng
                         </Badge>}
                     </div>
                     {/* Sửa code */}
@@ -731,7 +738,7 @@ const StationFinder = () => {
                           className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm px-4 py-1.5 rounded-full font-semibold"
                         >
                           <Battery className="h-3.5 w-3.5 mr-1.5 inline" />
-                          {station.totalBatteries} pin
+                          Đầy {station.availableCount} / {station.totalBatteries} pin
                         </Badge>
                       </div>
 
@@ -773,7 +780,7 @@ const StationFinder = () => {
                                         className={`font-semibold text-sm transition-all duration-300 ${isSelected ? "text-blue-700" : "text-gray-800"
                                           }`}
                                       >
-                                        {isSelected ? `Số lượng đặt pin: ${selectedQty}` : displayName}
+                                        {isSelected ? `${type}` : displayName}
                                       </span>
                                     </div>
 
@@ -809,12 +816,17 @@ const StationFinder = () => {
                                       >
                                         −
                                       </button>
+                                      <span className="text-sm font-medium text-gray-600">{selectedQty}</span>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           updateBatteryQuantity(station.stationId, type, 1);
                                         }}
-                                        className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
+                                        disabled={selectedQty >= battery.available}
+                                        className={`w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg ${selectedQty >= battery.available
+                                          ? 'bg-gray-400 cursor-not-allowed'
+                                          : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                          }`}
                                       >
                                         +
                                       </button>
@@ -829,7 +841,7 @@ const StationFinder = () => {
                       </div>
 
                       {/* Total Battery Progress Bar */}
-                      <div className="mt-6">
+                      {/* <div className="mt-6">
                         {(() => {
                           const totalFull = station.availableCount;
                           const totalBatteries = station.totalBatteries;
@@ -848,7 +860,7 @@ const StationFinder = () => {
                             </div>
                           );
                         })()}
-                      </div>
+                      </div> */}
                     </div>
                     {/* Action Buttons */}
                     <div className="flex gap-4" >

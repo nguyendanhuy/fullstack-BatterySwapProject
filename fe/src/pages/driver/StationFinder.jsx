@@ -83,6 +83,7 @@ const StationFinder = () => {
   }, [userVehicles]);
 
 
+  // --- Utils cho so khớp địa chỉ ---
   // --- Chuẩn hoá & tách địa chỉ thành các mảnh theo dấu phẩy ---
   const normalizeVi = (s = "") =>
     s.normalize("NFD")
@@ -147,6 +148,8 @@ const StationFinder = () => {
 
   // --- End Utils ---
 
+
+
   //filter các trạm dựa trên khoảng cách và loại xe
   const filteredStations = stations.filter(station => {
     //theo địa chỉ
@@ -173,11 +176,6 @@ const StationFinder = () => {
     }
     return true;
   });
-
-
-  console.log("Filter Address:", filterAddress);
-
-
 
 
 
@@ -368,6 +366,16 @@ const StationFinder = () => {
 
   const handleBatteryClick = (stationId, batteryType) => {
     setSelectedBatteries(prev => {
+      //cách lấy thuộc tính của object động theo tên biến, không dùng dot notation vd: prev.stationId (sai)=>lấy thuộc tính tên stationId mà trong obj không tồn tại, 
+      // prev[stationId] (đúng) => lấy đúng thuộc tính có tên là giá trị của biến stationId vd: stationId=5 => prev[5]
+      //gia trị của SelectedBatteries lúc này đang có dạng:
+
+      // selectedBatteries = {
+      //   [stationId]: {
+      //     [batteryType]: quantity
+      //   }
+      // }
+
       const stationBats = prev[stationId] || {};
       if (stationBats[batteryType]) {
         // đang chọn -> bỏ chọn

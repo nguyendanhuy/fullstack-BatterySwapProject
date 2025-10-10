@@ -5,19 +5,23 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "Dock")
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@ToString(exclude = {"station", "dockSlots"})
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Dock {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "DockId")
+    @EqualsAndHashCode.Include
     private Integer dockId;
 
     @Column(name = "DockName", nullable = false, length = 50)
@@ -35,5 +39,5 @@ public class Dock {
     // 1 Dock có nhiều DockSlot
     @OneToMany(mappedBy = "dock", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference
-    private List<DockSlot> dockSlots = new ArrayList<>();
+    private Set<DockSlot> dockSlots = new HashSet<>();
 }

@@ -388,10 +388,15 @@ const StationFinder = () => {
   };
 
   const updateBatteryQuantity = (stationId, batteryType, delta) => {
+    // Tìm station để lấy số lượng pin available
+    const station = stations.find(s => s.stationId === stationId);
+    const batteryInfo = station?.batteries?.find(b => b.batteryType === batteryType);
+    const maxAvailable = batteryInfo?.available || 0;
+
     setSelectedBatteries(prev => {
       const stationBats = prev[stationId] || {};
       const current = stationBats[batteryType] || 0;
-      const next = Math.max(0, current + delta);
+      const next = Math.max(0, Math.min(maxAvailable, current + delta)); // Giới hạn tối đa
 
       if (next === 0) {
         const { [batteryType]: _, ...rest } = stationBats;
@@ -421,7 +426,7 @@ const StationFinder = () => {
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b">
         <div className="container mx-auto px-6 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Đăng ký xe</h1>
+          <h1 className="text-3xl font-bold text-foreground">Tìm trạm</h1>
         </div>
       </header>
       {/* Main Content with Better Spacing */}
@@ -679,13 +684,13 @@ const StationFinder = () => {
                           <Badge
                             variant="secondary"
                             className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full font-semibold">
-                            ✅ Trạm đang hoạt động
+                            Trạm đang sẵn sàng
                           </Badge> :
                           <Badge
                             variant="secondary"
                             className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-4 py-2 rounded-full font-semibold"
                           >
-                            ❌ Trạm tạm ngưng
+                            Trạm tạm ngưng
                           </Badge>}
                       </div>
                       {/* Sửa code */}
@@ -704,7 +709,7 @@ const StationFinder = () => {
                             className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm px-4 py-1.5 rounded-full font-semibold"
                           >
                             <Battery className="h-3.5 w-3.5 mr-1.5 inline" />
-                            {station.totalBatteries} pin
+                            Đầy {station.availableCount} / {station.totalBatteries} pin
                           </Badge>
                         </div>
 
@@ -746,7 +751,7 @@ const StationFinder = () => {
                                           className={`font-semibold text-sm transition-all duration-300 ${isSelected ? "text-blue-700" : "text-gray-800"
                                             }`}
                                         >
-                                          {isSelected ? `Số lượng đặt pin: ${selectedQty}` : displayName}
+                                          {isSelected ? `${type}` : displayName}
                                         </span>
                                       </div>
 
@@ -782,12 +787,17 @@ const StationFinder = () => {
                                         >
                                           −
                                         </button>
+                                        <span className="text-sm font-medium text-gray-600">{selectedQty}</span>
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             updateBatteryQuantity(station.stationId, type, 1);
                                           }}
-                                          className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
+                                          disabled={selectedQty >= battery.available}
+                                          className={`w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg ${selectedQty >= battery.available
+                                            ? 'bg-gray-400 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                            }`}
                                         >
                                           +
                                         </button>
@@ -802,26 +812,26 @@ const StationFinder = () => {
                         </div>
 
                         {/* Total Battery Progress Bar */}
-                        <div className="mt-6">
-                          {(() => {
-                            const totalFull = station.availableCount;
-                            const totalBatteries = station.totalBatteries;
-                            const percentage = totalBatteries > 0 ? (totalFull / totalBatteries) * 100 : 0;
+                        {/* <div className="mt-6">
+                        {(() => {
+                          const totalFull = station.availableCount;
+                          const totalBatteries = station.totalBatteries;
+                          const percentage = totalBatteries > 0 ? (totalFull / totalBatteries) * 100 : 0;
 
-                            return (
-                              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-semibold text-gray-700">Tình trạng pin sẵn sàng</span>
-                                  <span className="text-sm font-bold text-green-700">{totalFull}/{totalBatteries} pin đầy</span>
-                                </div>
-                                <Progress
-                                  value={percentage}
-                                  className="h-3 bg-green-100"
-                                />
+                          return (
+                            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-semibold text-gray-700">Tình trạng pin sẵn sàng</span>
+                                <span className="text-sm font-bold text-green-700">{totalFull}/{totalBatteries} pin đầy</span>
                               </div>
-                            );
-                          })()}
-                        </div>
+                              <Progress
+                                value={percentage}
+                                className="h-3 bg-green-100"
+                              />
+                            </div>
+                          );
+                        })()}
+                      </div> */}
                       </div>
                       {/* Action Buttons */}
                       <div className="flex gap-4" >

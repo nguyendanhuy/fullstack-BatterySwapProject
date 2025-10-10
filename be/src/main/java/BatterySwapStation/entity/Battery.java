@@ -3,18 +3,23 @@ package BatterySwapStation.entity;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "Battery")
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@ToString(exclude = {"dockSlot"})
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Battery {
+
     // ID định dạng BAT001, BAT002
     @Id
     @Column(name = "BatteryId", length = 10)
+    @EqualsAndHashCode.Include
     private String batteryId;
 
     @Enumerated(EnumType.STRING)
@@ -23,7 +28,7 @@ public class Battery {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "BatteryType", nullable = false, length = 50)
-    private BatteryType batteryType ;
+    private BatteryType batteryType;
 
     @Column(name = "IsActive", nullable = false)
     private boolean isActive = true;
@@ -45,4 +50,17 @@ public class Battery {
         CHARGING,
         DAMAGED
     }
+
+    @Column(name = "CycleCount")
+    private Integer cycleCount; // số chu kỳ sạc xả
+
+    @Column(name = "StateOfHealth")
+    private Double stateOfHealth; // phần trăm SoH
+
+    @Column(name = "ManufactureDate")
+    private LocalDate manufactureDate;
+
+    @Column(name = "ExpiryDate")
+    private LocalDate expiryDate;
+
 }

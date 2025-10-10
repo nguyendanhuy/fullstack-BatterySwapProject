@@ -5,19 +5,23 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "Station")
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@ToString(exclude = {"docks"})
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Station {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "StationId")
+    @EqualsAndHashCode.Include
     private Integer stationId;
 
     @Column(name = "StationName", nullable = false, length = 255)
@@ -38,5 +42,10 @@ public class Station {
     // 1 Station có nhiều Dock
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference
-    private List<Dock> docks = new ArrayList<>();
+    private Set<Dock> docks = new HashSet<>();
+
+    // 1 Station có nhiều Booking
+    @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<Booking> bookings = new HashSet<>();
+
 }

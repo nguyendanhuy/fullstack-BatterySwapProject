@@ -8,42 +8,44 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface BookingRepository extends JpaRepository<Booking, Integer> {
+public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     // Tìm tất cả booking của user
     List<Booking> findByUser(User user);
 
     // Tìm booking của user theo status
-    List<Booking> findByUserAndStatus(User user, Booking.BookingStatus status);
+    List<Booking> findByUserAndBookingStatus(User user, Booking.BookingStatus status);
 
     // Tìm booking theo ID và User (để đảm bảo user chỉ thao tác với booking của mình)
-    Optional<Booking> findByBookingIdAndUser(int bookingId, User user);
+    Optional<Booking> findByBookingIdAndUser(Long bookingId, User user);
 
     // Kiểm tra xem user đã có booking PENDING hoặc CONFIRMED chưa
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.user = :user " +
-            "AND (b.status = 'PENDING' OR b.status = 'CONFIRMED') " +
-            "AND b.scheduledTime > :currentTime")
-    boolean existsActiveBookingForUser(@Param("user") User user,
-                                       @Param("currentTime") LocalDateTime currentTime);
+            "AND (b.bookingStatus = 'PENDING' OR b.bookingStatus = 'CONFIRMED') " +
+            "AND b.bookingDate >= :currentDate")
+    boolean existsActiveBookingForUser(@Param("user") User user, @Param("currentDate") LocalDate currentDate);
 
-    // Tìm các booking của station trong khoảng thời gian
-    @Query("SELECT b FROM Booking b WHERE b.station = :station " +
-            "AND b.scheduledTime BETWEEN :startTime AND :endTime " +
-            "AND (b.status = 'PENDING' OR b.status = 'CONFIRMED')")
-    List<Booking> findStationBookingsInTimeRange(@Param("station") Station station,
-                                                 @Param("startTime") LocalDateTime startTime,
-                                                 @Param("endTime") LocalDateTime endTime);
+    // Tìm booking theo station và ngày
+    List<Booking> findByStationAndBookingDate(Station station, LocalDate bookingDate);
 
-    // Tìm booking sắp tới của user
-    @Query("SELECT b FROM Booking b WHERE b.user = :user " +
-            "AND b.scheduledTime > :currentTime " +
-            "AND (b.status = 'PENDING' OR b.status = 'CONFIRMED') " +
-            "ORDER BY b.scheduledTime ASC")
-    List<Booking> findUpcomingBookingsByUser(@Param("user") User user,
-                                             @Param("currentTime") LocalDateTime currentTime);
+    // Kiểm tra time slot đã được đặt chưa
+    @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.station = :station " +
+            "AND b.bookingDate = :date AND b.timeSlot = :timeSlot " +
+            "AND (b.bookingStatus = 'PENDING' OR b.bookingStatus = 'CONFIRMED')")
+    boolean existsBookingAtTimeSlot(@Param("station") Station station,
+                                   @Param("date") LocalDate date,
+                                   @Param("timeSlot") LocalTime timeSlot);
+
+    // Tìm tất cả booking của station
+    List<Booking> findByStation(Station station);
+
+    // Tìm booking theo status
+    List<Booking> findByBookingStatus(Booking.BookingStatus status);
 }
+

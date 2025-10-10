@@ -7,14 +7,18 @@ import lombok.*;
 
 @Entity
 @Table(name = "DockSlot")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString(exclude = {"dock", "battery"})
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class DockSlot {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "DockSlotId")
+    @EqualsAndHashCode.Include
     private Integer dockSlotId;
 
     // Số thứ tự trong dock (ví dụ: slot số 1, slot số 2)

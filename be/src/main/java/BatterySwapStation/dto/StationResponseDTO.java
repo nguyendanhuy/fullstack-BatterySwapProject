@@ -1,26 +1,44 @@
 package BatterySwapStation.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.math.BigDecimal;
-import java.util.Map;
+import java.util.List;
 
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class StationResponseDTO {
-    private int stationId;
+
+    private Integer stationId;
     private String stationName;
     private String address;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private boolean isActive;
 
-    // Thống kê pin theo trạng thái (FULL, CHARGING, EMPTY, DAMAGED)
-    private Map<String, Long> batterySummary;
+    // Tổng số pin (AVAILABLE + CHARGING)
+    private int totalBatteries;
 
-    // Thống kê pin theo loại (LITHIUM_ION, LEAD_ACID, ...)
-    private Map<String, Long> batteryTypes;
+    private int availableCount;
+    private int chargingCount;
+
+    // Chi tiết từng loại pin
+    private List<BatteryTypeRow> batteries;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class BatteryTypeRow {
+        private String batteryType; // enum name
+        private int available;
+        private int charging;
+
+        public int getTotal() {
+            return available + charging;
+        }
+    }
 }

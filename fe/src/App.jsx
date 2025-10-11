@@ -7,6 +7,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
+import VerifyEmail from "./pages/VerifyEmail";
 import { DriverLayout } from "@/components/DriverLayout";
 // Driver pages
 import DriverDashboard from "./pages/driver/Dashboard";
@@ -44,6 +45,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             {/* Driver (bảo vệ cả nhánh) */}
             <Route
               path="/driver"

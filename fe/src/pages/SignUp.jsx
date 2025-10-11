@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Battery, Eye, EyeOff, User, Mail, Phone, MapPin } from "lucide-react";
+import { Battery, Eye, EyeOff, User, Mail, Phone, MapPin, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { registerAPI } from "../services/axios.services";
@@ -13,6 +13,7 @@ import { MouseSparkles } from "@/components/MouseSparkles";
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -86,25 +87,67 @@ const SignUp = () => {
       });
       return;
     }
-    const res = await registerAPI(
-      formData.fullName,
-      formData.email,
-      formData.phone,
-      formData.address,
-      formData.password,
-      formData.confirmPassword);
-    if (!res.error) {
-      toast({
-        title: "Đăng ký thành công!",
-        description: `User id của bạn là ${res.userId}.`,
-      });
-      navigate("/login");
-    } else {
+
+    setIsLoading(true);
+    try {
+      const res = await registerAPI(
+        formData.fullName,
+        formData.email,
+        formData.phone,
+        formData.address,
+        formData.password,
+        formData.confirmPassword);
+
+      console.log("Register response:", res);
+      if (!res.error) {
+        toast({
+          title: "Đăng ký thành công!",
+          description: (
+            <div className="space-y-3">
+              <p>Vui lòng kiểm tra email, hộp thư spam để xác thực tài khoản</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white text-green-600 hover:bg-gray-100 border-0"
+                  onClick={() => {
+                    window.open('https://mail.google.com', '_blank');
+                  }}
+                >
+                  📧 Mở hộp thư
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white text-orange-600 hover:bg-gray-100 border-0"
+                  onClick={() => {
+                    window.open('https://mail.google.com/mail/u/0/#spam', '_blank');
+                  }}
+                >
+                  🗑️ Mở Spam
+                </Button>
+              </div>
+            </div>
+          ),
+          className: 'bg-green-500 text-white',
+        });
+        navigate("/login");
+      } else {
+        toast({
+          title: "Đăng ký thất bại!",
+          description: res?.messages?.business || "Có lỗi xảy ra, vui lòng thử lại",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Register error:", error);
       toast({
         title: "Đăng ký thất bại!",
-        description: res.messages.business,
+        description: "Có lỗi xảy ra, vui lòng thử lại",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -204,8 +247,19 @@ const SignUp = () => {
               </Label>
             </div>
 
-            <Button type="submit" className="w-full bg-electric-blue hover:bg-electric-blue-dark">
-              Đăng ký
+            <Button
+              type="submit"
+              className="w-full bg-electric-blue hover:bg-electric-blue-dark"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang đăng ký...
+                </>
+              ) : (
+                "Đăng ký"
+              )}
             </Button>
           </form>
 

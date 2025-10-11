@@ -495,7 +495,7 @@ const StationFinder = () => {
                   <label className="text-sm font-semibold mb-3 block text-gray-700">Khoảng cách</label>
                   <Select onValueChange={(value) => setFilters({ ...filters, distance: value })}>
                     <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-purple-500 rounded-xl">
-                      <SelectValue placeholder="Chọn khoảng cách" />
+                      <SelectValue placeholder="50 km" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="10000000">🥀 Tất cả</SelectItem>
@@ -835,8 +835,12 @@ const StationFinder = () => {
                       </div>
                       {/* Action Buttons */}
                       <div className="flex gap-4" >
-                        <Link to="/driver/reservation" className="flex-1">
-                          <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                        <Link
+                          to="/driver/reservation"
+                          className={`flex-1 ${!station.active || !selectedBatteries[station.stationId] || Object.keys(selectedBatteries[station.stationId]).length === 0 ? "pointer-events-none opacity-50" : ""}`}
+                          state={{ station: station, selectedBatteries: selectedBatteries[station.stationId] || {} }}
+                        >
+                          <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"                          >
                             <Battery className="h-5 w-5 mr-3" />
                             Đặt lịch ngay
                           </Button>

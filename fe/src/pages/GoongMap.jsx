@@ -24,8 +24,7 @@ function drawCircle(lngLat, radiusInMeters) {
 
 export default function SimpleGoongMap({
     heightClass = "h-[60vh]",
-    defaultCenter = [106.660172, 10.762622], // [lng, lat] – Hà Nội
-    defaultZoom = 12,
+    defaultCenter = [106.660172, 10.762622],
     station,            // mảng trạm như JSON bạn gửi
     stations: s2,       // (tuỳ chọn) hỗ trợ tên prop khác nếu bạn đang dùng "stations"
     onLocationSelect,   // Callback khi chọn vị trí (trả về {lng, lat, address})
@@ -42,6 +41,9 @@ export default function SimpleGoongMap({
     const [mapStyle, setMapStyle] = useState(null); // Style đã xóa sprite/glyphs
     const [selectedLocation, setSelectedLocation] = useState(null); // Vị trí đã chọn
     const markersRef = useRef([]); // Lưu markers để dọn dẹp sau
+    const [initialCenter, setInitialCenter] = useState(defaultCenter);
+    const defaultZoom = 13;
+    const userMarkerRef = useRef(null);
 
     // Lấy data trạm & lọc toạ độ hợp lệ (bỏ lọc active để tránh miss dữ liệu)
     const rawStations = useMemo(() => {
@@ -175,6 +177,21 @@ export default function SimpleGoongMap({
             });
     }, []);
 
+    useEffect(() => {
+        if (!navigator?.geolocation) return;
+        const success = (pos) => {
+            const { latitude, longitude } = pos.coords;
+            const nextCenter = [longitude, latitude];
+            setInitialCenter(nextCenter);
+            if (mapRef.current) {
+                mapRef.current.flyTo({ center: nextCenter, zoom: 14 });
+                addOrUpdateCircle(nextCenter, 500);
+                if (userMarkerRef.current) userMarkerRef.current.setLngLat(nextCenter);
+            }
+        };
+        navigator.geolocation.getCurrentPosition(success, () => { }, { enableHighAccuracy: true, timeout: 5000 });
+    }, []);
+
     // Khởi tạo map
     useEffect(() => {
         if (mapRef.current || !mapContainer.current || !mapStyle) return;
@@ -182,7 +199,7 @@ export default function SimpleGoongMap({
         const map = new maplibregl.Map({
             container: mapContainer.current,
             style: mapStyle, // Dùng style đã xóa sprite/glyphs
-            center: defaultCenter,
+            center: initialCenter,
             zoom: defaultZoom,
             attributionControl: false,
         });
@@ -232,8 +249,9 @@ export default function SimpleGoongMap({
         }
 
         map.on("load", () => {
-            new maplibregl.Marker().setLngLat(defaultCenter).addTo(map);
-            addOrUpdateCircle(defaultCenter, 500);
+            if (userMarkerRef.current) userMarkerRef.current.remove();
+            userMarkerRef.current = new maplibregl.Marker().setLngLat(initialCenter).addTo(map);
+            addOrUpdateCircle(initialCenter, 500);
             addOrUpdateStations();  // add trạm
             setTimeout(() => map.resize(), 50);
         });
@@ -245,10 +263,19 @@ export default function SimpleGoongMap({
         return () => {
             roRef.current?.disconnect();
             if (selectedMarkerRef.current) selectedMarkerRef.current.remove();
+            if (userMarkerRef.current) userMarkerRef.current.remove();
             map.remove();
             mapRef.current = null;
         };
-    }, [mapStyle, selectMode]); // Re-init khi mapStyle load xong
+    }, [mapStyle, selectMode, initialCenter]); // Re-init khi mapStyle load xong
+
+    useEffect(() => {
+        if (!mapRef.current) return;
+        if (!initialCenter) return;
+        mapRef.current.flyTo({ center: initialCenter, zoom: 14 });
+        addOrUpdateCircle(initialCenter, 500);
+        if (userMarkerRef.current) userMarkerRef.current.setLngLat(initialCenter);
+    }, [initialCenter]);
 
     // Dữ liệu trạm đổi → cập nhật source (không đổi style nên không cần re-add liên tục)
     useEffect(() => {

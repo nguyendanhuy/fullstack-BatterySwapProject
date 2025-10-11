@@ -837,10 +837,10 @@ const StationFinder = () => {
                       <div className="flex gap-4" >
                         <Link
                           to="/driver/reservation"
-                          className="flex-1"
+                          className={`flex-1 ${!station.active || !selectedBatteries[station.stationId] || Object.keys(selectedBatteries[station.stationId]).length === 0 ? "pointer-events-none opacity-50" : ""}`}
                           state={{ station: station, selectedBatteries: selectedBatteries[station.stationId] || {} }}
                         >
-                          <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                          <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"                          >
                             <Battery className="h-5 w-5 mr-3" />
                             Đặt lịch ngay
                           </Button>

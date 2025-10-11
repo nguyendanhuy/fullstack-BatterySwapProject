@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -8,55 +8,40 @@ import { ArrowLeft, Calendar as CalendarIcon, Clock, MapPin, Battery, Zap, Star 
 import { Link, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import { se, vi } from "date-fns/locale";
+import { Steps } from "antd";
+import { UserOutlined, CalendarOutlined, ClockCircleOutlined, CreditCardOutlined, LoadingOutlined } from "@ant-design/icons";
 const Reservation = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedBatteryType, setSelectedBatteryType] = useState("");
   const { station, selectedBatteries } = useLocation().state || {};
-  const [selectedStation] = useState("1"); // Default selected station
   const timeSlots = [
     "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
     "11:00", "11:30", "14:00", "14:30", "15:00", "15:30",
     "16:00", "16:30", "17:00", "17:30", "18:00", "18:30"
   ];
-  const stations = [
-    {
-      id: "1",
-      name: "Trạm Quận 1",
-      address: "123 Nguyễn Huệ",
-      available: 8,
-      rating: 4.9,
-      batteryTypes: {
-        "Lithium-ion": 5,
-        "Pin LFP": 3,
-        "Ắc quy chì": 0
-      }
-    },
-    {
-      id: "2",
-      name: "Trạm Quận 3",
-      address: "456 Lê Văn Sỹ",
-      available: 5,
-      rating: 4.7,
-      batteryTypes: {
-        "Lithium-ion": 3,
-        "Pin LFP": 2,
-        "Ắc quy chì": 0
-      }
-    },
-    {
-      id: "3",
-      name: "Trạm Bình Thạnh",
-      address: "789 Xô Viết Nghệ Tĩnh",
-      available: 12,
-      rating: 4.8,
-      batteryTypes: {
-        "Lithium-ion": 8,
-        "Pin LFP": 4,
-        "Ắc quy chì": 0
-      }
-    }
-  ];
+  //Ui cho phần proress bar
+  const isStationReady = !!station && Object.keys(selectedBatteries || {}).length > 0;
+  const isDateReady = !!selectedDate;
+  const isTimeReady = !!selectedTime;
+  const currentStep = !isStationReady ? 0 : !isDateReady ? 1 : !isTimeReady ? 2 : 3;
+
+  const stepItems = [
+    { title: "Chọn trạm & pin", icon: <UserOutlined /> },
+    { title: "Chọn ngày", icon: <CalendarOutlined /> },
+    { title: "Chọn khung giờ", icon: <ClockCircleOutlined /> },
+    { title: "Thanh toán", icon: <CreditCardOutlined /> },
+  ]
+  const itemsWithStatus = stepItems.map((s, idx) => ({
+    ...s,
+    status: idx < currentStep ? "finish" : idx === currentStep ? "process" : "wait",
+    icon: idx === currentStep && <LoadingOutlined />,
+  }));
+
+  useEffect(() => {
+    // Reset selected time if date changes
+    setSelectedTime("");
+  }, [selectedDate]);
   //Hàm check xem thời gian chọn có hợp lệ hay không
   const isSlotDisabled = (time) => {
     if (!selectedDate) return true;
@@ -88,6 +73,15 @@ const Reservation = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Booking Form */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Progress Bar */}
+            <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm animate-fade-in">
+              <div className="h-2 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+              <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 mb-6">
+                <div className="px-6 py-4">
+                  <Steps current={currentStep} items={itemsWithStatus} />
+                </div>
+              </div>
+            </Card>
             {/* Station Info */}
             <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm animate-fade-in">
               <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
@@ -105,7 +99,7 @@ const Reservation = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-gray-800 mb-2">
-                          {station.name}
+                          {station.stationName}
                         </h3>
                         <div className="flex items-center space-x-2 text-gray-600 mb-3">
                           <MapPin className="h-4 w-4" />
@@ -123,7 +117,7 @@ const Reservation = () => {
                     </div>
                     {/* Phần pin đã chọn */}
                     {Object.entries(selectedBatteries || {}).map(([type, qty]) => (
-                      <div className="pt-4 border-t border-blue-200">
+                      <div key={type} className="pt-4 border-t border-blue-200">
                         <div className="p-4 bg-gradient-to-br from-white to-blue-50 rounded-lg border border-blue-100 shadow-sm">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
@@ -166,10 +160,14 @@ const Reservation = () => {
                     className="rounded-xl border shadow-sm bg-white"
                     locale={vi}
                     disabled={(date) => {
+                      // chuẩn hóa về đầu ngày để so sánh theo NGÀY chứ không phải theo giờ
+                      const d = new Date(date);
+                      d.setHours(0, 0, 0, 0);
                       const today = new Date();
+                      today.setHours(0, 0, 0, 0);
                       const maxDate = new Date();
                       maxDate.setDate(today.getDate() + 2); // Giới hạn 2 ngày tới
-                      return date < today || date > maxDate; // Disable ngày nhỏ hơn hôm nay hoặc lớn hơn 2 ngày tới
+                      return d < today || d > maxDate; // Disable ngày nhỏ hơn hôm nay hoặc lớn hơn 2 ngày tới
                     }}
                   />
                 </div>
@@ -226,10 +224,10 @@ const Reservation = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {selectedStation && (<div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-xl">
+                {station && (<div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-xl">
                   <MapPin className="h-6 w-6 text-blue-600 mt-1" />
                   <div>
-                    <p className="font-semibold text-gray-800">{station.name}</p>
+                    <p className="font-semibold text-gray-800">{station.stationName}</p>
                     <p className="text-sm text-gray-600">{station.address}</p>
                     <div className="flex items-center mt-2">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -255,18 +253,23 @@ const Reservation = () => {
 
                 <div className="border-t border-gray-200 pt-6">
                   <div className="flex justify-between mb-3">
-                    <span className="text-gray-700">Phí đổi pin x10 :</span>
-                    <span className="font-semibold text-gray-800">150,000 VNĐ</span>
+                    <span className="text-gray-700">Phí đổi pin :</span>
+                    <span className="font-semibold text-gray-800">25.000 VNĐ</span>
+                  </div>
+                  <div className="flex justify-between mb-3">
+                    <span className="text-gray-700">Tổng số pin:</span>
+                    <span className="font-semibold text-gray-800">x{Object.values(selectedBatteries).reduce((sum, val) => sum + val, 0)}</span>
                   </div>
                   <div className="flex justify-between text-xl font-bold">
                     <span className="text-gray-800">Tổng cộng:</span>
-                    <span className="text-blue-600">150,000 VNĐ</span>
+                    <span className="text-blue-600">{(Object.values(selectedBatteries).reduce((sum, val) => sum + val, 0) * 25000).toLocaleString("vi-VN")}{" "} VNĐ</span>
                   </div>
                 </div>
 
                 <div className="space-y-3 pt-6">
-                  <Link to="/driver/payment" className="block">
-                    <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg" disabled={!selectedStation || !selectedDate || !selectedTime}>
+                  <Link to="/driver/payment" className={`block ${!station || !selectedDate || !selectedTime ? "pointer-events-none opacity-50" : ""}`}>
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
+                    >
                       <Zap className="h-5 w-5 mr-2" />
                       Tiến hành thanh toán
                     </Button>
@@ -280,6 +283,6 @@ const Reservation = () => {
           </div>
         </div>
       </div>
-    </div>);
+    </div >);
 };
 export default Reservation;

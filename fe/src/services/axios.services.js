@@ -44,6 +44,12 @@ const getAllStations = () => {
 const getStationNearbyLocation = (lat, lng, radiusKm = 50) => {
     return axios.get(`/stations/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
 }
+
+
+const verifyEmailAPI = (token) => {
+    return axios.get(`/auth/verify-email?token=${token}`);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -53,5 +59,6 @@ export {
     viewUserVehicles,
     deactivateVehicleByVin,
     getAllStations,
-    getStationNearbyLocation
+    getStationNearbyLocation,
+    verifyEmailAPI
 };

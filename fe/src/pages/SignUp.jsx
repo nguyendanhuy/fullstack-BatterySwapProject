@@ -5,14 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Battery, Eye, EyeOff, User, Mail, Phone, MapPin } from "lucide-react";
+import { Battery, Eye, EyeOff, User, Mail, Phone, MapPin, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { registerAPI } from "../services/axios.services";
 import { MouseSparkles } from "@/components/MouseSparkles";
+import authBackground from "@/assets/auth-background.jpg";
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -86,32 +88,79 @@ const SignUp = () => {
       });
       return;
     }
-    const res = await registerAPI(
-      formData.fullName,
-      formData.email,
-      formData.phone,
-      formData.address,
-      formData.password,
-      formData.confirmPassword);
-    if (!res.error) {
-      toast({
-        title: "Đăng ký thành công!",
-        description: `User id của bạn là ${res.userId}.`,
-      });
-      navigate("/login");
-    } else {
+
+    setIsLoading(true);
+    try {
+      const res = await registerAPI(
+        formData.fullName,
+        formData.email,
+        formData.phone,
+        formData.address,
+        formData.password,
+        formData.confirmPassword);
+
+      console.log("Register response:", res);
+      if (!res.error) {
+        toast({
+          title: "Đăng ký thành công!",
+          description: (
+            <div className="space-y-3">
+              <p>Vui lòng kiểm tra email, hộp thư spam để xác thực tài khoản</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white text-green-600 hover:bg-gray-100 border-0"
+                  onClick={() => {
+                    window.open('https://mail.google.com', '_blank');
+                  }}
+                >
+                  📧 Mở hộp thư
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white text-orange-600 hover:bg-gray-100 border-0"
+                  onClick={() => {
+                    window.open('https://mail.google.com/mail/u/0/#spam', '_blank');
+                  }}
+                >
+                  🗑️ Mở Spam
+                </Button>
+              </div>
+            </div>
+          ),
+          className: 'bg-green-500 text-white',
+        });
+        navigate("/login");
+      } else {
+        toast({
+          title: "Đăng ký thất bại!",
+          description: res?.messages?.business || "Có lỗi xảy ra, vui lòng thử lại",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Register error:", error);
       toast({
         title: "Đăng ký thất bại!",
-        description: res.messages.business,
+        description: "Có lỗi xảy ra, vui lòng thử lại",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${authBackground})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-cyan-900/80 backdrop-blur-sm" />
       <MouseSparkles />
-      <Card className="w-full max-w-lg bg-white/95 backdrop-blur border-0">
+      <Card className="relative w-full max-w-lg bg-white/95 backdrop-blur-md border-0 shadow-2xl">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <Battery className="h-8 w-8 text-electric-blue mr-2" />
@@ -204,8 +253,19 @@ const SignUp = () => {
               </Label>
             </div>
 
-            <Button type="submit" className="w-full bg-electric-blue hover:bg-electric-blue-dark">
-              Đăng ký
+            <Button
+              type="submit"
+              className="w-full bg-electric-blue hover:bg-electric-blue-dark"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang đăng ký...
+                </>
+              ) : (
+                "Đăng ký"
+              )}
             </Button>
           </form>
 

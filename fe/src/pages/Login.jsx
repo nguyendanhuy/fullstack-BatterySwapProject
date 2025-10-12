@@ -10,6 +10,7 @@ import { useContext } from "react";
 import { SystemContext } from "../contexts/system.context";
 import { loginAPI, getInfoByToken } from "../services/axios.services";
 import { MouseSparkles } from "@/components/MouseSparkles";
+import authBackground from "@/assets/auth-background.jpg";
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -102,9 +103,14 @@ const Login = () => {
     }
   };
   return (
-    <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${authBackground})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 via-blue-800/70 to-cyan-900/80 backdrop-blur-sm" />
       <MouseSparkles />
-      <Card className="w-full max-w-md bg-white/95 backdrop-blur border-0">
+      <Card className="relative w-full max-w-md bg-white/95 backdrop-blur-md border-0 shadow-2xl">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <Lock className="h-8 w-8 text-electric-blue mr-2" />

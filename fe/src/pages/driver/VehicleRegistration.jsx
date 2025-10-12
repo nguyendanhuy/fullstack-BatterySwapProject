@@ -348,19 +348,27 @@ export default function VehicleRegistration() {
                   </div>
                 )}
 
+                {registeredVehicles.length >= 3 && (
+                  <div className="text-sm font-semibold text-orange-600 flex items-center gap-2 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                    🚫 Bạn đã đạt giới hạn tối đa 3 xe. Vui lòng hủy đăng ký xe cũ để thêm xe mới.
+                  </div>
+                )}
+
                 <div className="flex gap-4 pt-6">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
-                        disabled={!canRegister}
+                        disabled={!canRegister || registeredVehicles.length >= 3}
                         title={
-                          !canRegister
-                            ? "Vui lòng nhập VIN hợp lệ và chờ hệ thống xác nhận xe có thể đăng ký"
-                            : "Đăng ký xe vào hệ thống"
+                          registeredVehicles.length >= 3
+                            ? "Bạn đã đạt giới hạn tối đa 3 xe. Vui lòng hủy đăng ký xe cũ để thêm xe mới."
+                            : !canRegister
+                              ? "Vui lòng nhập VIN hợp lệ và chờ hệ thống xác nhận xe có thể đăng ký"
+                              : "Đăng ký xe vào hệ thống"
                         }
                         className="flex-1 w-full rounded-xl py-4 text-lg font-semibold shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        Đăng ký xe
+                        {registeredVehicles.length >= 3 ? "Đã đạt giới hạn (3/3)" : "Đăng ký xe"}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -443,11 +451,16 @@ export default function VehicleRegistration() {
             <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm animate-scale-in flex flex-col min-h-0 lg:h-[50vh]">
               <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-500" />
               <CardHeader className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm">
-                <CardTitle className="flex items-center text-gray-800">
-                  <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg mr-3">
-                    <CheckCircle className="h-5 w-5 text-white" />
+                <CardTitle className="flex items-center justify-between text-gray-800">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg mr-3">
+                      <CheckCircle className="h-5 w-5 text-white" />
+                    </div>
+                    Xe đã đăng ký
                   </div>
-                  Xe đã đăng ký
+                  <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                    {registeredVehicles.length}/3
+                  </span>
                 </CardTitle>
               </CardHeader>
 
@@ -529,6 +542,7 @@ export default function VehicleRegistration() {
                       <Car className="h-8 w-8 text-gray-400" />
                       <p className="text-sm font-medium text-gray-600">Bạn chưa đăng ký xe nào</p>
                       <p className="text-xs text-gray-400">Hãy nhập VIN và bấm "Đăng ký xe" để bắt đầu.</p>
+                      <p className="text-xs text-blue-600 font-medium">Giới hạn: Tối đa 3 xe</p>
                     </div>
                   )}
                 </div>

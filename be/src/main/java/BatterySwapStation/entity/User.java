@@ -45,8 +45,9 @@ public class User implements UserDetails {
     private boolean isActive;
 
     @CreationTimestamp
-    @Column(name = "CreateAt", nullable = false)
+    @Column(name = "CreateAt", nullable = false, updatable = false)
     private LocalDateTime createAt;
+
 
     @UpdateTimestamp
     @Column(name = "UpdateAt", nullable = false)
@@ -81,6 +82,9 @@ public class User implements UserDetails {
     // 1 User có nhiều Booking
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Booking> bookings = new ArrayList<>();
+
+    @Column(name = "IsVerified", nullable = false, columnDefinition = "boolean default false")
+    private boolean isVerified = false;
 
 
     @Override

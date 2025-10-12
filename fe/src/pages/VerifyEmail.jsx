@@ -15,12 +15,9 @@ const VerifyEmail = () => {
     const token = searchParams.get('token');
 
     useEffect(() => {
-        console.log("Token from URL:", token);
-
         if (token) {
             handleVerifyEmail(token);
         } else {
-            console.log("No token provided in URL");
             setVerificationStatus('error');
             toast({
                 title: "Thiếu token",

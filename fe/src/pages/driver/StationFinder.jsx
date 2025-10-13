@@ -366,24 +366,60 @@ const StationFinder = () => {
 
   const handleBatteryClick = (stationId, batteryType) => {
     setSelectedBatteries(prev => {
+
       //cách lấy thuộc tính của object động theo tên biến, không dùng dot notation vd: prev.stationId (sai)=>lấy thuộc tính tên stationId mà trong obj không tồn tại, 
       // prev[stationId] (đúng) => lấy đúng thuộc tính có tên là giá trị của biến stationId vd: stationId=5 => prev[5]
-      //gia trị của SelectedBatteries lúc này đang có dạng:
+      const stationData = prev[stationId] || {};
+      const batteries = stationData.batteries || {};
 
-      // selectedBatteries = {
-      //   [stationId]: {
-      //     [batteryType]: quantity
-      //   }
-      // }
+      // Tìm thông tin trạm từ danh sách
+      const stationInfo = stations.find(s => s.stationId === stationId);
 
-      const stationBats = prev[stationId] || {};
-      if (stationBats[batteryType]) {
+      if (batteries[batteryType]) {
         // đang chọn -> bỏ chọn
-        const { [batteryType]: _, ...rest } = stationBats;
-        return { ...prev, [stationId]: rest };
+        const { [batteryType]: _, ...restBatteries } = batteries;
+
+        // Nếu không còn pin nào được chọn, xóa luôn stationId
+        if (Object.keys(restBatteries).length === 0) {
+          const { [stationId]: __, ...restStations } = prev;
+          return restStations;
+        }
+        return {
+          ...prev,
+          [stationId]: {
+            stationInfo: {
+              stationId: stationInfo?.stationId,
+              stationName: stationInfo?.stationName,
+              address: stationInfo?.address,
+              latitude: stationInfo?.latitude,
+              longitude: stationInfo?.longitude,
+              rating: stationInfo?.rating,
+              distance: stationInfo?.distance,
+              estimatedTime: stationInfo?.estimatedTime,
+              active: stationInfo?.active
+            },
+            batteries: restBatteries
+          }
+        };
       }
       // chưa chọn -> thêm với số lượng 1
-      return { ...prev, [stationId]: { ...stationBats, [batteryType]: 1 } };
+      return {
+        ...prev,
+        [stationId]: {
+          stationInfo: {
+            stationId: stationInfo?.stationId,
+            stationName: stationInfo?.stationName,
+            address: stationInfo?.address,
+            latitude: stationInfo?.latitude,
+            longitude: stationInfo?.longitude,
+            rating: stationInfo?.rating,
+            distance: stationInfo?.distance,
+            estimatedTime: stationInfo?.estimatedTime,
+            active: stationInfo?.active
+          },
+          batteries: { ...batteries, [batteryType]: 1 }
+        }
+      };
     });
   };
 
@@ -394,15 +430,44 @@ const StationFinder = () => {
     const maxAvailable = batteryInfo?.available || 0;
 
     setSelectedBatteries(prev => {
-      const stationBats = prev[stationId] || {};
-      const current = stationBats[batteryType] || 0;
+      const stationData = prev[stationId] || {};
+      const batteries = stationData.batteries || {};
+      const current = batteries[batteryType] || 0;
       const next = Math.max(0, Math.min(maxAvailable, current + delta)); // Giới hạn tối đa
 
       if (next === 0) {
-        const { [batteryType]: _, ...rest } = stationBats;
-        return { ...prev, [stationId]: rest };
+        const { [batteryType]: _, ...restBatteries } = batteries;
+        // Nếu không còn pin nào được chọn, xóa luôn stationId
+        if (Object.keys(restBatteries).length === 0) {
+          const { [stationId]: __, ...restStations } = prev;
+          return restStations;
+        }
+        return {
+          ...prev,
+          [stationId]: {
+            ...stationData,
+            batteries: restBatteries
+          }
+        };
       }
-      return { ...prev, [stationId]: { ...stationBats, [batteryType]: next } };
+      return {
+        ...prev,
+        [stationId]: {
+          stationInfo: stationData.stationInfo ??
+          {
+            stationId: station?.stationId,
+            stationName: station?.stationName,
+            address: station?.address,
+            latitude: station?.latitude,
+            longitude: station?.longitude,
+            rating: station?.rating,
+            distance: station?.distance,
+            estimatedTime: station?.estimatedTime,
+            active: station?.active
+          },
+          batteries: { ...batteries, [batteryType]: next }
+        }
+      };
     });
   };
 
@@ -721,7 +786,7 @@ const StationFinder = () => {
                               .map((battery, idx) => {
                                 const type = battery.batteryType;                 // VD: "LITHIUM_ION"
                                 const displayName = type;                         // Đang hiển thị nguyên tên; nếu muốn map tên đẹp thì xử lý ở đây
-                                const selectedQty = selectedBatteries[station.stationId]?.[type] || 0;
+                                const selectedQty = selectedBatteries[station.stationId]?.batteries?.[type] || 0;
                                 const isSelected = selectedQty > 0;
 
                                 return (
@@ -837,8 +902,10 @@ const StationFinder = () => {
                       <div className="flex gap-4" >
                         <Link
                           to="/driver/reservation"
-                          className={`flex-1 ${!station.active || !selectedBatteries[station.stationId] || Object.keys(selectedBatteries[station.stationId]).length === 0 ? "pointer-events-none opacity-50" : ""}`}
-                          state={{ station: station, selectedBatteries: selectedBatteries[station.stationId] || {} }}
+                          className={`flex-1 ${!station.active || !selectedBatteries[station.stationId]?.batteries || Object.keys(selectedBatteries[station.stationId]?.batteries || {}).length === 0 ? "pointer-events-none opacity-50" : ""}`}
+                          state={{
+                            station: selectedBatteries,
+                          }}
                         >
                           <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"                          >
                             <Battery className="h-5 w-5 mr-3" />

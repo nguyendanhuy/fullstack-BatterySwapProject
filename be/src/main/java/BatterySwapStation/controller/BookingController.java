@@ -27,10 +27,10 @@ public class BookingController {
             @RequestBody BookingRequest request) {
         try {
             BookingResponse response = bookingService.createBooking(request);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Booking created successfully", response));
+            return ResponseEntity.ok(new ApiResponseDto(true, "Booking thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to create booking: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Booking thất bại: " + e.getMessage()));
         }
     }
 
@@ -40,10 +40,10 @@ public class BookingController {
             @PathVariable @Parameter(description = "ID của user") String userId) {
         try {
             List<BookingResponse> bookings = bookingService.getUserBookings(userId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "User bookings retrieved successfully", bookings));
+            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to get user bookings: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
@@ -54,10 +54,10 @@ public class BookingController {
             @RequestParam @Parameter(description = "ID của user") String userId) {
         try {
             BookingResponse booking = bookingService.getBookingById(bookingId, userId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Booking retrieved successfully", booking));
+            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", booking));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to get booking: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
@@ -67,10 +67,10 @@ public class BookingController {
             @RequestBody CancelBookingRequest request) {
         try {
             BookingResponse response = bookingService.cancelBooking(request);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Booking cancelled successfully", response));
+            return ResponseEntity.ok(new ApiResponseDto(true, "Hủy booking thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to cancel booking: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
@@ -82,13 +82,13 @@ public class BookingController {
         try {
             Booking.BookingStatus bookingStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
             List<BookingResponse> bookings = bookingService.getBookingsByStatus(bookingStatus);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Bookings retrieved successfully", bookings));
+                return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Invalid booking status: " + status));
+                    .body(new ApiResponseDto(false, "Lỗi trạng thái booking: " + status));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to get bookings: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
@@ -98,10 +98,10 @@ public class BookingController {
             @PathVariable @Parameter(description = "ID của station") Integer stationId) {
         try {
             List<BookingResponse> bookings = bookingService.getStationBookings(stationId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Station bookings retrieved successfully", bookings));
+            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to get station bookings: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
@@ -113,13 +113,13 @@ public class BookingController {
         try {
             Booking.BookingStatus newStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
             BookingResponse response = bookingService.updateBookingStatus(bookingId, newStatus);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Booking status updated successfully", response));
+            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", response));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Invalid booking status: " + status));
+                    .body(new ApiResponseDto(false, "Lỗi trạng thái booking: " + status));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to update booking status: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Cập nhật trạng thái booking thất bại: " + e.getMessage()));
         }
     }
 
@@ -128,10 +128,10 @@ public class BookingController {
     public ResponseEntity<ApiResponseDto> getAllBookings() {
         try {
             List<BookingResponse> bookings = bookingService.getAllBookings();
-            return ResponseEntity.ok(new ApiResponseDto(true, "All bookings retrieved successfully", bookings));
+            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy tất cả booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Failed to get all bookings: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Lỗi lấy booking: " + e.getMessage()));
         }
     }
 }

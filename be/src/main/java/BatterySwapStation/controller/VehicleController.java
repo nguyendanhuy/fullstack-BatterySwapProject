@@ -29,7 +29,7 @@ public class VehicleController {
     private final VehicleService vehicleService;
 
     @GetMapping("/{vin}")
-    @Operation(summary = "Get vehicle information by VIN")
+    @Operation(summary = "Lấy thông tin phương tiện theo VIN")
     public ResponseEntity<VehicleInfoResponse> getVehicleByVIN(@PathVariable("vin") String vin) {
         VehicleInfoResponse response = vehicleService.getVehicleInfoResponseByVin(vin);
         return ResponseEntity.ok(response);
@@ -37,36 +37,36 @@ public class VehicleController {
 
 
     @PostMapping("/assign")
-    @Operation(summary = "Assign an existing vehicle to the current user")
+    @Operation(summary = "Gán phương tiện cho người dùng hiện tại")
     public ResponseEntity<ApiResponseDto> assignVehicle(
             @Valid @RequestBody AssignVehicleRequest request,
             @AuthenticationPrincipal User user) {
         vehicleService.assignVehicleToUser(user.getUserId(), request.getVin());
-        return ResponseEntity.ok(new ApiResponseDto(true, "Vehicle assigned successfully."));
+        return ResponseEntity.ok(new ApiResponseDto(true, "Gán phương tiện thành công!"));
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Register a new vehicle and assign it to the current user")
+    @Operation(summary = "Đăng ký phương tiện mới và gán cho người dùng hiện tại")
     public ResponseEntity<ApiResponseDto> registerNewVehicle(
             @Valid @RequestBody VehicleRegistrationRequest request,
             @AuthenticationPrincipal User user) {
         vehicleService.registerNewVehicle(user.getUserId(), request);
-        return ResponseEntity.ok(new ApiResponseDto(true, "Vehicle registered successfully."));
+        return ResponseEntity.ok(new ApiResponseDto(true, "Đăng ký phương tiện thành công!"));
     }
 
     @GetMapping("/my-vehicles")
-    @Operation(summary = "Get all active vehicles for the current user")
+    @Operation(summary = "Lấy danh sách phương tiện đang hoạt động của người dùng hiện tại")
     public ResponseEntity<List<Vehicle>> getMyActiveVehicles(@AuthenticationPrincipal User user) {
         List<Vehicle> vehicles = vehicleService.getActiveUserVehicles(user.getUserId());
         return ResponseEntity.ok(vehicles);
     }
 
     @PostMapping("/{vehicleId}/deactivate")
-    @Operation(summary = "Deactivate a vehicle belonging to the current user")
+    @Operation(summary = "Hủy kích hoạt phương tiện")
     public ResponseEntity<ApiResponseDto> deactivateVehicle(
             @PathVariable int vehicleId,
             @AuthenticationPrincipal User user) {
         vehicleService.deactivateVehicle(vehicleId, user.getUserId());
-        return ResponseEntity.ok(new ApiResponseDto(true, "Vehicle deactivated successfully."));
+        return ResponseEntity.ok(new ApiResponseDto(true, "Hủy kích hoạt phương tiện thành công!"));
     }
 }

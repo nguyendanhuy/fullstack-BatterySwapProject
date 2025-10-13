@@ -34,9 +34,6 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 
-
-
-
     // Đăng nhập
     public AuthResponse login(LoginRequest req) {
         User user = userService.findByEmail(req.getEmail());
@@ -47,7 +44,12 @@ public class AuthService {
         if (!userService.checkPassword(req.getPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu không đúng");
         }
-
+        if (!user.isActive()) {
+            throw new RuntimeException("Tài khoản của bạn đã bị ban do chua du trinh de vao.");
+        }
+        if (!user.isVerified()) {
+            throw new RuntimeException("Bạn chưa xác thực email, chưa đủ điều kiện để đăng nhập.");
+        }
 
         String token = jwtService.generateToken(
                 user.getUserId(),
@@ -60,6 +62,7 @@ public class AuthService {
                 "Đăng nhập thành công",
                 user.getUserId(),
                 user.getEmail(),
+                user.getFullName(),
                 user.getPhone(),
                 user.getRole().getRoleName(),
                 token

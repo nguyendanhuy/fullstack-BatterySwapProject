@@ -1,66 +1,227 @@
-import { useContext, useEffect, useState } from "react";
+// StationFinder.jsx
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, ArrowLeft, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star } from "lucide-react";
+import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
-import { Progress } from "@/components/ui/progress";
 import { getAllStations, getStationNearbyLocation, viewUserVehicles } from "../../services/axios.services";
 import { toast } from "sonner";
 import { SystemContext } from "../../contexts/system.context";
 import ProvinceDistrictWardSelect from "../../components/ProvinceDistrictWardSelect";
-const StationFinder = () => {
-  //Goong Map API key
-  const API_KEY = "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN";
-  const [filters, setFilters] = useState({
-    distance: "50",
-    batteryType: "",
-  });
-  const [selectedBatteries, setSelectedBatteries] = useState({});
+import BookingSummary from "../../components/BookingSummary";
+
+// --- Utils địa chỉ (giữ nguyên tinh thần code cũ) ---
+const normalizeVi = (s = "") =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, "").toLowerCase().trim();
+
+const stripPrefixes = (s = "") => {
+  let x = " " + normalizeVi(s) + " ";
+  const prefixes = ["phuong", "xa", "thi tran", "quan", "huyen", "thi xa", "thanh pho", "tp", "tp ho chi minh", "tp hcm"];
+  prefixes.forEach(p => { x = x.replace(new RegExp(`\\s${p}\\s`, "g"), " "); });
+  return x.trim().replace(/\s+/g, " ");
+};
+
+const splitAddr = (address = "") => address.split(",").map(p => stripPrefixes(p)).filter(Boolean);
+
+const containsWholePhrase = (hay = "", needle = "") => {
+  if (!needle) return true;
+  const H = stripPrefixes(hay);
+  const pattern = stripPrefixes(needle).split(/\s+/).filter(Boolean).join("\\W+");
+  if (!pattern) return true;
+  const re = new RegExp(`(?:^|\\W)${pattern}(?:\\W|$)`, "i");
+  return re.test(H);
+};
+
+const matchByFilterAddress = (stationAddress = "", fa = {}) => {
+  const parts = splitAddr(stationAddress);
+  const provincePart = parts.at(-1) || "";
+  const districtPart = parts.at(-2) || "";
+  const wardPart = parts.at(-3) || "";
+
+  if (fa?.provinceName) {
+    const wantedProvince = stripPrefixes(fa.provinceName);
+    if (provincePart !== wantedProvince) return false; // strict theo tail
+  }
+  if (fa?.districtName) {
+    if (!containsWholePhrase(districtPart, fa.districtName)) return false;
+  }
+  if (fa?.wardName) {
+    if (!containsWholePhrase(wardPart, fa.wardName)) return false;
+  }
+  return true;
+};
+
+// --- Utils distance: chuẩn hoá "m" ↔ "km" ---
+const getKm = (text) => {
+  if (!text || text === "—") return Infinity;
+  const m = String(text).match(/(\d+\.?\d*)\s*(km|m)/i);
+  if (!m) return Infinity;
+  const val = parseFloat(m[1]);
+  const unit = (m[2] || "").toLowerCase();
+  return unit === "m" ? val / 1000 : val;
+};
+
+const API_KEY = import.meta.env.VITE_GOONG_API_KEY || "1a4csCB5dp24aOcHgEBhmGPmY7vPSj8HUVmHzVzN"; // TODO: chuyển sang env
+
+export default function StationFinder() {
+  const [filters, setFilters] = useState({ distance: "50", batteryType: "" });
+  const [selectedBatteries, setSelectedBatteries] = useState({}); // (giữ nếu flow cũ cần)
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [stations, setStations] = useState([]);
   const [allStations, setAllStations] = useState([]);
   const [primaryStation, setPrimaryStation] = useState(null);
-  const [uniqueVehicleTypes, setUniqueVehicleTypes] = useState([]); //
+  const [uniqueVehicleTypes, setUniqueVehicleTypes] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const { userVehicles, setUserVehicles, userData } = useContext(SystemContext);
   const [gpsAvailable, setGpsAvailable] = useState(true);
-  const [filterAddress, setFilterAddress] = useState({})
-  //Tránh trùng value vì nhiều loại xe trùng value pin type
-  const [vehicleSelectValue, setVehicleSelectValue] = useState('ALL');
+  const [filterAddress, setFilterAddress] = useState({});
+  const [vehicleSelectValue, setVehicleSelectValue] = useState("ALL");
 
-  // Auto-select batteryType của xe đầu tiên nếu chưa chọn (chỉ chạy khi danh sách thay đổi lần đầu)
-  useEffect(() => {
-    if (!filters.batteryType && uniqueVehicleTypes.length > 0) {
-      const first = uniqueVehicleTypes[0];
-      setFilters(f => ({ ...f, batteryType: first.batteryType }));
-      setVehicleSelectValue(`0_${first.batteryType}`);
+  // --- NEW: chọn xe chi tiết & giỏ đặt pin theo xe ---
+  const [currentVehicleId, setCurrentVehicleId] = useState(null);
+  const [selectBattery, setSelectBattery] = useState({});
+  // shape: { [vehicleId]: { vehicleInfo, stationInfo, batteryType, qty } }
+
+  const getVehicleRequired = (v) => Number(v?.batteryCount ?? 1);
+
+  const totalQuota = useMemo(() => (
+    Array.isArray(userVehicles) ? userVehicles.reduce((s, v) => s + getVehicleRequired(v), 0) : 0
+  ), [userVehicles]);
+
+  const totalBooked = useMemo(() => (
+    Object.values(selectBattery).reduce((s, it) => s + (Number(it.qty) || 0), 0)
+  ), [selectBattery]);
+
+  const quotaLeft = Math.max(0, totalQuota - totalBooked);
+
+  const assignedAtStationType = (stationId, batteryType) => {
+    return Object.values(selectBattery).reduce((sum, it) => {
+      if (it.stationInfo?.stationId === stationId && it.batteryType === batteryType) {
+        return sum + (Number(it.qty) || 0);
+      }
+      return sum;
+    }, 0);
+  };
+
+  const ensureVehicleLine = (vehicleId) => {
+    if (!vehicleId) return;
+    setSelectBattery((s) => {
+      if (s[vehicleId]) return s;
+      const vehicle = (userVehicles || []).find(v => String(v.vehicleId) === String(vehicleId));
+      if (!vehicle) return s;
+      return {
+        ...s,
+        [vehicleId]: {
+          vehicleInfo: {
+            vehicleId: String(vehicle.vehicleId),
+            vehicleType: vehicle.vehicleType,
+            batteryType: vehicle.batteryType,
+          },
+          stationInfo: null,
+          batteryType: vehicle.batteryType,
+          qty: 0,
+        }
+      };
+    });
+  };
+
+  const removeVehicleLine = (vehicleId) => {
+    setSelectBattery((s) => {
+      const { [vehicleId]: _, ...rest } = s;
+      return rest;
+    });
+  };
+
+  // Tăng/giảm qty cho xe cụ thể tại trạm/type
+  const updateVehicleSelection = (vehicleId, station, batteryType, delta) => {
+    const line = selectBattery[vehicleId];
+    if (!line) return;
+
+    // ràng buộc loại pin theo xe
+    if (line.vehicleInfo.batteryType !== batteryType) {
+      toast.error("Loại pin không khớp xe", { description: "Hãy chọn đúng loại pin của xe." });
+      return;
     }
-  }, [uniqueVehicleTypes]);
 
-  //Reload page mà danh sách xe trước đó bị null thì load lại
+    const bInfo = station?.batteries?.find(b => b.batteryType === batteryType);
+    const available = Number(bInfo?.available || 0);
+
+    const alreadyAssigned = assignedAtStationType(station.stationId, batteryType);
+
+    // sameLine chỉ coi là "đang giữ thật" khi qty>0 để đỡ rối
+    const meOldQty = Number(line.qty || 0);
+    const sameLine =
+      meOldQty > 0 &&
+      line.stationInfo?.stationId === station.stationId &&
+      line.batteryType === batteryType;
+
+    const remainAtStationType = Math.max(0, available - alreadyAssigned + (sameLine ? meOldQty : 0));
+
+    const allowedForThisLine = Math.max(0, totalQuota - (totalBooked - meOldQty)); // trần theo quota tổng, riêng cho dòng đang chỉnh
+
+    const next = Math.max(0, meOldQty + delta);
+
+    if (delta > 0) {
+      if (allowedForThisLine <= 0) {
+        toast.error("Vượt hạn mức tổng", { description: `Tối đa ${totalQuota} pin cho tất cả xe.` });
+        return;
+      }
+      if (next > allowedForThisLine) {
+        toast.error("Vượt hạn mức tổng", { description: `Bạn chỉ có thể tăng tối đa đến ${allowedForThisLine} pin cho xe này.` });
+        return;
+      }
+      if (next > remainAtStationType) {
+        toast.error("Không đủ pin tại trạm", { description: `Còn ${remainAtStationType} pin ${batteryType} ở trạm này.` });
+        return;
+      }
+    }
+
+    // Nếu muốn: về 0 thì xoá stationInfo cho trực quan hơn
+    if (next === 0) {
+      setSelectBattery((s) => ({
+        ...s,
+        [vehicleId]: { ...s[vehicleId], stationInfo: null, qty: 0 }
+      }));
+      return;
+    }
+
+    setSelectBattery((s) => ({
+      ...s,
+      [vehicleId]: {
+        ...s[vehicleId],
+        stationInfo: {
+          stationId: station.stationId,
+          stationName: station.stationName,
+          address: station.address,
+          latitude: station.latitude,
+          longitude: station.longitude,
+          rating: station.rating,
+          distance: station.distance,
+          estimatedTime: station.estimatedTime,
+          active: station.active,
+        },
+        batteryType,
+        qty: next,
+      }
+    }));
+  };
+
+  // --- Load danh sách xe (nếu null khi reload) ---
   const loadUserVehicles = async () => {
     try {
       const res = await viewUserVehicles();
       if (Array.isArray(res)) {
         setUserVehicles(res);
       } else if (res?.error) {
-        toast({
-          title: "Lỗi gọi hiển thị xe",
-          description: JSON.stringify(res.error),
-          variant: "destructive",
-        });
+        toast.error("Lỗi gọi hiển thị xe", { description: JSON.stringify(res.error) });
       }
     } catch (err) {
-      toast({
-        title: "Lỗi mạng khi tải xe",
-        description: String(err?.message ?? err),
-        variant: "destructive",
-      });
+      toast.error("Lỗi mạng khi tải xe", { description: String(err?.message ?? err) });
     }
   };
 
@@ -69,12 +230,11 @@ const StationFinder = () => {
     if (vehiclesEmpty && userData?.userId) {
       loadUserVehicles();
     }
-  }, [vehiclesEmpty, userData?.userId]);
+  }, [vehiclesEmpty, userData?.userId]); // eslint-disable-line
 
-  // Lấy danh sách loại xe duy nhất từ userVehicles để hiển thị trong bộ lọc
+  // --- Lấy danh sách loại xe (unique theo vehicleType) để filter nhanh ---
   useEffect(() => {
     if (Array.isArray(userVehicles) && userVehicles.length > 0) {
-      // Map theo vehicleType -> lấy chiếc đầu tiên của mỗi loại
       const uniqueTypes = [...new Map(userVehicles.map(v => [v.vehicleType, v])).values()];
       setUniqueVehicleTypes(uniqueTypes);
     } else {
@@ -82,168 +242,27 @@ const StationFinder = () => {
     }
   }, [userVehicles]);
 
-
-  // --- Utils cho so khớp địa chỉ ---
-  // --- Chuẩn hoá & tách địa chỉ thành các mảnh theo dấu phẩy ---
-  const normalizeVi = (s = "") =>
-    s.normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")// bỏ dấu
-      .replace(/\./g, "")// bỏ dấu chấm
-      .toLowerCase()
-      .trim();
-
-  const stripPrefixes = (s = "") => {
-    let x = " " + normalizeVi(s) + " ";
-    //Bỏ tiền tố phổ biến để tránh nhầm lẫn khi so khớp.
-    const prefixes = ["phuong", "xa", "thi tran", "quan", "huyen", "thi xa", "thanh pho", "tp", "tp ho chi minh", "tp hcm",];
-    prefixes.forEach(p => { x = x.replace(new RegExp(`\\s${p}\\s`, "g"), " "); });
-    //Bỏ khoảng cách trắng thừa.
-    return x.trim().replace(/\s+/g, " ");
-  };
-
-  // Tách address thành các phần nhỏ hơn để so sánh theo từng phần.
-  const splitAddr = (address = "") =>
-    address.split(",").map(p => stripPrefixes(p)).filter(Boolean);
-
-  // Giữ hàm này cho district/ward (khớp nguyên cụm, có boundary)
-
-  // Kiểm tra xem chuỗi hay có chứa nguyên cụm needle không (có boundary) tranh trường hợp Quận 1 khớp với Quận 10
-  const containsWholePhrase = (hay = "", needle = "") => {
-    if (!needle) return true;
-    const H = stripPrefixes(hay);
-    const pattern = stripPrefixes(needle)
-      .split(/\s+/)
-      .filter(Boolean)
-      .join("\\W+");
-    if (!pattern) return true;
-    //cờ "i": không phân biệt hoa/thường (thực ra đã lowercase rồi).
-    const re = new RegExp(`(?:^|\\W)${pattern}(?:\\W|$)`, "i");
-    return re.test(H);
-  };
-
-  // --- SO KHỚP THEO ĐUÔI ĐỊA CHỈ ---
-  const matchByFilterAddress = (stationAddress = "", fa = {}) => {
-    const parts = splitAddr(stationAddress);
-    const provincePart = parts.at(-1) || ""; // mảnh cuối (lấy cái cuói cùng của mảng)
-    const districtPart = parts.at(-2) || ""; // mảnh kế cuối
-    const wardPart = parts.at(-3) || ""; // mảnh trước đó
-
-    // 1) Province: bắt buộc so sánh "bằng nhau" với mảnh cuối tránh trường hợp "Xa Lộ Hà Nội" với tỉnh "Hà Nội"
-    if (fa?.provinceName) {
-      const wantedProvince = stripPrefixes(fa.provinceName);
-      if (provincePart !== wantedProvince) return false;
+  // --- Auto select batteryType theo xe đầu tiên nếu chưa chọn ---
+  useEffect(() => {
+    if (!filters.batteryType && uniqueVehicleTypes.length > 0) {
+      const first = uniqueVehicleTypes[0];
+      setFilters(f => ({ ...f, batteryType: first.batteryType }));
+      setVehicleSelectValue(`0_${first.batteryType}`);
     }
+  }, [uniqueVehicleTypes]); // eslint-disable-line
 
-    // 2) District: nên khớp trong mảnh district, không quét toàn chuỗi
-    if (fa?.districtName) {
-      if (!containsWholePhrase(districtPart, fa.districtName)) return false;
-    }
-
-    // 3) Ward: khớp trong mảnh ward
-    if (fa?.wardName) {
-      if (!containsWholePhrase(wardPart, fa.wardName)) return false;
-    }
-    return true;
-  };
-
-  // --- End Utils ---
-
-
-
-  //filter các trạm dựa trên khoảng cách và loại xe
-  const filteredStations = stations.filter(station => {
-    //theo địa chỉ
-    if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
-      if (!matchByFilterAddress(station.address, filterAddress)) return false;
-    }
-
-    //theo battery type
-    if (filters.batteryType) {
-      const match = station.batteries.some(
-        b => b.batteryType === filters.batteryType
-      );
-      if (!match) return false;
-    }
-    //theo distance (kiểm tra khoảng cách thực tế từ Goong API)
-    if (filters.distance && station.distance && station.distance !== "—") {
-      const maxDistance = parseInt(filters.distance, 10);
-
-      const distanceMatch = station.distance.match(/(\d+\.?\d*)/);
-      if (distanceMatch) {
-        const stationDistance = parseFloat(distanceMatch[1]);
-        if (stationDistance > maxDistance) return false; // Loại bỏ trạm xa hơn filter
-      }
-    }
-    return true;
-  });
-
-
-
-  //Dùng để trả về thêm khoảng cách và thời gian ước lượng và mảng trạm
-  const distanceMatrixWithStations = async (origin, stations) => {
-
-    if (!Array.isArray(stations) || stations.length === 0 || !origin?.lat || !origin?.lng) {
-      return Array.isArray(stations) ? stations : [];
-    }
-
-    // Lấy lat/lng của trạm 
-    const toLat = s => s?.latitude;
-    const toLng = s => s?.longitude;
-    // Tạo chuỗi destinations cho API goong map
-    const destinations = stations
-      .map(s => `${toLat(s)},${toLng(s)}`)
-      .join("|");
-    const url = `https://rsapi.goong.io/DistanceMatrix?origins=${origin.lat},${origin.lng}&destinations=${destinations}&vehicle=car&api_key=${API_KEY}`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        // If map API fails, return stations with fallback values but don't crash
-        toast.error?.({
-          title: "Lỗi lấy khoảng cách",
-          description: `Map API lỗi: ${res.status} ${res.statusText}`,
-          variant: "destructive",
-        });
-        return stations.map((station) => ({ ...station, distance: "—", estimatedTime: "—" }));
-      }
-      const data = await res.json();
-      const elems = data?.rows?.[0]?.elements ?? [];
-      return stations.map((station, index) => {
-        const el = elems[index] ?? {}
-        return {
-          ...station,
-          distance: el?.distance?.text ?? "—",
-          estimatedTime: el?.duration?.text ?? "—",
-        }
-      })
-    } catch (err) {
-      // Network or parsing error
-      toast({
-        title: "Lỗi kết nối bản đồ",
-        description: String(err.message ?? err),
-        variant: "destructive",
-      });
-      return stations.map((station) => ({ ...station, distance: "—", estimatedTime: "—" }));
-    }
-  }
-
-
-
+  // --- Lấy vị trí người dùng, reverse geocode để hiển thị địa chỉ ---
   const autoLocation = () => {
-    // Nếu trình duyệt không hỗ trợ GPS
     if (!navigator.geolocation) {
-      console.log("[GPS] not supported");
       setGpsAvailable(false);
       getAllStation(true);
       return;
     }
-
-    // Thử lấy vị trí hiện tại
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setGpsAvailable(true);
-
         try {
           const res = await fetch(`https://rsapi.goong.io/geocode?latlng=${lat},${lng}&api_key=${API_KEY}`);
           const data = await res.json();
@@ -255,7 +274,6 @@ const StationFinder = () => {
       },
       (err) => {
         console.warn("[GPS] error:", err.message);
-        // Khi bị chặn hoặc lỗi -> hiển thị tất cả trạm
         setGpsAvailable(false);
         getAllStation(true);
       },
@@ -263,224 +281,128 @@ const StationFinder = () => {
     );
   };
 
-
-
   useEffect(() => {
     autoLocation();
     getAllStation();
-  }, []);
+  }, []); // eslint-disable-line
 
-  // Cập nhật primaryStation khi filter thay đổi
-  useEffect(() => {
-    setPrimaryStation(filteredStations && filteredStations.length > 0 ? filteredStations[0] : null);
-  }, [filteredStations]);
-
-
-
-  //Chạy khi thay đổi vị trí hoặc distance
-  useEffect(() => {
-    if (selectedLocation?.lat != null && selectedLocation?.lng != null) {
-      const radius = filters.distance ? parseInt(filters.distance, 10) : 50; // mặc định 50km nếu chưa có
-      getStationNearby(selectedLocation.lat, selectedLocation.lng, radius);
+  // --- Distance Matrix (thêm khoảng cách & thời gian) ---
+  const distanceMatrixWithStations = async (origin, stationsList, signal) => {
+    if (!Array.isArray(stationsList) || stationsList.length === 0 || !origin?.lat || !origin?.lng) {
+      return Array.isArray(stationsList) ? stationsList : [];
     }
-  }, [selectedLocation, filters.distance]);
+    const destinations = stationsList.map(s => `${s?.latitude},${s?.longitude}`).join("|");
+    const url = `https://rsapi.goong.io/DistanceMatrix?origins=${origin.lat},${origin.lng}&destinations=${destinations}&vehicle=car&api_key=${API_KEY}`;
+    try {
+      const res = await fetch(url, { signal });
+      if (!res.ok) {
+        toast.error("Lỗi lấy khoảng cách", { description: `${res.status} ${res.statusText}` });
+        return stationsList.map((station) => ({ ...station, distance: "—", estimatedTime: "—" }));
+      }
+      const data = await res.json();
+      const elems = data?.rows?.[0]?.elements ?? [];
+      return stationsList.map((station, index) => {
+        const el = elems[index] ?? {};
+        return {
+          ...station,
+          distance: el?.distance?.text ?? "—",
+          estimatedTime: el?.duration?.text ?? "—",
+        };
+      });
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        toast.error("Lỗi kết nối bản đồ", { description: String(err.message ?? err) });
+      }
+      return stationsList.map((station) => ({ ...station, distance: "—", estimatedTime: "—" }));
+    }
+  };
 
-  console.log("Selected Location:", selectedLocation);
-
-
+  // --- Lấy trạm gần vị trí + debounce/abort để tránh chồng request ---
+  const nearbyAbortRef = useRef(null);
   const getStationNearby = async (lat, lng, radius) => {
     try {
       const res = await getStationNearbyLocation(lat, lng, radius);
-      // Expecting an array of stations from backend
       if (!res) {
-        toast({ title: "Lỗi", description: "Không nhận được dữ liệu trạm", variant: "destructive" });
+        toast.error("Lỗi", { description: "Không nhận được dữ liệu trạm" });
         setStations([]);
         return;
       }
       if (res.error) {
-        toast({
-          title: "Lỗi gọi thông tin trạm gần nhất",
-          description: JSON.stringify(res.error),
-          variant: "destructive",
-        });
+        toast.error("Lỗi gọi thông tin trạm gần nhất", { description: JSON.stringify(res.error) });
         setStations([]);
         return;
       }
       if (!Array.isArray(res)) {
-        // Backend or proxy returned an unexpected shape (e.g., 502 proxied error object)
-        toast({
-          title: "Dữ liệu trạm không hợp lệ",
-          description: JSON.stringify(res),
-          variant: "destructive",
-        });
+        toast.error("Dữ liệu trạm không hợp lệ", { description: JSON.stringify(res) });
         setStations([]);
         return;
       }
 
-      //Thêm vào nearby stations dữ liệu thời gian và khoảng cách trước khi in ra.
-      const stationsWithDistance = await distanceMatrixWithStations(selectedLocation, res);
+      // distance matrix
+      if (nearbyAbortRef.current) nearbyAbortRef.current.abort();
+      const controller = new AbortController();
+      nearbyAbortRef.current = controller;
 
-      // Mảng các trạm đã sort
-      const sortedStations = stationsWithDistance.sort((a, b) => {
-        const getDistanceValue = (distanceText) => {
-          if (!distanceText || distanceText === "—") return Infinity; // set vô cực => đẩy xuống cuối sort
-          const match = distanceText.match(/(\d+\.?\d*)/); // lấy dạng số.số
-          return match ? parseFloat(match[1]) : Infinity; //match[1] là do 1 cặp ngoặc
-        };
+      const stationsWithDistance = await distanceMatrixWithStations(selectedLocation, res, controller.signal);
 
-        const distanceA = getDistanceValue(a.distance);
-        const distanceB = getDistanceValue(b.distance);
-
-        return distanceA - distanceB; // sắp xếp theo tăng dần
-      });
+      const sortedStations = stationsWithDistance.sort((a, b) => getKm(a.distance) - getKm(b.distance));
       setStations(sortedStations);
       setPrimaryStation(sortedStations.length ? sortedStations[0] : null);
     } catch (err) {
-      // axios/service could throw; show readable error
-      toast({ title: "Lỗi khi gọi trạm gần nhất", description: String(err.message ?? err), variant: "destructive" });
+      if (err?.name !== "AbortError") {
+        toast.error("Lỗi khi gọi trạm gần nhất", { description: String(err.message ?? err) });
+      }
       setStations([]);
     }
-  }
+  };
 
-
-
-
-  //GetAllStations này dùng cho bản đồ, không dùng cho danh sách trạm gần, để hiển thị thông tin tất cả các trạm trên bản đồ.
+  // --- Lấy toàn bộ trạm (cho bản đồ) ---
   const getAllStation = async (loadToList = false) => {
     const res = await getAllStations();
-    if (res) {
+    if (res?.error) {
+      toast.error("Lỗi gọi thông tin trạm", { description: JSON.stringify(res.error) });
+    } else if (res) {
       setAllStations(res);
-    } else if (res.error) {
-      toast({
-        title: "Lỗi gọi thông tin trạm",
-        description: JSON.stringify(res.error),
-        variant: "destructive",
-      });
+      if (loadToList) setStations(res);
     }
-    if (res && loadToList) {
-      setStations(res);
+  };
+
+  // --- Trigger khi đổi vị trí hoặc khoảng cách ---
+  useEffect(() => {
+    if (selectedLocation?.lat != null && selectedLocation?.lng != null) {
+      const radius = filters.distance ? parseInt(filters.distance, 10) : 50;
+      const t = setTimeout(() => getStationNearby(selectedLocation.lat, selectedLocation.lng, radius), 250);
+      return () => clearTimeout(t);
     }
-  }
+  }, [selectedLocation, filters.distance]); // eslint-disable-line
 
-  //Xử lý chọn số luợng pin tại trạm
+  // --- Primary station cập nhật khi filter thay đổi ---
+  useEffect(() => {
+    setPrimaryStation(stations && stations.length > 0 ? stations[0] : null);
+  }, [stations]);
 
-  const handleBatteryClick = (stationId, batteryType) => {
-    setSelectedBatteries(prev => {
-
-      //cách lấy thuộc tính của object động theo tên biến, không dùng dot notation vd: prev.stationId (sai)=>lấy thuộc tính tên stationId mà trong obj không tồn tại, 
-      // prev[stationId] (đúng) => lấy đúng thuộc tính có tên là giá trị của biến stationId vd: stationId=5 => prev[5]
-      const stationData = prev[stationId] || {};
-      const batteries = stationData.batteries || {};
-
-      // Tìm thông tin trạm từ danh sách
-      const stationInfo = stations.find(s => s.stationId === stationId);
-
-      if (batteries[batteryType]) {
-        // đang chọn -> bỏ chọn
-        const { [batteryType]: _, ...restBatteries } = batteries;
-
-        // Nếu không còn pin nào được chọn, xóa luôn stationId
-        if (Object.keys(restBatteries).length === 0) {
-          const { [stationId]: __, ...restStations } = prev;
-          return restStations;
-        }
-        return {
-          ...prev,
-          [stationId]: {
-            stationInfo: {
-              stationId: stationInfo?.stationId,
-              stationName: stationInfo?.stationName,
-              address: stationInfo?.address,
-              latitude: stationInfo?.latitude,
-              longitude: stationInfo?.longitude,
-              rating: stationInfo?.rating,
-              distance: stationInfo?.distance,
-              estimatedTime: stationInfo?.estimatedTime,
-              active: stationInfo?.active
-            },
-            batteries: restBatteries
-          }
-        };
+  // --- Lọc trạm theo filter địa chỉ, pin, distance ---
+  const filteredStations = useMemo(() => {
+    return stations.filter(station => {
+      if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
+        if (!matchByFilterAddress(station.address, filterAddress)) return false;
       }
-      // chưa chọn -> thêm với số lượng 1
-      return {
-        ...prev,
-        [stationId]: {
-          stationInfo: {
-            stationId: stationInfo?.stationId,
-            stationName: stationInfo?.stationName,
-            address: stationInfo?.address,
-            latitude: stationInfo?.latitude,
-            longitude: stationInfo?.longitude,
-            rating: stationInfo?.rating,
-            distance: stationInfo?.distance,
-            estimatedTime: stationInfo?.estimatedTime,
-            active: stationInfo?.active
-          },
-          batteries: { ...batteries, [batteryType]: 1 }
-        }
-      };
-    });
-  };
-
-  const updateBatteryQuantity = (stationId, batteryType, delta) => {
-    // Tìm station để lấy số lượng pin available
-    const station = stations.find(s => s.stationId === stationId);
-    const batteryInfo = station?.batteries?.find(b => b.batteryType === batteryType);
-    const maxAvailable = batteryInfo?.available || 0;
-
-    setSelectedBatteries(prev => {
-      const stationData = prev[stationId] || {};
-      const batteries = stationData.batteries || {};
-      const current = batteries[batteryType] || 0;
-      const next = Math.max(0, Math.min(maxAvailable, current + delta)); // Giới hạn tối đa
-
-      if (next === 0) {
-        const { [batteryType]: _, ...restBatteries } = batteries;
-        // Nếu không còn pin nào được chọn, xóa luôn stationId
-        if (Object.keys(restBatteries).length === 0) {
-          const { [stationId]: __, ...restStations } = prev;
-          return restStations;
-        }
-        return {
-          ...prev,
-          [stationId]: {
-            ...stationData,
-            batteries: restBatteries
-          }
-        };
+      if (filters.batteryType) {
+        const match = station.batteries?.some(b => b.batteryType === filters.batteryType);
+        if (!match) return false;
       }
-      return {
-        ...prev,
-        [stationId]: {
-          stationInfo: stationData.stationInfo ??
-          {
-            stationId: station?.stationId,
-            stationName: station?.stationName,
-            address: station?.address,
-            latitude: station?.latitude,
-            longitude: station?.longitude,
-            rating: station?.rating,
-            distance: station?.distance,
-            estimatedTime: station?.estimatedTime,
-            active: station?.active
-          },
-          batteries: { ...batteries, [batteryType]: next }
-        }
-      };
+      if (filters.distance && station.distance && station.distance !== "—") {
+        const maxKm = parseInt(filters.distance, 10);
+        const distKm = getKm(station.distance);
+        if (distKm > maxKm) return false;
+      }
+      return true;
     });
-  };
+  }, [stations, filterAddress, filters.batteryType, filters.distance]);
 
-  const handleLocationSelect = (location) => {
-    setSelectedLocation(location);
-  };
+  const handleLocationSelect = (location) => setSelectedLocation(location);
+  const handleMapOk = () => setIsMapOpen(false);
 
-  const handleMapOk = () => {
-    if (selectedLocation) {
-    }
-    setIsMapOpen(false);
-  };
-  // Mở Google Maps với chỉ đường đến trạm đã chọn
   const handleShowWayBtn = (lat, lng) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     window.open(url, "_blank");
@@ -494,47 +416,61 @@ const StationFinder = () => {
           <h1 className="text-3xl font-bold text-foreground">Tìm trạm</h1>
         </div>
       </header>
-      {/* Main Content with Better Spacing */}
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        <div className="grid lg:grid-cols-3 gap-8"> {/* Left Column - Search & Filters */}
-          <div className="lg:col-span-1 space-y-6"> {/* Location Search Card */}
+
+      {/* Main */}
+      <div className="container mx-auto px-6 py-8 max-w-screen-2xl">
+        {/* 3 columns layout */}
+        <div className="grid lg:grid-cols-12 gap-8">
+          {/* Col 1: Vị trí + Filters + Quick Stats */}
+          <div className="lg:col-span-3 space-y-6 order-1">
+            {/* Location */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center text-lg font-semibold">
                   <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg mr-3">
                     <Navigation className="h-5 w-5 text-white" />
-                  </div> Vị trí của bạn
+                  </div>
+                  Vị trí của bạn
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4"> <div className="relative">
-                <Tooltip color='blue' title={selectedLocation?.address}>
-                  <Input
-                    placeholder="Chọn địa chỉ của bạn trên bản đồ..."
-                    className="pl-12 pr-4 py-3 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm"
-                    value={selectedLocation?.address || ""}
-                    readOnly
-                  />
-                </Tooltip>
-                <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                  <MapPin className="h-4 w-4 text-gray-400" /> </div>
-              </div>
-                <Button onClick={() => setIsMapOpen(true)} className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl py-3 transition-all duration-300 hover:scale-105 shadow-lg">
-                  <MapIcon className="h-4 w-4 mr-2" /> Chọn trên bản đồ </Button>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  <Tooltip color="blue" title={selectedLocation?.address}>
+                    <Input
+                      placeholder="Chọn địa chỉ của bạn trên bản đồ..."
+                      className="pl-12 pr-4 py-3 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl text-sm"
+                      value={selectedLocation?.address || ""}
+                      readOnly
+                    />
+                  </Tooltip>
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setIsMapOpen(true)}
+                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl py-3 transition-all duration-300 hover:scale-105 shadow-lg"
+                >
+                  <MapIcon className="h-4 w-4 mr-2" />
+                  Chọn trên bản đồ
+                </Button>
+
                 <Modal
                   title="Chọn vị trí trên bản đồ"
                   centered
                   open={isMapOpen}
                   onOk={handleMapOk}
                   onCancel={() => setIsMapOpen(false)}
-                  width={1200}
+                  width="80vw"
                   okText="Xác nhận"
                   cancelText="Hủy"
                   okButtonProps={{
                     disabled: !selectedLocation,
                     className: "bg-gradient-to-r from-blue-500 to-indigo-500"
                   }}
+                  styles={{ body: { height: '70vh', padding: 0 } }}
                 >
-                  <div className="w-full bg-gray-100 flex items-center justify-center" style={{ height: '80vh' }}>
+                  <div className="w-full bg-gray-100 flex items-center justify-center h-full">
                     <SimpleGoongMap
                       station={allStations}
                       selectMode={true}
@@ -545,7 +481,8 @@ const StationFinder = () => {
                 </Modal>
               </CardContent>
             </Card>
-            {/* Enhanced Filters */}
+
+            {/* Filters */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center text-lg font-semibold">
@@ -558,7 +495,10 @@ const StationFinder = () => {
               <CardContent className="space-y-6">
                 <div>
                   <label className="text-sm font-semibold mb-3 block text-gray-700">Khoảng cách</label>
-                  <Select onValueChange={(value) => setFilters({ ...filters, distance: value })}>
+                  <Select
+                    value={filters.distance}
+                    onValueChange={(value) => setFilters({ ...filters, distance: value })}
+                  >
                     <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-purple-500 rounded-xl">
                       <SelectValue placeholder="50 km" />
                     </SelectTrigger>
@@ -578,14 +518,13 @@ const StationFinder = () => {
                   <Select
                     value={vehicleSelectValue}
                     onValueChange={(value) => {
-                      if (value === 'ALL') {
-                        setVehicleSelectValue('ALL');
-                        setFilters({ ...filters, batteryType: '' });
+                      if (value === "ALL") {
+                        setVehicleSelectValue("ALL");
+                        setFilters({ ...filters, batteryType: "" });
                         return;
                       }
-                      // value format: index_batteryType
-                      const parts = value.split('_');
-                      const bt = parts.slice(1).join('_'); // phòng trường hợp batteryType có '_'
+                      const parts = value.split("_");
+                      const bt = parts.slice(1).join("_");
                       setVehicleSelectValue(value);
                       setFilters({ ...filters, batteryType: bt });
                     }}
@@ -596,7 +535,7 @@ const StationFinder = () => {
                     <SelectContent>
                       {uniqueVehicleTypes.length > 0 ? (
                         <>
-                          <SelectItem value='ALL'>Tất cả</SelectItem>
+                          <SelectItem value="ALL">Tất cả</SelectItem>
                           {uniqueVehicleTypes.map((vehicle, index) => {
                             const composite = `${index}_${vehicle.batteryType}`;
                             return (
@@ -607,9 +546,7 @@ const StationFinder = () => {
                           })}
                         </>
                       ) : (
-                        <SelectItem value="0" disabled>
-                          Bạn chưa đăng ký xe nào
-                        </SelectItem>
+                        <SelectItem value="0" disabled> Bạn chưa đăng ký xe nào </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -617,7 +554,7 @@ const StationFinder = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Stats Card */}
+            {/* Quick Stats */}
             <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-gray-800 mb-4">Thống kê nhanh</h3>
@@ -628,14 +565,15 @@ const StationFinder = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Khoảng cách</span>
-                    <span className="font-semibold text-blue-600">{primaryStation ? primaryStation.distance ?? '—' : '—'}</span>
+                    <span className="font-semibold text-blue-600">{primaryStation ? (primaryStation.distance ?? '—') : '—'}</span>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Pin có sẵn</span>
-                      <span className="text-sm font-semibold text-green-700">{"Đầy " + primaryStation?.availableCount ?? '—'} / {+primaryStation?.totalBatteries ?? '—'}</span>
+                      <span className="text-sm font-semibold text-green-700">
+                        {"Đầy " + (primaryStation?.availableCount ?? '—')} / {(+primaryStation?.totalBatteries ?? '—')}
+                      </span>
                     </div>
-
                     {primaryStation ? (
                       <div className="space-y-1">
                         {Array.isArray(primaryStation.batteries) && primaryStation.batteries.length > 0 ? (
@@ -659,41 +597,34 @@ const StationFinder = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Thời gian ước tính</span>
-                    <span className="font-semibold text-purple-600">{primaryStation ? primaryStation.estimatedTime ?? '—' : '—'}</span>
+                    <span className="font-semibold text-purple-600">{primaryStation ? (primaryStation.estimatedTime ?? '—') : '—'}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - Station List */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Thông báo khi mất GPS */}
-            {
-              !gpsAvailable && (
-                <div className="rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-800 px-4 py-3">
-                  ⚠️ GPS đang tắt/không được cấp quyền. Đang hiển thị <b>tất cả</b> trạm (không có khoảng cách & thời gian ước tính).
-                </div>
-              )
-            }
-            <div className="flex items-center justify-between mb-6">
+          {/* Col 2: Station List (to nhất) */}
+          <div className="lg:col-span-6 space-y-6 order-2">
+            <div className="flex items-center gap-3">
               <h2 className="text-2xl font-bold text-gray-800">Trạm pin gần bạn</h2>
               <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full">
                 {filteredStations.length} trạm tìm thấy
               </Badge>
             </div>
 
-            {/* Province District Ward Select with Search Button */}
-            <div className="mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <ProvinceDistrictWardSelect setFilterAddress={setFilterAddress} />
-                </div>
+            {!gpsAvailable && (
+              <div className="rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-800 px-4 py-3">
+                ⚠️ GPS đang tắt/không được cấp quyền. Đang hiển thị <b>tất cả</b> trạm (không có khoảng cách & thời gian ước tính).
               </div>
+            )}
+
+            {/* Province/District/Ward */}
+            <div className="mb-2">
+              <ProvinceDistrictWardSelect setFilterAddress={setFilterAddress} />
             </div>
 
-            {/* Enhanced Station Cards */}
-            {/* Test list antd */}
+            {/* Station Cards */}
             <List
               itemLayout="vertical"
               dataSource={filteredStations}
@@ -701,16 +632,16 @@ const StationFinder = () => {
                 defaultCurrent: 1,
                 pageSize: 5,
                 showSizeChanger: false,
+                locale: { items_per_page: " / trang" },
               }}
-
               renderItem={(station, index) => (
                 <List.Item key={station.stationId}>
-                  <Card className="space-y-6 border-0 shadow-xl bg-white hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
-                    {/* Card Header with Gradient */}
+                  <Card
+                    className="space-y-6 border-0 shadow-xl bg-white hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden group"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
                     <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-
                     <CardContent className="p-8">
-                      {/* Station Header */}
                       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-8 gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-4 mb-3">
@@ -721,13 +652,14 @@ const StationFinder = () => {
                               <h3 className="text-2xl font-bold text-gray-800 mb-1">{station.stationName}</h3>
                               <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1">
-                                  {[...Array(5)].map((_, i) => (<Star key={i} className={`h-4 w-4 ${i < Math.floor(station.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />))}
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className={`h-4 w-4 ${i < Math.floor(station.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                                  ))}
                                 </div>
                                 <span className="text-sm font-semibold text-yellow-600">{station.rating}</span>
                               </div>
                             </div>
                           </div>
-
                           <div className="space-y-2 text-sm text-gray-600">
                             <p className="flex items-center gap-2">
                               <MapPin className="h-4 w-4 text-gray-400" />
@@ -736,32 +668,28 @@ const StationFinder = () => {
                             <div className="flex items-center gap-6">
                               <span className="flex items-center gap-1 font-medium text-blue-600">
                                 <Navigation className="h-4 w-4" />
-                                {station.distance}
+                                {station.distance ?? "—"}
                               </span>
                               <span className="flex items-center gap-1 font-medium text-green-600">
                                 <Clock className="h-4 w-4" />
-                                {station.estimatedTime}
+                                {station.estimatedTime ?? "—"}
                               </span>
                             </div>
                           </div>
                         </div>
-                        {station.active ?
-                          <Badge
-                            variant="secondary"
-                            className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full font-semibold">
+                        {station.active ? (
+                          <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-full font-semibold">
                             Trạm đang sẵn sàng
-                          </Badge> :
-                          <Badge
-                            variant="secondary"
-                            className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-4 py-2 rounded-full font-semibold"
-                          >
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-4 py-2 rounded-full font-semibold">
                             Trạm tạm ngưng
-                          </Badge>}
+                          </Badge>
+                        )}
                       </div>
-                      {/* Sửa code */}
-                      {/* Battery Information Section - Combined */}
+
+                      {/* Battery info */}
                       <div className="mb-6">
-                        {/* Header with Total Batteries */}
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
                           <h4 className="text-base font-semibold text-gray-800 flex items-center gap-2">
                             <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
@@ -769,105 +697,103 @@ const StationFinder = () => {
                             </div>
                             Thông tin pin
                           </h4>
-                          <Badge
-                            variant="secondary"
-                            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm px-4 py-1.5 rounded-full font-semibold"
-                          >
+                          <Badge variant="secondary" className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm px-4 py-1.5 rounded-full font-semibold">
                             <Battery className="h-3.5 w-3.5 mr-1.5 inline" />
-                            Đầy {station.availableCount} / {station.totalBatteries} pin
+                            Đầy {station?.availableCount ?? "—"} / {station?.totalBatteries ?? "—"} pin
                           </Badge>
                         </div>
 
-                        {/* Battery Types List */}
                         <div className="space-y-2.5">
                           {station.batteries && station.batteries.length > 0 ? (
                             station.batteries
-                              .filter(b => b.available > 0 || b.charging > 0)
-                              .map((battery, idx) => {
-                                const type = battery.batteryType;                 // VD: "LITHIUM_ION"
-                                const displayName = type;                         // Đang hiển thị nguyên tên; nếu muốn map tên đẹp thì xử lý ở đây
-                                const selectedQty = selectedBatteries[station.stationId]?.batteries?.[type] || 0;
-                                const isSelected = selectedQty > 0;
+                              .filter(b => (b.available > 0 || b.charging > 0))
+                              .map((battery) => {
+                                const type = battery.batteryType;
+                                const alrBased = assignedAtStationType(station.stationId, type);
+                                const line = currentVehicleId ? selectBattery[currentVehicleId] : null;
+                                const sameStation = !!(line?.stationInfo?.stationId === station.stationId);
+                                const sameType = !!(line?.batteryType === type);
+                                const meQty = sameStation && sameType ? (line?.qty || 0) : 0;
 
                                 return (
-                                  <div key={idx} className="relative">
-                                    <div
-                                      onClick={() => handleBatteryClick(station.stationId, type)}
-                                      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 cursor-pointer ${isSelected
+                                  <div
+                                    key={type}
+                                    className={`flex items-center p-3 rounded-lg border transition-all duration-300
+                                    ${meQty > 0
                                         ? "bg-gradient-to-r from-blue-100 to-purple-100 border-blue-400 shadow-lg"
                                         : "bg-gradient-to-r from-white to-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-md"
-                                        }`}
-                                    >
-                                      {/* Tên loại pin hoặc số lượng đã chọn */}
-                                      <div className="flex items-center gap-2 flex-1">
-                                        <div
-                                          className={`p-1.5 rounded-md transition-all duration-300 
-                                          ${type === "LITHIUM_ION"
-                                              ? "bg-gradient-to-r from-blue-400 to-blue-600"
-                                              : type === "NICKEL_METAL_HYDRIDE"
-                                                ? "bg-gradient-to-r from-purple-400 to-purple-600"
-                                                : "bg-gradient-to-r from-orange-400 to-orange-600"
-                                            }`}
-                                        >
-                                          <Battery className="h-3.5 w-3.5 text-white" />
-                                        </div>
-
-                                        <span
-                                          className={`font-semibold text-sm transition-all duration-300 ${isSelected ? "text-blue-700" : "text-gray-800"
-                                            }`}
-                                        >
-                                          {isSelected ? `${type}` : displayName}
-                                        </span>
+                                      }`}
+                                  >
+                                    {/* Trái: icon + type */}
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`p-1.5 rounded-md transition-all duration-300 
+                                        ${type === "LITHIUM_ION"
+                                            ? "bg-gradient-to-r from-blue-400 to-blue-600"
+                                            : type === "NICKEL_METAL_HYDRIDE"
+                                              ? "bg-gradient-to-r from-purple-400 to-purple-600"
+                                              : "bg-gradient-to-r from-orange-400 to-orange-600"
+                                          }`}
+                                      >
+                                        <Battery className="h-3.5 w-3.5 text-white" />
                                       </div>
-
-                                      {/* Count "Sẵn sàng / Sạc" – chỉ hiện khi chưa chọn */}
-                                      {!isSelected && (
-                                        <div className="flex items-center gap-3">
-                                          {/* Sẵn sàng */}
-                                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-md border border-green-200">
-                                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                            <span className="text-xs font-medium text-gray-600">Sẵn sàng:</span>
-                                            <span className="text-sm font-bold text-green-600">{battery.available}</span>
-                                          </div>
-
-                                          {/* Đang sạc */}
-                                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md border border-blue-200">
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                                            <span className="text-xs font-medium text-gray-600">Sạc:</span>
-                                            <span className="text-sm font-bold text-blue-600">{battery.charging}</span>
-                                          </div>
-                                        </div>
-                                      )}
+                                      <span className={`font-semibold text-sm ${meQty > 0 ? "text-blue-700" : "text-gray-800"}`}>
+                                        {type}
+                                      </span>
                                     </div>
 
-                                    {/* Nút +/- – chỉ hiện khi đã chọn */}
-                                    {isSelected && (
-                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            updateBatteryQuantity(station.stationId, type, -1);
-                                          }}
-                                          className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
-                                        >
-                                          −
-                                        </button>
-                                        <span className="text-sm font-medium text-gray-600">{selectedQty}</span>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            updateBatteryQuantity(station.stationId, type, 1);
-                                          }}
-                                          disabled={selectedQty >= battery.available}
-                                          className={`w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg ${selectedQty >= battery.available
-                                            ? 'bg-gray-400 cursor-not-allowed'
-                                            : 'bg-gradient-to-r from-green-500 to-emerald-500'
-                                            }`}
-                                        >
-                                          +
-                                        </button>
+                                    {/* Giữa: counts (ẩn khi đã chọn > 0 để gọn) */}
+                                    {meQty === 0 && (
+                                      <div className="flex items-center gap-3 ml-4">
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-md border border-green-200">
+                                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                          <span className="text-xs font-medium text-gray-600">Sẵn sàng:</span>
+                                          <span className="text-sm font-bold text-green-600">{battery.available - alrBased}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md border border-blue-200">
+                                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                                          <span className="text-xs font-medium text-gray-600">Sạc:</span>
+                                          <span className="text-sm font-bold text-blue-600">{battery.charging}</span>
+                                        </div>
                                       </div>
                                     )}
+
+                                    {/* Phải: cụm − [qty] + canh phải */}
+                                    <div className="ml-auto flex items-center justify-end gap-2">
+                                      <button
+                                        disabled={!currentVehicleId}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (currentVehicleId) {
+                                            updateVehicleSelection(currentVehicleId, station, type, -1);
+                                          }
+                                        }}
+                                        className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                                        title={!currentVehicleId ? "Chọn xe trước" : ""}
+                                      >
+                                        −
+                                      </button>
+
+                                      {meQty > 0 && (
+                                        <span className="min-w-6 text-center text-sm font-semibold text-gray-700">
+                                          {meQty}
+                                        </span>
+                                      )}
+
+                                      <button
+                                        disabled={!currentVehicleId || !station.active}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (currentVehicleId && station.active) {
+                                            updateVehicleSelection(currentVehicleId, station, type, +1);
+                                          }
+                                        }}
+                                        className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-emerald-500"
+                                        title={!currentVehicleId ? "Chọn xe trước" : (!station.active ? "Trạm tạm ngưng" : "")}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })
@@ -875,56 +801,77 @@ const StationFinder = () => {
                             <div className="text-center text-gray-500 py-4 text-sm">Không có thông tin pin</div>
                           )}
                         </div>
-
-                        {/* Total Battery Progress Bar */}
-                        {/* <div className="mt-6">
-                        {(() => {
-                          const totalFull = station.availableCount;
-                          const totalBatteries = station.totalBatteries;
-                          const percentage = totalBatteries > 0 ? (totalFull / totalBatteries) * 100 : 0;
-
-                          return (
-                            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-semibold text-gray-700">Tình trạng pin sẵn sàng</span>
-                                <span className="text-sm font-bold text-green-700">{totalFull}/{totalBatteries} pin đầy</span>
-                              </div>
-                              <Progress
-                                value={percentage}
-                                className="h-3 bg-green-100"
-                              />
-                            </div>
-                          );
-                        })()}
-                      </div> */}
                       </div>
-                      {/* Action Buttons */}
-                      <div className="flex gap-4" >
-                        <Link
-                          to="/driver/reservation"
-                          className={`flex-1 ${!station.active || !selectedBatteries[station.stationId]?.batteries || Object.keys(selectedBatteries[station.stationId]?.batteries || {}).length === 0 ? "pointer-events-none opacity-50" : ""}`}
-                          state={{
-                            station: selectedBatteries,
-                          }}
+
+                      <div className="flex gap-4">
+                        <Button
+                          onClick={() => handleShowWayBtn(station.latitude, station.longitude)}
+                          variant="outline"
+                          className="px-8 py-4 border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-105 font-semibold"
                         >
-                          <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"                          >
-                            <Battery className="h-5 w-5 mr-3" />
-                            Đặt lịch ngay
-                          </Button>
-                        </Link>
-                        <Button onClick={() => handleShowWayBtn(station.latitude, station.longitude)} variant="outline" className="px-8 py-4 border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-105 font-semibold">
                           <MapPin className="h-5 w-5 mr-2" />
                           Chỉ đường
                         </Button>
-                      </div >
-                    </CardContent >
-                  </Card >
+                      </div>
+                    </CardContent>
+                  </Card>
                 </List.Item>
               )}
             />
-          </div >
-        </div >
-      </div >
-    </div >);
-};
-export default StationFinder;
+          </div>
+
+          {/* Col 3: Chọn xe + Booking Summary */}
+          <div className="lg:col-span-3 space-y-6 order-3">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center text-lg font-semibold">
+                  <div className="p-2 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-lg mr-3">
+                    <Battery className="h-5 w-5 text-white" />
+                  </div>
+                  Chọn xe chi tiết
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-semibold mb-3 block text-gray-700">Xe</label>
+                  <Select
+                    value={currentVehicleId ?? ""}
+                    onValueChange={(vid) => {
+                      setCurrentVehicleId(vid);
+                      ensureVehicleLine(vid);
+                    }}
+                  >
+                    <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-violet-500 rounded-xl">
+                      <SelectValue placeholder="Chọn xe để gán pin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.isArray(userVehicles) && userVehicles.length > 0 ? (
+                        userVehicles.map(v => (
+                          <SelectItem key={v.vehicleId} value={String(v.vehicleId)}>
+                            🛵 {v.vehicleType} — 🔋 {v.batteryType} (cần {getVehicleRequired(v)})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="-" disabled>Chưa có xe</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-sm text-gray-600">
+                  Hạn mức tổng: <b>{totalBooked}</b> / {totalQuota} pin
+                </div>
+              </CardContent>
+            </Card>
+
+            <BookingSummary
+              selectBattery={selectBattery}
+              totalQuota={totalQuota}
+              totalBooked={totalBooked}
+              onRemove={removeVehicleLine}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

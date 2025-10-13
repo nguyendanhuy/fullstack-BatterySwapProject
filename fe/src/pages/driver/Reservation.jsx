@@ -248,17 +248,17 @@ const Reservation = () => {
                   <div className="grid grid-cols-3 gap-3">
                     {timeSlots.map((time) => {
                       const disabled = isSlotDisabled(activeId, time);
-                      const active = sb[activeId]?.time === time && !disabled;
+                      const active = sb[activeId].time === time && !disabled;
                       return (
                         <Button
                           key={time}
                           disabled={disabled}
                           onClick={() => !disabled && setDateTime(activeId, { time })}
                           className={`h-12 text-sm font-medium transition-all duration-300
-                            ${active
+                          ${active
                               ? "bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-lg hover:scale-105"
-                              : "border-2 border-gray-200 hover:border-orange-300"}
-                            ${disabled ? "opacity-50 cursor-not-allowed hover:scale-100" : "hover:scale-105"}`}
+                              : "bg-white border-2 border-blue-400 text-blue-600 hover:border-blue-500 hover:text-blue-700"}
+                          ${disabled ? "opacity-50 cursor-not-allowed hover:scale-100" : "hover:scale-105"}`}
                         >
                           <Clock className="h-4 w-4 mr-1" />
                           {time}
@@ -364,18 +364,6 @@ const Reservation = () => {
                   <Link
                     to="/driver/payment"
                     className={`block ${!anyTimePicked ? "pointer-events-none opacity-50" : ""}`}
-                    state={{
-                      booking: Object.fromEntries(
-                        Object.entries(sb).map(([vehicleId, v]) => [
-                          vehicleId,
-                          {
-                            ...v,
-                            date: v?.date ? v.date.toISOString() : null,
-                            time: v?.time || "",
-                          },
-                        ])
-                      ),
-                    }}
                   >
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
                       <Zap className="h-5 w-5 mr-2" />

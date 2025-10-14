@@ -160,7 +160,7 @@ const Reservation = () => {
                           <div className="mt-2 mb-3 flex items-center text-sm text-gray-700">
                             <Bike className="h-4 w-4 mr-2 text-gray-500" />
                             <div className="flex flex-wrap items-center gap-x-2">
-                              <span>Xe: <b>{line.vehicleInfo.vehi2leType || "—"}</b></span>
+                              <span>Xe: <b>{line.vehicleInfo.vehicleType || "—"}</b></span>
                               {line.vehicleInfo.batteryType && (
                                 <span>— Pin <b>{line.vehicleInfo.batteryType}</b></span>
                               )}

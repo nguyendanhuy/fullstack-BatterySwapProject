@@ -55,7 +55,7 @@ export default function ProvinceDistrictWardSelect({ value = {}, setFilterAddres
 
     return (
         <Space style={style}>
-            <Select style={{ minWidth: 220 }} placeholder="Tỉnh/TP" loading={lp} allowClear
+            <Select style={{ minWidth: 150 }} placeholder="Tỉnh/TP" loading={lp} allowClear
                 options={pList} value={v.provinceCode}
                 // Khi tỉnh thay đổi, xóa luôn huyện và xã đã chọn
                 onChange={(val) => {
@@ -71,7 +71,7 @@ export default function ProvinceDistrictWardSelect({ value = {}, setFilterAddres
                 }}
                 showSearch filterOption={(i, o) => o.label.toLowerCase().includes(i.toLowerCase())}
             />
-            <Select style={{ minWidth: 220 }} placeholder="Quận/Huyện" loading={ld} disabled={!v.provinceCode} allowClear
+            <Select style={{ minWidth: 150 }} placeholder="Quận/Huyện" loading={ld} disabled={!v.provinceCode} allowClear
                 //Khi huyện thay đổi, xóa luôn xã đã chọn
                 options={dList} value={v.districtCode}
                 onChange={(val) => {
@@ -85,7 +85,7 @@ export default function ProvinceDistrictWardSelect({ value = {}, setFilterAddres
                 }}
                 showSearch filterOption={(i, o) => o.label.toLowerCase().includes(i.toLowerCase())}
             />
-            <Select style={{ minWidth: 220 }} placeholder="Phường/Xã" loading={lw} disabled={!v.districtCode} allowClear
+            <Select style={{ minWidth: 150 }} placeholder="Phường/Xã" loading={lw} disabled={!v.districtCode} allowClear
                 options={wList} value={v.wardCode}
                 onChange={(val) => {
                     const selected = wList.find(w => w.value === val);

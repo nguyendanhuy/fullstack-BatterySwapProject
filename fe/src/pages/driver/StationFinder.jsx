@@ -121,6 +121,7 @@ export default function StationFinder() {
             vehicleId: String(vehicle.vehicleId),
             vehicleType: vehicle.vehicleType,
             batteryType: vehicle.batteryType,
+            batteryCount: vehicle.batteryCount,
           },
           stationInfo: null,
           batteryType: vehicle.batteryType,
@@ -165,8 +166,11 @@ export default function StationFinder() {
     const allowedForThisLine = Math.max(0, totalQuota - (totalBooked - meOldQty)); // trần theo quota tổng, riêng cho dòng đang chỉnh
 
     const next = Math.max(0, meOldQty + delta);
-
     if (delta > 0) {
+      if (next > line.vehicleInfo.batteryCount) {
+        toast.error("Vượt hạn mức tổng", { description: `Tối đa ${line.vehicleInfo.batteryCount} pin cho xe.` });
+        return;
+      }
       if (allowedForThisLine <= 0) {
         toast.error("Vượt hạn mức tổng", { description: `Tối đa ${totalQuota} pin cho tất cả xe.` });
         return;

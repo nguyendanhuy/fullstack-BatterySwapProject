@@ -223,7 +223,7 @@ const Reservation = () => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const maxDate = new Date(today);
-                        maxDate.setDate(today.getDate() + 2);
+                        maxDate.setDate(today.getDate() + 14);
                         return d < today || d > maxDate;
                       }}
                     />

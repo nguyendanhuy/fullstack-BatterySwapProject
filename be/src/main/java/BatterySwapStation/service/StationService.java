@@ -70,7 +70,7 @@ public class StationService {
         return getAllStations().stream()
                 .filter(s -> Objects.equals(s.getStationId(), id))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Station not found: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy trạm với mã: " + id));
     }
 
     // ⚡ API /nearby – lọc trong bán kính, không sort theo khoảng cách

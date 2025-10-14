@@ -50,6 +50,10 @@ const verifyEmailAPI = (token) => {
     return axios.get(`/auth/verify-email?token=${token}`);
 }
 
+const resendEmailAPIbyToken = (token) => {
+    return axios.post(`/auth/resend-verification?token=${token}`);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -60,5 +64,6 @@ export {
     deactivateVehicleByVin,
     getAllStations,
     getStationNearbyLocation,
-    verifyEmailAPI
+    verifyEmailAPI,
+    resendEmailAPIbyToken
 };

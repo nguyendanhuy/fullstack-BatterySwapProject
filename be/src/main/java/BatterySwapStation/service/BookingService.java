@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,35 +26,59 @@ public class BookingService {
     private final VehicleRepository vehicleRepository;
 
     /**
-     * Tạo booking mới
+     * Tạo đặt chỗ mới (giới hạn tối đa 1 xe, chỉ 1 trạm, ngày trong 2 ngày, khung giờ hợp lệ)
      */
     public BookingResponse createBooking(BookingRequest request) {
-        // Validate user
+        // Xác thực người dùng
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + request.getUserId()));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + request.getUserId()));
 
-        // Validate station
+        // Xác thực trạm
         Station station = stationRepository.findById(request.getStationId())
-                .orElseThrow(() -> new EntityNotFoundException("Station not found with ID: " + request.getStationId()));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + request.getStationId()));
 
-        // Validate vehicle (optional)
-        Vehicle vehicle = null;
-        if (request.getVehicleId() != null) {
-            vehicle = vehicleRepository.findById(request.getVehicleId())
-                    .orElseThrow(() -> new EntityNotFoundException("Vehicle not found with ID: " + request.getVehicleId()));
+        // Xác thực xe
+        Integer vehicleId = request.getVehicleId();
+        if (vehicleId == null) {
+            throw new IllegalArgumentException("Bạn phải chọn một xe để đặt pin.");
         }
 
-        // Kiểm tra user đã có booking active chưa
-        if (bookingRepository.existsActiveBookingForUser(user, LocalDate.now())) {
-            throw new IllegalStateException("User already has an active booking");
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy xe với mã: " + vehicleId));
+
+        // Kiểm tra xe thuộc về người dùng
+        if (vehicle.getUser() == null || !vehicle.getUser().getUserId().equals(user.getUserId())) {
+            throw new IllegalArgumentException("Xe này không thuộc về bạn.");
         }
 
-        // Kiểm tra time slot đã được đặt chưa
+        // Kiểm tra ngày đặt chỗ trong vòng 2 ngày
+        LocalDate now = LocalDate.now();
+        if (request.getBookingDate().isBefore(now) || request.getBookingDate().isAfter(now.plusDays(2))) {
+            throw new IllegalArgumentException("Ngày đặt pin phải nằm trong vòng 2 ngày kể từ hôm nay.");
+        }
+
+        // Kiểm tra khung giờ hợp lệ (chỉ nhận các giá trị: 1h30, 2h, 2h30)
+        if (request.getTimeSlot() == null) {
+            throw new IllegalArgumentException("Bạn phải chọn khung giờ.");
+        }
+
+        // Chuyển đổi LocalTime thành String để so sánh
+        String timeSlotStr = request.getTimeSlot().toString();
+        if (!("01:30".equals(timeSlotStr) || "02:00".equals(timeSlotStr) || "02:30".equals(timeSlotStr))) {
+            throw new IllegalArgumentException("Khung giờ chỉ được chọn 1h30, 2h hoặc 2h30.");
+        }
+
+        // Kiểm tra người dùng đã có đặt chỗ đang hoạt động chưa
+        if (bookingRepository.existsActiveBookingForUser(user, now)) {
+            throw new IllegalStateException("Bạn đã có một lượt đặt pin đang hoạt động.");
+        }
+
+        // Kiểm tra khung giờ đã được đặt chưa
         if (bookingRepository.existsBookingAtTimeSlot(station, request.getBookingDate(), request.getTimeSlot())) {
-            throw new IllegalStateException("Time slot is already booked");
+            throw new IllegalStateException("Khung giờ này đã có người đặt trước.");
         }
 
-        // Tạo booking
+        // Tạo đặt chỗ mới
         Booking booking = Booking.builder()
                 .user(user)
                 .station(station)
@@ -62,25 +87,23 @@ public class BookingService {
                 .timeSlot(request.getTimeSlot())
                 .bookingStatus(Booking.BookingStatus.PENDING)
                 .build();
-
-        // Lưu booking
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Tạo battery items nếu có
+        // Tạo các mục pin nếu có
         if (request.getBatteryItems() != null && !request.getBatteryItems().isEmpty()) {
-            // TODO: Implement battery items logic
+            // TODO: Triển khai logic các mục pin
         }
 
         return convertToResponse(savedBooking);
     }
 
     /**
-     * Lấy danh sách booking của user
+     * Lấy danh sách đặt chỗ của người dùng
      */
     @Transactional(readOnly = true)
     public List<BookingResponse> getUserBookings(String userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
 
         List<Booking> bookings = bookingRepository.findByUser(user);
         return bookings.stream()
@@ -89,39 +112,39 @@ public class BookingService {
     }
 
     /**
-     * Lấy booking theo ID
+     * Lấy đặt chỗ theo ID
      */
     @Transactional(readOnly = true)
     public BookingResponse getBookingById(Long bookingId, String userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
 
         Booking booking = bookingRepository.findByBookingIdAndUser(bookingId, user)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
 
         return convertToResponse(booking);
     }
 
     /**
-     * Hủy booking
+     * Hủy đặt chỗ
      */
     public BookingResponse cancelBooking(CancelBookingRequest request) {
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + request.getUserId()));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + request.getUserId()));
 
         Booking booking = bookingRepository.findByBookingIdAndUser(request.getBookingId(), user)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + request.getBookingId()));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + request.getBookingId()));
 
-        // Kiểm tra booking có thể hủy không
+        // Kiểm tra đặt chỗ có thể hủy không
         if (booking.getBookingStatus() == Booking.BookingStatus.CANCELLED) {
-            throw new IllegalStateException("Booking is already cancelled");
+            throw new IllegalStateException("Lượt đặt pin này đã bị hủy trước đó.");
         }
 
         if (booking.getBookingStatus() == Booking.BookingStatus.COMPLETED) {
-            throw new IllegalStateException("Cannot cancel completed booking");
+            throw new IllegalStateException("Không thể hủy lượt đặt pin đã hoàn thành.");
         }
 
-        // Hủy booking
+        // Hủy đặt chỗ
         booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
         Booking savedBooking = bookingRepository.save(booking);
 
@@ -129,7 +152,7 @@ public class BookingService {
     }
 
     /**
-     * Lấy danh sách booking theo trạng thái
+     * Lấy danh sách đặt chỗ theo trạng thái
      */
     @Transactional(readOnly = true)
     public List<BookingResponse> getBookingsByStatus(Booking.BookingStatus status) {
@@ -140,12 +163,12 @@ public class BookingService {
     }
 
     /**
-     * Lấy danh sách booking của station
+     * Lấy danh sách đặt chỗ của trạm
      */
     @Transactional(readOnly = true)
     public List<BookingResponse> getStationBookings(Integer stationId) {
         Station station = stationRepository.findById(stationId)
-                .orElseThrow(() -> new EntityNotFoundException("Station not found with ID: " + stationId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + stationId));
 
         List<Booking> bookings = bookingRepository.findByStation(station);
         return bookings.stream()
@@ -154,11 +177,11 @@ public class BookingService {
     }
 
     /**
-     * Cập nhật trạng thái booking
+     * Cập nhật trạng thái đặt chỗ
      */
     public BookingResponse updateBookingStatus(Long bookingId, Booking.BookingStatus newStatus) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Booking not found with ID: " + bookingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
 
         booking.setBookingStatus(newStatus);
         Booking savedBooking = bookingRepository.save(booking);
@@ -167,7 +190,7 @@ public class BookingService {
     }
 
     /**
-     * Lấy tất cả booking (dành cho admin)
+     * Lấy tất cả đặt chỗ (dành cho quản trị viên)
      */
     @Transactional(readOnly = true)
     public List<BookingResponse> getAllBookings() {
@@ -178,7 +201,7 @@ public class BookingService {
     }
 
     /**
-     * Convert Booking entity to BookingResponse DTO
+     * Chuyển đổi Booking entity thành BookingResponse DTO
      */
     private BookingResponse convertToResponse(Booking booking) {
         BookingResponse response = new BookingResponse();
@@ -198,8 +221,8 @@ public class BookingService {
         response.setTimeSlot(booking.getTimeSlot());
         response.setBookingStatus(booking.getBookingStatus().toString());
 
-        // TODO: Add battery items mapping
-        // TODO: Add payment info mapping
+        // TODO: Thêm mapping các mục pin
+        // TODO: Thêm mapping thông tin thanh toán
 
         return response;
     }

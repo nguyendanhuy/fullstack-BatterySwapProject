@@ -27,15 +27,16 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public Vehicle getVehicleInfoByVin(String vin) {
         if (!validateVIN(vin)) {
-            throw new IllegalArgumentException("Invalid VIN format.");
+            throw new IllegalArgumentException("Định dạng VIN không hợp lệ.");
         }
         return vehicleRepository.findByVIN(vin)
-                .orElseThrow(() -> new EntityNotFoundException("Vehicle with VIN " + vin + " not found."));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy xe với mã VIN: " + vin));
     }
 
     @Transactional(readOnly = true)
     public VehicleInfoResponse getVehicleInfoResponseByVin(String vin) {
-        Vehicle vehicle = getVehicleInfoByVin(vin);
+        Vehicle vehicle = vehicleRepository.findByVIN(vin)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy xe với mã VIN: " + vin));
         VehicleInfoResponse response = new VehicleInfoResponse();
 
         // Thiết lập theo thứ tự UI
@@ -60,14 +61,14 @@ public class VehicleService {
     @Transactional
     public Vehicle assignVehicleToUser(String userId, String vin) {
         if (!validateVIN(vin)) {
-            throw new IllegalArgumentException("Invalid VIN format.");
+            throw new IllegalArgumentException("Định dạng VIN không hợp lệ.");
         }
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
         Vehicle vehicle = getVehicleInfoByVin(vin);
 
         if (vehicle.getUser() != null || vehicle.isActive()) {
-            throw new IllegalStateException("Vehicle with VIN " + vin + " is already assigned.");
+            throw new IllegalStateException("Xe với mã VIN " + vin + " đã được gán cho người dùng khác.");
         }
 
         vehicle.setUser(user);
@@ -78,10 +79,10 @@ public class VehicleService {
     @Transactional
     public Vehicle registerNewVehicle(String userId, VehicleRegistrationRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
 
         if (vehicleRepository.findByVIN(request.getVin()).isPresent()) {
-            throw new IllegalStateException("Vehicle with VIN " + request.getVin() + " already exists.");
+            throw new IllegalStateException("Xe với mã VIN " + request.getVin() + " đã tồn tại.");
         }
 
         Vehicle newVehicle = new Vehicle();
@@ -131,8 +132,8 @@ public class VehicleService {
 
     @Transactional(readOnly = true)
     public List<Vehicle> getActiveUserVehicles(String userId) {
-         User user = userRepository.findById(userId)
-          .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
 
         // Tạm thời hardcode userId = "DR006" để test
         //User user = userRepository.findById("DR006")
@@ -145,7 +146,7 @@ public class VehicleService {
     @Transactional
     public void deactivateVehicle(int vehicleId, String userId) {
         Vehicle vehicle = vehicleRepository.findByVehicleIdAndUser_UserId(vehicleId, userId)
-                .orElseThrow(() -> new EntityNotFoundException("Vehicle not found or does not belong to the user."));
+                .orElseThrow(() -> new EntityNotFoundException("Xe không tồn tại hoặc không thuộc về người dùng."));
 
         vehicle.setActive(false);
         vehicle.setUser(null);

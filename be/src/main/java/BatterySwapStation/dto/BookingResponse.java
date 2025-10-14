@@ -1,6 +1,7 @@
 package BatterySwapStation.dto;
 
 import BatterySwapStation.entity.Booking;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,8 +22,13 @@ public class BookingResponse {
     private String stationAddress;
     private Integer vehicleId;
     private String vehicleVin;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate bookingDate;
+
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime timeSlot;
+
     private String bookingStatus;
     private List<BatteryItemResponse> batteryItems;
     private PaymentInfo payment;

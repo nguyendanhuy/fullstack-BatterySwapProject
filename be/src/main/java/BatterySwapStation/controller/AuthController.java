@@ -31,7 +31,10 @@ public class AuthController {
 
     private static final String FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email";
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8130857fd984e0874efedf78568e80a38bc41774
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
@@ -41,6 +44,20 @@ public class AuthController {
         String verifyUrl = FRONTEND_VERIFY_URL + "?token=" + token;
         emailService.sendVerificationEmail(user.getFullName(), user.getEmail(), verifyUrl);
 
+<<<<<<< HEAD
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.",
+                "userId", user.getUserId(),
+                "verifyLink", verifyUrl
+        ));
+    }
+
+
+    @GetMapping("/send")
+    public String testEmail(@RequestParam String to) {
+        emailService.sendVerificationEmail("Test User", to, "https://example.com/verify");
+        return "Email test đã gửi tới " + to;
+=======
         // 🆕 Sinh resendToken để FE lưu
         String resendToken = jwtService.generateResendToken(user.getEmail());
 
@@ -51,6 +68,7 @@ public class AuthController {
                         "userId", user.getUserId(),
                         "resendToken", resendToken
                 ));
+>>>>>>> 8130857fd984e0874efedf78568e80a38bc41774
     }
 
 
@@ -72,16 +90,16 @@ public class AuthController {
             @RequestBody RoleDTO roleDTO) {
         boolean updated = authService.updateUserRole(userId, roleDTO);
         if (updated) {
-            return ResponseEntity.ok("Role updated successfully!");
+            return ResponseEntity.ok("Role cập nhật thành công");
         } else {
-            return ResponseEntity.badRequest().body("User or Role not found!");
+            return ResponseEntity.badRequest().body("User và Role không tìm thấy");
         }
     }
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user) {
         if (user == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
 
         return ResponseEntity.ok(Map.of(
@@ -119,9 +137,38 @@ public class AuthController {
                     "message", "Đã xảy ra lỗi khi xác thực email. Vui lòng thử lại sau."
             ));
         }
+<<<<<<< HEAD
 
     }
 
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@RequestParam("token") String token) {
+        try {
+            String email = jwtService.extractEmailAllowExpired(token);
+            User user = emailVerificationService.getUserByEmail(email);
+
+            if (user.isVerified()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", 400,
+                        "success", false,
+                        "message", "Tài khoản này đã được xác thực rồi!"
+                ));
+            }
+=======
+>>>>>>> 8130857fd984e0874efedf78568e80a38bc41774
+
+    }
+
+<<<<<<< HEAD
+            String newToken = emailVerificationService.createVerificationToken(user);
+            String verifyUrl = FRONTEND_VERIFY_URL + "?token=" + newToken;
+            emailService.sendVerificationEmail(user.getFullName(), email, verifyUrl);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", 200,
+                    "success", true,
+                    "message", "Email xác minh mới đã được gửi tới " + email
+=======
     @PostMapping("/resend-verification-by-token")
     public ResponseEntity<?> resendVerificationByToken(@RequestParam("token") String resendToken) {
         try {
@@ -151,6 +198,7 @@ public class AuthController {
                     "success", true,
                     "message", "Email xác minh mới đã được gửi tới " + email,
                     "resendToken", nextResendToken
+>>>>>>> 8130857fd984e0874efedf78568e80a38bc41774
             ));
 
         } catch (IllegalArgumentException ex) {
@@ -167,5 +215,8 @@ public class AuthController {
             ));
         }
     }
+<<<<<<< HEAD
+=======
 
+>>>>>>> 8130857fd984e0874efedf78568e80a38bc41774
 }

@@ -1,5 +1,6 @@
 package BatterySwapStation.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,11 +37,13 @@ public class Invoice {
         this.invoiceId = invoiceId;
     }
 
-    // Backward compatibility method
+    // Backward compatibility method - ẨN KHỎI JSON
+    @JsonIgnore
     public Long getId(){
         return invoiceId;
     }
 
+    @JsonIgnore
     public void setId(Long id) {
         this.invoiceId = id;
     }

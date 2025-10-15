@@ -20,7 +20,7 @@ public class InvoiceService {
         Invoice invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow(() -> new RuntimeException("Invoice not found"));
         InvoiceResponseDTO dto = new InvoiceResponseDTO();
-        dto.setId(invoice.getInvoiceId()); // Use getInvoiceId() instead of getId()
+        dto.setId(invoice.getInvoiceId());
         dto.setCreatedDate(invoice.getCreatedDate());
         dto.setTotalAmount(invoice.getTotalAmount());
 
@@ -28,16 +28,36 @@ public class InvoiceService {
             BookingInfoDTO bDto = new BookingInfoDTO();
             bDto.setBookingId(booking.getBookingId());
 
-            // Convert scheduledTime to bookingDate and timeSlot
-            if (booking.getScheduledTime() != null) {
-                bDto.setBookingDate(booking.getScheduledTime().toLocalDate());
-                bDto.setTimeSlot(booking.getScheduledTime().toLocalTime());
-            }
+            // Sử dụng bookingDate và timeSlot trực tiếp
+            bDto.setBookingDate(booking.getBookingDate());
+            bDto.setTimeSlot(booking.getTimeSlot());
 
             return bDto;
         }).collect(Collectors.toList());
 
         dto.setBookings(bookingDTOs);
         return dto;
+    }
+
+    public Invoice createInvoice(Invoice invoice) {
+        invoice.setInvoiceId(null); // Đảm bảo sử dụng sequence tự động
+        return invoiceRepository.save(invoice);
+    }
+
+    public Invoice updateInvoice(Long id, Invoice invoice) {
+        Invoice existing = invoiceRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Invoice not found"));
+        existing.setCreatedDate(invoice.getCreatedDate());
+        existing.setTotalAmount(invoice.getTotalAmount());
+        // Nếu có bookings thì xử lý thêm
+        return invoiceRepository.save(existing);
+    }
+
+    public void deleteInvoice(Long id) {
+        invoiceRepository.deleteById(id);
+    }
+
+    public List<Invoice> getAllInvoices() {
+        return invoiceRepository.findAll();
     }
 }

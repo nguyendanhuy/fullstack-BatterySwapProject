@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,15 +30,7 @@ public class BookingService {
      * Tạo đặt chỗ mới (giới hạn tối đa 1 xe, chỉ 1 trạm, ngày trong 2 ngày, khung giờ hợp lệ)
      */
     public BookingResponse createBooking(BookingRequest request) {
-        // Xác thực người dùng
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + request.getUserId()));
-
-        // Xác thực trạm
-        Station station = stationRepository.findById(request.getStationId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + request.getStationId()));
-
-        // Xác thực xe
+        // Xác thực xe trước tiên để lấy userId
         Integer vehicleId = request.getVehicleId();
         if (vehicleId == null) {
             throw new IllegalArgumentException("Bạn phải chọn một xe để đặt pin.");
@@ -46,46 +39,57 @@ public class BookingService {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy xe với mã: " + vehicleId));
 
-        // Kiểm tra xe thuộc về người dùng
-        if (vehicle.getUser() == null || !vehicle.getUser().getUserId().equals(user.getUserId())) {
-            throw new IllegalArgumentException("Xe này không thuộc về bạn.");
+        // Tự động lấy userId từ vehicle
+        if (vehicle.getUser() == null) {
+            throw new IllegalArgumentException("Xe này chưa được đăng ký cho người dùng nào.");
         }
 
-        // Kiểm tra ngày đặt chỗ trong vòng 2 ngày
+        User user = vehicle.getUser();
+
+        // Xác thực trạm
+        Station station = stationRepository.findById(request.getStationId())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + request.getStationId()));
+
+        // Kiểm tra ngày đặt chỗ trong vòng 7 ngày
         LocalDate now = LocalDate.now();
-        if (request.getBookingDate().isBefore(now) || request.getBookingDate().isAfter(now.plusDays(2))) {
-            throw new IllegalArgumentException("Ngày đặt pin phải nằm trong vòng 2 ngày kể từ hôm nay.");
+        if (request.getBookingDate().isBefore(now) || request.getBookingDate().isAfter(now.plusDays(7))) {
+            throw new IllegalArgumentException("Ngày đặt pin phải nằm trong vòng 7 ngày kể từ hôm nay.");
         }
 
-        // Kiểm tra khung giờ hợp lệ (chỉ nhận các giá trị: 1h30, 2h, 2h30)
+        // Kiểm tra khung giờ hợp lệ (chỉ nhận các giá trị ví dụ: 8h30, 10h, 20h30)
         if (request.getTimeSlot() == null) {
             throw new IllegalArgumentException("Bạn phải chọn khung giờ.");
         }
 
-        // Chuyển đổi LocalTime thành String để so sánh
-        String timeSlotStr = request.getTimeSlot().toString();
-        if (!("01:30".equals(timeSlotStr) || "02:00".equals(timeSlotStr) || "02:30".equals(timeSlotStr))) {
-            throw new IllegalArgumentException("Khung giờ chỉ được chọn 1h30, 2h hoặc 2h30.");
-        }
+        // Chuyển đổi String sang LocalTime
+        LocalTime timeSlot = LocalTime.parse(request.getTimeSlot(), java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+
+        // Hệ thống hoạt động 24/7 - không giới hạn khung giờ
 
         // Kiểm tra người dùng đã có đặt chỗ đang hoạt động chưa
-        if (bookingRepository.existsActiveBookingForUser(user, now)) {
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        if (bookingRepository.existsActiveBookingForUser(user, currentDateTime)) {
             throw new IllegalStateException("Bạn đã có một lượt đặt pin đang hoạt động.");
         }
 
         // Kiểm tra khung giờ đã được đặt chưa
-        if (bookingRepository.existsBookingAtTimeSlot(station, request.getBookingDate(), request.getTimeSlot())) {
+        LocalDateTime scheduledDateTime = request.getBookingDate().atTime(timeSlot);
+        if (bookingRepository.existsBookingAtTimeSlot(station, scheduledDateTime)) {
             throw new IllegalStateException("Khung giờ này đã có người đặt trước.");
         }
 
         // Tạo đặt chỗ mới
+        LocalDateTime ldtnow = LocalDateTime.now();
+        scheduledDateTime = request.getBookingDate().atTime(timeSlot);
+
         Booking booking = Booking.builder()
                 .user(user)
                 .station(station)
                 .vehicle(vehicle)
-                .bookingDate(request.getBookingDate())
-                .timeSlot(request.getTimeSlot())
-                .bookingStatus(Booking.BookingStatus.PENDING)
+                .bookingTime(ldtnow)
+                .scheduledTime(scheduledDateTime)
+                .status(Booking.BookingStatus.PENDING)
+                .notes("Đặt lịch qua API")
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
 
@@ -133,19 +137,19 @@ public class BookingService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + request.getUserId()));
 
         Booking booking = bookingRepository.findByBookingIdAndUser(request.getBookingId(), user)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + request.getBookingId()));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lư���t đặt pin với mã: " + request.getBookingId()));
 
         // Kiểm tra đặt chỗ có thể hủy không
-        if (booking.getBookingStatus() == Booking.BookingStatus.CANCELLED) {
+        if (booking.getStatus() == Booking.BookingStatus.CANCELLED) {
             throw new IllegalStateException("Lượt đặt pin này đã bị hủy trước đó.");
         }
 
-        if (booking.getBookingStatus() == Booking.BookingStatus.COMPLETED) {
+        if (booking.getStatus() == Booking.BookingStatus.COMPLETED) {
             throw new IllegalStateException("Không thể hủy lượt đặt pin đã hoàn thành.");
         }
 
         // Hủy đặt chỗ
-        booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
+        booking.setStatus(Booking.BookingStatus.CANCELLED);
         Booking savedBooking = bookingRepository.save(booking);
 
         return convertToResponse(savedBooking);
@@ -156,7 +160,7 @@ public class BookingService {
      */
     @Transactional(readOnly = true)
     public List<BookingResponse> getBookingsByStatus(Booking.BookingStatus status) {
-        List<Booking> bookings = bookingRepository.findByBookingStatus(status);
+        List<Booking> bookings = bookingRepository.findByStatus(status);
         return bookings.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -183,7 +187,7 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
 
-        booking.setBookingStatus(newStatus);
+        booking.setStatus(newStatus);
         Booking savedBooking = bookingRepository.save(booking);
 
         return convertToResponse(savedBooking);
@@ -217,9 +221,13 @@ public class BookingService {
             response.setVehicleVin(booking.getVehicle().getVIN());
         }
 
-        response.setBookingDate(booking.getBookingDate());
-        response.setTimeSlot(booking.getTimeSlot());
-        response.setBookingStatus(booking.getBookingStatus().toString());
+        // Convert scheduledTime to bookingDate and timeSlot for response
+        if (booking.getScheduledTime() != null) {
+            response.setBookingDate(booking.getScheduledTime().toLocalDate());
+            response.setTimeSlot(booking.getScheduledTime().toLocalTime());
+        }
+
+        response.setBookingStatus(booking.getStatus().toString());
 
         // TODO: Thêm mapping các mục pin
         // TODO: Thêm mapping thông tin thanh toán

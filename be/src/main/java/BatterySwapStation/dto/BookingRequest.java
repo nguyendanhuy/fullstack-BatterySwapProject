@@ -6,22 +6,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class BookingRequest {
-    private String userId;
+
     private Integer stationId;
     private Integer vehicleId;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate bookingDate;
 
-    @JsonFormat(pattern = "HH:mm")
-    private LocalTime timeSlot;
+    private String timeSlot; // Đổi từ LocalTime sang String để Swagger không sinh ra second/nano
 
     private List<BatteryItemRequest> batteryItems;
 
@@ -32,4 +30,5 @@ public class BookingRequest {
         private String batteryType;
         private Integer quantity;
     }
+
 }

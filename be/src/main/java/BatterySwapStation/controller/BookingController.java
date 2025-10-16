@@ -1,13 +1,11 @@
 package BatterySwapStation.controller;
 
 import BatterySwapStation.dto.*;
-import BatterySwapStation.entity.Booking;
 import BatterySwapStation.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -70,22 +68,25 @@ public class BookingController {
             return ResponseEntity.ok(new ApiResponseDto(true, "Hủy booking thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
+                    .body(new ApiResponseDto(false, "Lỗi hủy booking: " + e.getMessage()));
         }
     }
 
     @GetMapping("/status/{status}")
-    @Operation(summary = "Lấy booking theo trạng thái", description = "Lấy danh sách booking theo trạng thái cụ thể")
+    @Operation(summary = "Lấy booking theo trạng thái", description = "Lấy danh sách booking theo trạng thái cụ thể (PENDING, CONFIRMED, CANCELLED, COMPLETED)")
     public ResponseEntity<ApiResponseDto> getBookingsByStatus(
             @PathVariable @Parameter(description = "Trạng thái booking (PENDING, CONFIRMED, CANCELLED, COMPLETED)")
             String status) {
         try {
-            Booking.BookingStatus bookingStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
-            List<BookingResponse> bookings = bookingService.getBookingsByStatus(bookingStatus);
-                return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi trạng thái booking: " + status));
+            // Validate status trước khi gọi service
+            String normalizedStatus = status.toUpperCase();
+            if (!normalizedStatus.matches("PENDING|CONFIRMED|CANCELLED|COMPLETED")) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponseDto(false, "Trạng thái không hợp lệ. Chỉ chấp nhận: PENDING, CONFIRMED, CANCELLED, COMPLETED"));
+            }
+
+            List<BookingResponse> bookings = bookingService.getBookingsByStatus(normalizedStatus);
+            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
@@ -106,17 +107,20 @@ public class BookingController {
     }
 
     @PutMapping("/{bookingId}/status")
-    @Operation(summary = "Cập nhật trạng thái booking", description = "Cập nhật trạng thái của một booking (dành cho admin/staff)")
+    @Operation(summary = "Cập nhật trạng thái booking", description = "Cập nhật trạng thái của một booking (dành cho admin/staff). Trạng thái: PENDING, CONFIRMED, CANCELLED, COMPLETED")
     public ResponseEntity<ApiResponseDto> updateBookingStatus(
             @PathVariable @Parameter(description = "ID của booking") Long bookingId,
-            @RequestParam @Parameter(description = "Trạng thái mới") String status) {
+            @RequestParam @Parameter(description = "Trạng thái mới (PENDING, CONFIRMED, CANCELLED, COMPLETED)") String status) {
         try {
-            Booking.BookingStatus newStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
-            BookingResponse response = bookingService.updateBookingStatus(bookingId, newStatus);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", response));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi trạng thái booking: " + status));
+            // Validate và normalize status
+            String normalizedStatus = status.toUpperCase();
+            if (!normalizedStatus.matches("PENDING|CONFIRMED|CANCELLED|COMPLETED")) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponseDto(false, "Trạng thái không hợp lệ. Chỉ chấp nhận: PENDING, CONFIRMED, CANCELLED, COMPLETED"));
+            }
+
+            BookingResponse response = bookingService.updateBookingStatus(bookingId, normalizedStatus);
+            return ResponseEntity.ok(new ApiResponseDto(true, "Cập nhật trạng thái booking thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponseDto(false, "Cập nhật trạng thái booking thất bại: " + e.getMessage()));

@@ -3,9 +3,7 @@ package BatterySwapStation.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
 
 @Entity
 @Table(name = "Booking")
@@ -35,18 +33,18 @@ public class Booking {
     @JoinColumn(name = "VehicleId", nullable = false)
     private Vehicle vehicle;
 
-    @Column(name = "BookingTime", nullable = false)
-    private LocalDateTime bookingTime;
+    // Các cột thời gian cố định (DATE + TIME) - KHÔNG CÓ NANO GIÂY
+    @Column(name = "bookingdate", nullable = false)
+    private LocalDate bookingDate;
 
-    @Column(name = "ScheduledTime", nullable = false)
-    private LocalDateTime scheduledTime;
+    @Column(name = "timeslot", nullable = false)
+    private LocalTime timeSlot;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "Status", nullable = false, length = 20)
-    private BookingStatus status = BookingStatus.PENDING;
+    @Column(name = "bookingstatus", nullable = false, length = 20)
+    private String bookingStatus = "PENDING";
 
     @Column(name = "CompletedTime")
-    private LocalDateTime completedTime;
+    private LocalDate completedTime;
 
     @Column(name = "CancellationReason", length = 500)
     private String cancellationReason;
@@ -54,20 +52,7 @@ public class Booking {
     @Column(name = "Notes", length = 1000)
     private String notes;
 
-    // Add legacy fields that might still exist in database
-    @Column(name = "bookingdate")
-    private LocalDate bookingDate;
-
-    @Column(name = "timeslot")
-    private LocalTime timeSlot;
-
-    @Column(name = "bookingstatus", length = 20)
-    private String bookingStatusLegacy;
-
-    // Relationships with other entities
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BookingBatteryItem> batteryItems;
-
+    // Relationships
     @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private Payment payment;
 
@@ -75,26 +60,4 @@ public class Booking {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "InvoiceId")
     private Invoice invoice;
-
-    public enum BookingStatus {
-        PENDING,
-        CONFIRMED,
-        CANCELLED,
-        COMPLETED
-    }
-
-    // Ensure backward compatibility and sync fields
-    @PrePersist
-    @PreUpdate
-    public void syncFields() {
-        if (scheduledTime != null && bookingDate == null) {
-            bookingDate = scheduledTime.toLocalDate();
-        }
-        if (scheduledTime != null && timeSlot == null) {
-            timeSlot = scheduledTime.toLocalTime();
-        }
-        if (status != null && bookingStatusLegacy == null) {
-            bookingStatusLegacy = status.name();
-        }
-    }
 }

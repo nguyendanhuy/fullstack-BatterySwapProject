@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star } from "lucide-react";
-import { Link } from "react-router-dom";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation, viewUserVehicles } from "../../services/axios.services";
@@ -14,6 +13,7 @@ import { toast } from "sonner";
 import { SystemContext } from "../../contexts/system.context";
 import ProvinceDistrictWardSelect from "../../components/ProvinceDistrictWardSelect";
 import BookingSummary from "../../components/BookingSummary";
+import { useSessionStorage } from "../../hooks/useSessionStorage";
 
 // --- Utils địa chỉ (giữ nguyên tinh thần code cũ) ---
 const normalizeVi = (s = "") =>
@@ -84,8 +84,8 @@ export default function StationFinder() {
 
   // --- NEW: chọn xe chi tiết & giỏ đặt pin theo xe ---
   const [currentVehicleId, setCurrentVehicleId] = useState(null);
-  const [selectBattery, setSelectBattery] = useState({});
-  // shape: { [vehicleId]: { vehicleInfo, stationInfo, batteryType, qty } }
+  // Sử dụng useSessionStorage để lưu thông tin đặt pin
+  const [selectBattery, setSelectBattery] = useSessionStorage("battery-booking-selection", {});
 
   const getVehicleRequired = (v) => Number(v?.batteryCount ?? 1);
 
@@ -97,7 +97,7 @@ export default function StationFinder() {
     Object.values(selectBattery).reduce((s, it) => s + (Number(it.qty) || 0), 0)
   ), [selectBattery]);
 
-  const quotaLeft = Math.max(0, totalQuota - totalBooked);
+  const z = Math.max(0, totalQuota - totalBooked);
 
   const assignedAtStationType = (stationId, batteryType) => {
     return Object.values(selectBattery).reduce((sum, it) => {
@@ -213,6 +213,8 @@ export default function StationFinder() {
         qty: next,
       }
     }));
+
+    console.log(">>> check selectBattery after update: ", selectBattery);
   };
 
   // --- Load danh sách xe (nếu null khi reload) ---
@@ -288,7 +290,8 @@ export default function StationFinder() {
   useEffect(() => {
     autoLocation();
     getAllStation();
-  }, []); // eslint-disable-line
+  }, []);
+
 
   // --- Distance Matrix (thêm khoảng cách & thời gian) ---
   const distanceMatrixWithStations = async (origin, stationsList, signal) => {
@@ -623,6 +626,7 @@ export default function StationFinder() {
               </div>
             )}
 
+
             {/* Province/District/Ward */}
             <div className="mb-2">
               <ProvinceDistrictWardSelect setFilterAddress={setFilterAddress} />
@@ -722,8 +726,8 @@ export default function StationFinder() {
                                 return (
                                   <div
                                     key={type}
-                                    className={`flex items-center p-3 rounded-lg border transition-all duration-300
-                                    ${meQty > 0
+                                    className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300
+                                      ${meQty > 0
                                         ? "bg-gradient-to-r from-blue-100 to-purple-100 border-blue-400 shadow-lg"
                                         : "bg-gradient-to-r from-white to-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-md"
                                       }`}
@@ -732,7 +736,7 @@ export default function StationFinder() {
                                     <div className="flex items-center gap-2">
                                       <div
                                         className={`p-1.5 rounded-md transition-all duration-300 
-                                        ${type === "LITHIUM_ION"
+                                          ${type === "LITHIUM_ION"
                                             ? "bg-gradient-to-r from-blue-400 to-blue-600"
                                             : type === "NICKEL_METAL_HYDRIDE"
                                               ? "bg-gradient-to-r from-purple-400 to-purple-600"
@@ -746,59 +750,56 @@ export default function StationFinder() {
                                       </span>
                                     </div>
 
-                                    {/* Giữa: counts (ẩn khi đã chọn > 0 để gọn) */}
-                                    {meQty === 0 && (
-                                      <div className="flex items-center gap-3 ml-4">
-                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-md border border-green-200">
-                                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                    {/* Phải: cụm “Sẵn sàng / Sạc” + nút ± */}
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-md border border-green-200">
+                                          <div className="w-2 h-2 bg-green-500 rounded-full" />
                                           <span className="text-xs font-medium text-gray-600">Sẵn sàng:</span>
                                           <span className="text-sm font-bold text-green-600">{battery.available - alrBased}</span>
                                         </div>
-                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md border border-blue-200">
-                                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200">
+                                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
                                           <span className="text-xs font-medium text-gray-600">Sạc:</span>
                                           <span className="text-sm font-bold text-blue-600">{battery.charging}</span>
                                         </div>
                                       </div>
-                                    )}
 
-                                    {/* Phải: cụm − [qty] + canh phải */}
-                                    <div className="ml-auto flex items-center justify-end gap-2">
-                                      <button
-                                        disabled={!currentVehicleId}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (currentVehicleId) {
-                                            updateVehicleSelection(currentVehicleId, station, type, -1);
-                                          }
-                                        }}
-                                        className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                                        title={!currentVehicleId ? "Chọn xe trước" : ""}
-                                      >
-                                        −
-                                      </button>
-
-                                      {meQty > 0 && (
-                                        <span className="min-w-6 text-center text-sm font-semibold text-gray-700">
-                                          {meQty}
-                                        </span>
-                                      )}
-
-                                      <button
-                                        disabled={!currentVehicleId || !station.active}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (currentVehicleId && station.active) {
-                                            updateVehicleSelection(currentVehicleId, station, type, +1);
-                                          }
-                                        }}
-                                        className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-emerald-500"
-                                        title={!currentVehicleId ? "Chọn xe trước" : (!station.active ? "Trạm tạm ngưng" : "")}
-                                      >
-                                        +
-                                      </button>
+                                      {/* Nút ± */}
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          disabled={!currentVehicleId}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (currentVehicleId) {
+                                              updateVehicleSelection(currentVehicleId, station, type, -1);
+                                            }
+                                          }}
+                                          className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                          −
+                                        </button>
+                                        {meQty > 0 && (
+                                          <span className="min-w-6 text-center text-sm font-semibold text-gray-700">
+                                            {meQty}
+                                          </span>
+                                        )}
+                                        <button
+                                          disabled={!currentVehicleId || !station.active}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (currentVehicleId && station.active) {
+                                              updateVehicleSelection(currentVehicleId, station, type, +1);
+                                            }
+                                          }}
+                                          className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-emerald-500"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
+
                                 );
                               })
                           ) : (

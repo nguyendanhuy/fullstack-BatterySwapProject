@@ -76,22 +76,48 @@ export default function SimpleGoongMap({
         [stations]
     );
 
+    // Update chống lỗi mạng
     const addOrUpdateCircle = (lngLat, radius = 500) => {
         const map = mapRef.current;
         if (!map) return;
+
+        // Nếu style chưa sẵn sàng: đợi 1 lần 'load' rồi gọi lại
+        if (!map.isStyleLoaded()) {
+            map.once("load", () => addOrUpdateCircle(lngLat, radius));
+            return;
+        }
+
         const data = {
             type: "FeatureCollection",
-            features: [{ type: "Feature", geometry: { type: "Polygon", coordinates: [drawCircle(lngLat, radius)] } }],
+            features: [
+                {
+                    type: "Feature",
+                    geometry: { type: "Polygon", coordinates: [drawCircle(lngLat, radius)] },
+                },
+            ],
         };
-        if (map.getLayer("circle")) map.removeLayer("circle");
-        if (map.getSource("circle")) map.removeSource("circle");
-        map.addSource("circle", { type: "geojson", data });
-        map.addLayer({
-            id: "circle",
-            type: "fill",
-            source: "circle",
-            paint: { "fill-color": "#3b82f6", "fill-opacity": 0.25 },
-        });
+
+        // Tên source/layer dùng cố định để có thể cập nhật lại
+        const srcId = "circle";
+        const layerId = "circle";
+
+        // Nếu đã có thì chỉ setData; nếu chưa có thì add source/layer
+        const existing = map.getSource(srcId);
+        if (existing && existing.setData) {
+            existing.setData(data);
+        } else {
+            // Xoá an toàn nếu còn sót
+            if (map.getLayer(layerId)) map.removeLayer(layerId);
+            if (map.getSource(srcId)) map.removeSource(srcId);
+
+            map.addSource(srcId, { type: "geojson", data });
+            map.addLayer({
+                id: layerId,
+                type: "fill",
+                source: srcId,
+                paint: { "fill-color": "#3b82f6", "fill-opacity": 0.25 },
+            });
+        }
     };
 
     const addOrUpdateStations = () => {

@@ -44,16 +44,15 @@ const getAllStations = () => {
 const getStationNearbyLocation = (lat, lng, radiusKm = 50) => {
     return axios.get(`/stations/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
 }
-
-
 const verifyEmailAPI = (token) => {
     return axios.get(`/auth/verify-email?token=${token}`);
 }
-
 const resendEmailAPIbyToken = (token) => {
     return axios.post(`/auth/resend-verification?token=${token}`);
 }
-
+const getBookingHistoryByUserId=(userId)=>{
+    return axios.get(`/bookings/user/${userId}`);
+}
 export {
     registerAPI,
     loginAPI,
@@ -65,5 +64,6 @@ export {
     getAllStations,
     getStationNearbyLocation,
     verifyEmailAPI,
-    resendEmailAPIbyToken
+    resendEmailAPIbyToken,
+    getBookingHistoryByUserId,
 };

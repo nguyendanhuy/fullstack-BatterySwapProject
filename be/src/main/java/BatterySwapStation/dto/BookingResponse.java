@@ -22,6 +22,8 @@ public class BookingResponse {
     private String stationAddress;
     private Integer vehicleId;
     private String vehicleVin;
+    private String vehicleType;  // Loại xe
+    private Double amount;        // Giá tiền booking
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate bookingDate;
@@ -30,6 +32,8 @@ public class BookingResponse {
     private LocalTime timeSlot;
 
     private String bookingStatus;
+    private String paymentStatus;  // Thêm trường paymentStatus
+    private String message;        // Thêm trường message để hiển thị thông báo
     private List<BatteryItemResponse> batteryItems;
     private PaymentInfo payment;
 

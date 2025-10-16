@@ -1,91 +1,284 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.service.InvoiceService;
-import BatterySwapStation.dto.InvoiceResponseDTO;
+import BatterySwapStation.service.BookingService;
+import BatterySwapStation.entity.Invoice;
+import BatterySwapStation.entity.Battery;
+import BatterySwapStation.entity.Booking;
+import BatterySwapStation.repository.BatteryRepository;
+import BatterySwapStation.repository.BookingRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.*;
 
 @RestController
-@RequestMapping("/invoices")
-@Tag(name = "Invoice Management", description = "APIs quản lý hóa đơn - Xem, tạo, sửa, xóa hóa đơn cho các giao dịch đổi pin")
+@RequestMapping("/api/invoices")
+@RequiredArgsConstructor
+@Tag(name = "Invoice API", description = "API quản lý hóa đơn - Response đơn giản")
 public class InvoiceController {
-    @Autowired
-    private InvoiceService invoiceService;
 
-    @GetMapping("/{id}")
-    @Operation(
-        summary = "Lấy chi tiết hóa đơn",
-        description = "Xem thông tin chi tiết của một hóa đơn cụ thể bao gồm: InvoiceId, ngày tạo, tổng tiền, và danh sách các booking liên quan. Dùng khi khách hàng muốn xem lại hóa đơn hoặc admin cần kiểm tra chi tiết."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lấy thông tin hóa đơn thành công"),
-        @ApiResponse(responseCode = "404", description = "Không tìm thấy hóa đơn với ID này")
-    })
-    public ResponseEntity<InvoiceResponseDTO> getInvoice(@PathVariable Long id) {
-        InvoiceResponseDTO invoice = invoiceService.getInvoiceDetail(id);
-        return ResponseEntity.ok(invoice);
-    }
+    private final InvoiceService invoiceService;
+    private final BookingService bookingService;
+    private final BatteryRepository batteryRepository;
+    private final BookingRepository bookingRepository;
 
-    @PostMapping
-    @Operation(
-        summary = "Tạo hóa đơn mới",
-        description = "Tạo hóa đơn mới cho giao dịch. InvoiceId sẽ tự động tăng dần từ 10000 (10000, 10001, 10002...). Thường được gọi tự động sau khi booking chuyển sang trạng thái COMPLETED hoặc khi khách hàng thanh toán thành công."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Tạo hóa đơn thành công"),
-        @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ")
-    })
-    public ResponseEntity<Invoice> createInvoice(@RequestBody Invoice invoice) {
-        Invoice created = invoiceService.createInvoice(invoice);
-        return ResponseEntity.ok(created);
-    }
+    @GetMapping("/{invoiceId}")
+    @Operation(summary = "Lấy thông tin invoice đơn giản", description = "Trả về thông tin invoice cơ bản, không có nested objects")
+    public ResponseEntity<Map<String, Object>> getInvoiceSimple(
+            @PathVariable @Parameter(description = "ID của invoice") Long invoiceId) {
+        try {
+            Invoice invoice = invoiceService.getInvoiceById(invoiceId);
 
-    @PutMapping("/{id}")
-    @Operation(
-        summary = "Cập nhật hóa đơn",
-        description = "Chỉnh sửa thông tin hóa đơn đã tạo (ngày tạo, tổng tiền). Dùng khi phát hiện sai sót trong hóa đơn cần điều chỉnh hoặc admin muốn cập nhật thông tin bổ sung."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Cập nhật hóa đơn thành công"),
-        @ApiResponse(responseCode = "404", description = "Không tìm thấy hóa đơn với ID này")
-    })
-    public ResponseEntity<Invoice> updateInvoice(@PathVariable Long id, @RequestBody Invoice invoice) {
-        Invoice updated = invoiceService.updateInvoice(id, invoice);
-        return ResponseEntity.ok(updated);
-    }
+            Map<String, Object> response = new HashMap<>();
+            response.put("invoiceId", invoice.getInvoiceId());
+            response.put("userId", invoice.getUserId() != null ? invoice.getUserId() : "");
+            response.put("totalAmount", invoice.getTotalAmount() != null ? invoice.getTotalAmount() : 0.0);
+            response.put("pricePerSwap", invoice.getPricePerSwap() != null ? invoice.getPricePerSwap() : 0.0);
+            response.put("numberOfSwaps", invoice.getNumberOfSwaps() != null ? invoice.getNumberOfSwaps() : 0);
+            response.put("createdDate", invoice.getCreatedDate() != null ? invoice.getCreatedDate().toString() : "");
+            response.put("status", "ACTIVE");
 
-    @DeleteMapping("/{id}")
-    @Operation(
-        summary = "Xóa hóa đơn",
-        description = "Xóa hóa đơn khỏi hệ thống. Dùng khi hóa đơn được tạo nhầm, giao dịch bị hủy bỏ, hoặc admin cần dọn dẹp dữ liệu test/demo không hợp lệ."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Xóa hóa đơn thành công"),
-        @ApiResponse(responseCode = "404", description = "Không tìm thấy hóa đơn với ID này")
-    })
-    public ResponseEntity<Void> deleteInvoice(@PathVariable Long id) {
-        invoiceService.deleteInvoice(id);
-        return ResponseEntity.noContent().build();
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Lỗi lấy thông tin invoice");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
     }
 
     @GetMapping
-    @Operation(
-        summary = "Lấy danh sách tất cả hóa đơn",
-        description = "Xem tất cả các hóa đơn trong hệ thống. Dùng cho admin để quản lý, theo dõi tổng quan các giao dịch, báo cáo doanh thu, hoặc tìm kiếm hóa đơn cụ thể."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lấy danh sách hóa đơn thành công")
-    })
-    public ResponseEntity<List<Invoice>> getAllInvoices() {
-        List<Invoice> invoices = invoiceService.getAllInvoices();
-        return ResponseEntity.ok(invoices);
+    @Operation(summary = "Lấy danh sách tất cả invoice", description = "Trả về danh sách invoice đơn giản")
+    public ResponseEntity<Map<String, Object>> getAllInvoicesSimple() {
+        try {
+            List<Invoice> invoices = invoiceService.getAllInvoices();
+
+            List<Map<String, Object>> simpleInvoices = new ArrayList<>();
+            for (Invoice invoice : invoices) {
+                Map<String, Object> invoiceMap = new HashMap<>();
+                invoiceMap.put("invoiceId", invoice.getInvoiceId());
+                invoiceMap.put("userId", invoice.getUserId() != null ? invoice.getUserId() : "");
+                invoiceMap.put("totalAmount", invoice.getTotalAmount() != null ? invoice.getTotalAmount() : 0.0);
+                invoiceMap.put("numberOfSwaps", invoice.getNumberOfSwaps() != null ? invoice.getNumberOfSwaps() : 0);
+                invoiceMap.put("createdDate", invoice.getCreatedDate() != null ? invoice.getCreatedDate().toString() : "");
+                simpleInvoices.add(invoiceMap);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("total", invoices.size());
+            response.put("invoices", simpleInvoices);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "Lỗi lấy danh sách invoice");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "Lấy invoice của user", description = "Trả về danh sách invoice của một user cụ thể")
+    public ResponseEntity<Map<String, Object>> getUserInvoices(
+            @PathVariable @Parameter(description = "ID của user") String userId) {
+        try {
+            List<Invoice> allInvoices = invoiceService.getAllInvoices();
+
+            List<Map<String, Object>> userInvoices = new ArrayList<>();
+            for (Invoice invoice : allInvoices) {
+                if (userId.equals(invoice.getUserId())) {
+                    Map<String, Object> invoiceMap = new HashMap<>();
+                    invoiceMap.put("invoiceId", invoice.getInvoiceId());
+                    invoiceMap.put("totalAmount", invoice.getTotalAmount() != null ? invoice.getTotalAmount() : 0.0);
+                    invoiceMap.put("numberOfSwaps", invoice.getNumberOfSwaps() != null ? invoice.getNumberOfSwaps() : 0);
+                    invoiceMap.put("createdDate", invoice.getCreatedDate() != null ? invoice.getCreatedDate().toString() : "");
+                    userInvoices.add(invoiceMap);
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("userId", userId);
+            response.put("total", userInvoices.size());
+            response.put("invoices", userInvoices);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "Lỗi lấy invoice của user");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @DeleteMapping("/{invoiceId}")
+    @Operation(summary = "Xóa invoice", description = "Xóa một invoice theo ID")
+    public ResponseEntity<Map<String, Object>> deleteInvoice(
+            @PathVariable @Parameter(description = "ID của invoice") Long invoiceId) {
+        try {
+            invoiceService.deleteInvoice(invoiceId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Xóa invoice thành công");
+            response.put("invoiceId", invoiceId);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "Lỗi xóa invoice");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("/create")
+    @Operation(summary = "Tạo invoice từ danh sách pin", description = "Tạo invoice ngay khi user chọn pin, trả về invoiceId và tổng tiền")
+    public ResponseEntity<Map<String, Object>> createInvoiceFromBatteries(
+            @RequestParam @Parameter(description = "ID của user") String userId,
+            @RequestBody List<String> batteryIds) {
+        try {
+            if (batteryIds == null || batteryIds.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("error", "Danh sách pin không được để trống");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // Tính tổng tiền từ danh sách pin THỰC TẾ
+            double totalAmount = 0.0;
+            List<Map<String, Object>> batteryDetails = new ArrayList<>();
+
+            for (String batteryId : batteryIds) {
+                // Lấy battery thực tế từ database
+                Battery battery = batteryRepository.findById(batteryId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy pin: " + batteryId));
+
+                // Kiểm tra pin có sẵn không
+                if (!battery.isAvailableForBooking()) {
+                    throw new RuntimeException("Pin " + batteryId + " không khả dụng");
+                }
+
+                // Tính tiền cho pin - SỬ DỤNG GIÁ THỰC TỪ BATTERY
+                double batteryAmount = battery.getCalculatedPrice();
+                totalAmount += batteryAmount;
+
+                // Cập nhật trạng thái pin sang IN_USE
+                battery.setBatteryStatus(Battery.BatteryStatus.IN_USE);
+                batteryRepository.save(battery);
+
+                // Thêm thông tin pin thực tế
+                Map<String, Object> batteryInfo = new HashMap<>();
+                batteryInfo.put("batteryId", battery.getBatteryId());
+                batteryInfo.put("batteryType", battery.getBatteryType().toString());
+                batteryInfo.put("price", batteryAmount);
+                batteryInfo.put("stationId", battery.getStationId());
+                batteryDetails.add(batteryInfo);
+            }
+
+            // Tạo invoice
+            Invoice invoice = new Invoice();
+            invoice.setUserId(userId);
+            invoice.setTotalAmount(totalAmount);
+            invoice.setPricePerSwap(totalAmount / batteryIds.size());
+            invoice.setNumberOfSwaps(batteryIds.size());
+            invoice.setCreatedDate(java.time.LocalDate.now());
+
+            Invoice savedInvoice = invoiceService.createInvoice(invoice);
+
+            // Trả về response đơn giản
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("invoiceId", savedInvoice.getInvoiceId());
+            response.put("userId", userId);
+            response.put("totalAmount", savedInvoice.getTotalAmount());
+            response.put("pricePerSwap", savedInvoice.getPricePerSwap());
+            response.put("numberOfSwaps", savedInvoice.getNumberOfSwaps());
+            response.put("status", "PENDING");
+            response.put("batteriesCount", batteryIds.size());
+            response.put("message", "Invoice được tạo thành công");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "Tạo invoice thất bại");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("/create-from-booking")
+    @Operation(summary = "Tạo invoice từ 1 booking", description = "Tạo invoice mới từ một booking đã thanh toán")
+    public ResponseEntity<Map<String, Object>> createInvoiceFromBooking(
+            @RequestParam @Parameter(description = "ID của booking") Long bookingId) {
+        try {
+            // Lấy booking trực tiếp từ repository
+            Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy booking với ID: " + bookingId));
+
+            // Gọi service để tạo invoice từ booking
+            Invoice invoice = invoiceService.createInvoiceForBooking(booking);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Tạo invoice từ booking thành công");
+            response.put("invoiceId", invoice.getInvoiceId());
+            response.put("bookingId", bookingId);
+            response.put("totalAmount", invoice.getTotalAmount());
+            response.put("numberOfSwaps", invoice.getNumberOfSwaps());
+            response.put("createdDate", invoice.getCreatedDate().toString());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "Không thể tạo invoice từ booking");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("/create-from-multiple-bookings")
+    @Operation(summary = "Tạo invoice từ nhiều booking", description = "Tạo 1 invoice chung từ nhiều booking")
+    public ResponseEntity<Map<String, Object>> createInvoiceFromMultipleBookings(
+            @RequestBody @Parameter(description = "Danh sách ID của các booking") List<Long> bookingIds) {
+        try {
+            if (bookingIds == null || bookingIds.isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("error", "Danh sách booking không được để trống");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // Gọi service để tạo invoice từ nhiều booking
+            Invoice invoice = invoiceService.createInvoiceWithBookings(bookingIds);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Tạo invoice từ " + bookingIds.size() + " booking thành công");
+            response.put("invoiceId", invoice.getInvoiceId());
+            response.put("bookingIds", bookingIds);
+            response.put("totalAmount", invoice.getTotalAmount());
+            response.put("numberOfSwaps", invoice.getNumberOfSwaps());
+            response.put("createdDate", invoice.getCreatedDate().toString());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "Không thể tạo invoice từ danh sách booking");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
     }
 }

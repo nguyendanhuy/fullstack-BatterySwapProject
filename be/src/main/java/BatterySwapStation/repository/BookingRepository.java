@@ -19,8 +19,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm tất cả booking của user
     List<Booking> findByUser(User user);
 
-    // Tìm booking của user theo status
-    List<Booking> findByUserAndBookingStatus(User user, String status);
+    // Tìm booking của user theo status (sử dụng enum)
+    List<Booking> findByUserAndBookingStatus(User user, Booking.BookingStatus status);
 
     // Tìm booking theo ID và User (để đảm bảo user chỉ thao tác với booking của mình)
     Optional<Booking> findByBookingIdAndUser(Long bookingId, User user);
@@ -49,6 +49,19 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm tất cả booking của station
     List<Booking> findByStation(Station station);
 
-    // Tìm booking theo status
-    List<Booking> findByBookingStatus(String status);
+    // Tìm booking theo status (sử dụng enum)
+    List<Booking> findByBookingStatus(Booking.BookingStatus status);
+
+    // Tìm tất cả booking của vehicle cụ thể
+    List<Booking> findByVehicle(BatterySwapStation.entity.Vehicle vehicle);
+
+    // Tìm booking theo vehicle và user
+    List<Booking> findByVehicleAndUser(BatterySwapStation.entity.Vehicle vehicle, User user);
+
+    // Kiểm tra vehicle có booking đang hoạt động không
+    @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.vehicle = :vehicle " +
+            "AND (b.bookingStatus = 'PENDING' OR b.bookingStatus = 'CONFIRMED') " +
+            "AND b.bookingDate >= :currentDate")
+    boolean existsActiveBookingForVehicle(@Param("vehicle") BatterySwapStation.entity.Vehicle vehicle,
+                                         @Param("currentDate") LocalDate currentDate);
 }

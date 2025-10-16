@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class BookingRequest {
 
+    private String userId; // Thêm userId
     private Integer stationId;
     private Integer vehicleId;
 

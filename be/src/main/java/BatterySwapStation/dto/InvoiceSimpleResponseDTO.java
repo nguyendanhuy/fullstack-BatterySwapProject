@@ -1,0 +1,48 @@
+package BatterySwapStation.dto;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class InvoiceSimpleResponseDTO {
+
+    private Long invoiceId;
+    private String userId;
+    private LocalDate createdDate;
+    private Double totalAmount;
+    private Double pricePerSwap;
+    private Integer numberOfSwaps;
+    private List<SimpleBookingInfo> bookings;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SimpleBookingInfo {
+        private Long bookingId;
+        private LocalDate bookingDate;
+        private LocalTime timeSlot;
+        private String vehicleType;
+        private Double amount;
+        private String bookingStatus;
+        private String paymentStatus;
+
+        // Chỉ thông tin cơ bản của station
+        private Integer stationId;
+        private String stationName;
+        private String stationAddress;
+
+        // Chỉ thông tin cơ bản của vehicle
+        private Integer vehicleId;
+        private String licensePlate;
+        private String vehicleBatteryType;
+    }
+}

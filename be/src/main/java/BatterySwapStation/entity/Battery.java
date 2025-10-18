@@ -41,9 +41,53 @@ public class Battery {
     private DockSlot dockSlot;
 
     public enum BatteryType {
-        LITHIUM_ION,
-        NICKEL_METAL_HYDRIDE,
-        LEAD_ACID
+        LITHIUM_ION("Pin Lithium Ion"),
+        NICKEL_METAL_HYDRIDE("Pin Nickel Metal Hydride"),
+        LEAD_ACID("Pin Lead Acid");
+
+        private final String displayName;
+
+        BatteryType(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public static BatteryType fromString(String batteryType) {
+            if (batteryType == null || batteryType.trim().isEmpty()) {
+                return LITHIUM_ION; // Default
+            }
+
+            String normalized = batteryType.trim().toUpperCase().replace("-", "_").replace(" ", "_");
+
+            try {
+                return BatteryType.valueOf(normalized);
+            } catch (IllegalArgumentException e) {
+                // Xử lý các trường hợp đặc biệt
+                switch (normalized) {
+                    case "LITHIUM":
+                    case "LI_ION":
+                    case "LITHIUM_ION_BATTERY":
+                        return LITHIUM_ION;
+                    case "NICKEL":
+                    case "NIMH":
+                    case "NI_MH":
+                        return NICKEL_METAL_HYDRIDE;
+                    case "LEAD":
+                    case "LEAD_ACID_BATTERY":
+                    case "PB_ACID":
+                        return LEAD_ACID;
+                    default:
+                        return LITHIUM_ION;
+                }
+            }
+        }
+
+        public static BatteryType[] getAllTypes() {
+            return values();
+        }
     }
 
     public enum BatteryStatus {
@@ -73,23 +117,14 @@ public class Battery {
     @Column(name = "StationId")
     private Integer stationId;
 
-    // Phương thức tính giá dựa trên loại pin
+    // Cập nhật phương thức tính giá - chỉ sử dụng giá custom của battery
     public Double getCalculatedPrice() {
         if (this.price != null && this.price > 0) {
-            return this.price;
+            return this.price; // Sử dụng giá custom nếu có
         }
 
-        // Giá mặc định theo loại pin
-        switch (this.batteryType) {
-            case LITHIUM_ION:
-                return 30000.0; // 30k cho Lithium Ion
-            case NICKEL_METAL_HYDRIDE:
-                return 25000.0; // 25k cho Nickel Metal Hydride
-            case LEAD_ACID:
-                return 20000.0; // 20k cho Lead Acid
-            default:
-                return 25000.0; // Giá mặc định
-        }
+        // Trả về null để service layer xử lý việc lấy giá từ SystemPrice
+        return null;
     }
 
     // Kiểm tra pin có sẵn để đặt không

@@ -22,14 +22,6 @@ public class BookingRequest {
 
     private String timeSlot; // Đổi từ LocalTime sang String để Swagger không sinh ra second/nano
 
-    private List<BatteryItemRequest> batteryItems;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class BatteryItemRequest {
-        private String batteryType;
-        private Integer quantity;
-    }
+    private List<String> batteryItems; // Danh sách ID của các pin cần đặt
 
 }

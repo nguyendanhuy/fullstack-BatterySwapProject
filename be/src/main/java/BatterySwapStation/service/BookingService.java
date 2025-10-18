@@ -9,6 +9,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,6 +27,9 @@ public class BookingService {
     private final UserRepository userRepository;
     private final StationRepository stationRepository;
     private final VehicleRepository vehicleRepository;
+    private final SystemPriceService systemPriceService; // Thêm SystemPriceService
+    private final ObjectMapper objectMapper; // Thêm ObjectMapper
+    private final BatteryRepository batteryRepository; // Thêm BatteryRepository
 
     /**
      * Tạo đặt chỗ mới (giới hạn tối đa 1 xe, chỉ 1 trạm, ngày trong 2 ngày, khung giờ hợp lệ)
@@ -92,15 +97,21 @@ public class BookingService {
                 .amount(bookingAmount) // Lưu giá tiền
                 .bookingDate(request.getBookingDate())
                 .timeSlot(timeSlot)
-                .bookingStatus(Booking.BookingStatus.PENDING)  // Sử dụng enum
-                .paymentStatus(Booking.PaymentStatus.PENDING)  // Thêm trạng thái thanh toán
+                .bookingStatus(Booking.BookingStatus.PENDINGPAYMENT)  // Chỉ dùng bookingStatus
                 .notes("Đặt lịch qua API")
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
 
         // Tạo các mục pin nếu có
         if (request.getBatteryItems() != null && !request.getBatteryItems().isEmpty()) {
-            // TODO: Triển khai logic các mục pin
+            String batteryItemsJson = processBatteryItems(request.getBatteryItems(), station);
+            booking.setBatteryItems(batteryItemsJson);
+
+            // Cập nhật giá tiền nếu có battery items cụ thể
+            Double batteryItemsAmount = calculateBatteryItemsAmount(request.getBatteryItems());
+            if (batteryItemsAmount > 0) {
+                booking.setAmount(batteryItemsAmount);
+            }
         }
 
         // Tạo thông báo thành công khi tạo booking với tổng tiền
@@ -207,7 +218,7 @@ public class BookingService {
                     .map(this::convertToResponse)
                     .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status + ". Các trạng thái hợp lệ: PENDING, CONFIRMED, CANCELLED, COMPLETED");
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status + ". Các trạng thái hợp lệ: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED");
         }
     }
 
@@ -237,7 +248,7 @@ public class BookingService {
             Booking.BookingStatus status = Booking.BookingStatus.valueOf(newStatus.toUpperCase());
             booking.setBookingStatus(status);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + newStatus + ". Các trạng thái hợp lệ: PENDING, CONFIRMED, CANCELLED, COMPLETED");
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + newStatus + ". Các trạng thái hợp lệ: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED, FAILED");
         }
 
         Booking savedBooking = bookingRepository.save(booking);
@@ -261,21 +272,16 @@ public class BookingService {
      */
     public BookingResponse confirmPayment(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin v��i mã: " + bookingId));
 
-        if (booking.getPaymentStatus() == Booking.PaymentStatus.PAID) {
-            throw new IllegalStateException("Booking này đã được thanh toán rồi.");
-        }
-
-        // Cập nhật trạng thái thanh toán và booking
-        booking.setPaymentStatus(Booking.PaymentStatus.PAID);
-        booking.setBookingStatus(Booking.BookingStatus.CONFIRMED);
+        // Cập nhật trạng thái booking - SỬ DỤNG TRẠNG THÁI MỚI
+        booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING); // Chuyển sang chờ đổi pin
 
         Booking savedBooking = bookingRepository.save(booking);
 
         // Tạo thông báo thanh toán thành công
         String paymentMessage = String.format(
-            "Thanh toán thành công cho Booking #%d. Số tiền: %.0f VND",
+            "Thanh toán thành công cho Booking #%d. Số tiền: %.0f VND. Trạng thái: Chờ đổi pin",
             booking.getBookingId(),
             booking.getAmount()
         );
@@ -291,11 +297,37 @@ public class BookingService {
      */
     public BookingResponse completeBookingWithInvoice(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin v��i mã: " + bookingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đ��t pin v��i mã: " + bookingId));
 
-        // Kiểm tra booking đã thanh toán chưa
-        if (booking.getPaymentStatus() != Booking.PaymentStatus.PAID) {
-            throw new IllegalStateException("Booking phải được thanh toán trước khi hoàn thành.");
+        // Cập nhật trạng thái booking thành COMPLETED
+        booking.setBookingStatus(Booking.BookingStatus.COMPLETED);
+        booking.setCompletedTime(LocalDate.now());
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Tạo thông báo thành công
+        String successMessage = String.format(
+            "Booking #%d được hoàn thành thành công. T����ng tiền: %.0f VND",
+            booking.getBookingId(),
+            booking.getAmount()
+        );
+
+        BookingResponse response = convertToResponse(savedBooking);
+        response.setMessage(successMessage); // Thêm message vào response
+
+        return response;
+    }
+
+    /**
+     * Hoàn thành việc đổi pin (chuyển từ PENDINGSWAPPING sang COMPLETED)
+     */
+    public BookingResponse completeBatterySwapping(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
+
+        // Kiểm tra booking đang chờ đổi pin chưa
+        if (booking.getBookingStatus() != Booking.BookingStatus.PENDINGSWAPPING) {
+            throw new IllegalStateException("Booking phải ở trạng thái chờ đổi pin (PENDINGSWAPPING) để có thể hoàn thành.");
         }
 
         // Cập nhật trạng thái booking thành COMPLETED
@@ -306,15 +338,59 @@ public class BookingService {
 
         // Tạo thông báo thành công
         String successMessage = String.format(
-            "Booking #%d được hoàn thành thành công. Tổng tiền: %.0f VND",
+            "Booking #%d đã hoàn thành đổi pin thành công! Tổng tiền: %.0f VND",
             booking.getBookingId(),
             booking.getAmount()
         );
 
         BookingResponse response = convertToResponse(savedBooking);
-        response.setMessage(successMessage); // Thêm message vào response
+        response.setMessage(successMessage);
 
         return response;
+    }
+
+    /**
+     * Xử lý thanh toán đơn giản - chuyển từ PENDINGPAYMENT sang PENDINGSWAPPING ngay lập tức
+     */
+    public BookingResponse processPayment(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
+
+        // Kiểm tra booking đang chờ thanh toán chưa
+        if (booking.getBookingStatus() != Booking.BookingStatus.PENDINGPAYMENT) {
+            throw new IllegalStateException("Booking phải ở trạng thái chờ thanh toán (PENDINGPAYMENT) để có thể xử lý thanh toán.");
+        }
+
+        // Cập nhật trạng thái booking sang chờ đổi pin ngay lập tức
+        booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING);
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Tạo thông báo xử lý thanh toán thành công
+        String paymentMessage = String.format(
+            "Xử lý thanh toán thành công cho Booking #%d. Số tiền: %.0f VND. Trạng thái: Chờ đổi pin",
+            booking.getBookingId(),
+            booking.getAmount()
+        );
+
+        BookingResponse response = convertToResponse(savedBooking);
+        response.setMessage(paymentMessage);
+
+        return response;
+    }
+
+    /**
+     * Chuyển trạng thái booking từ PENDINGPAYMENT sang FAILED
+     */
+    public BookingResponse markBookingAsFailed(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
+        if (booking.getBookingStatus() != Booking.BookingStatus.PENDINGPAYMENT) {
+            throw new IllegalStateException("Chỉ có thể chuyển sang FAILED khi trạng thái hiện tại là PENDINGPAYMENT");
+        }
+        booking.setBookingStatus(Booking.BookingStatus.FAILED);
+        Booking savedBooking = bookingRepository.save(booking);
+        return convertToResponse(savedBooking);
     }
 
     /**
@@ -346,10 +422,6 @@ public class BookingService {
         response.setBookingStatus(booking.getBookingStatus() != null ?
             booking.getBookingStatus().toString() : "PENDING");
 
-        // Xử lý null cho paymentStatus
-        response.setPaymentStatus(booking.getPaymentStatus() != null ?
-            booking.getPaymentStatus().toString() : "PENDING");
-
         // TODO: Thêm mapping các mục pin
         // TODO: Thêm mapping thông tin thanh toán
 
@@ -357,24 +429,36 @@ public class BookingService {
     }
 
     /**
-     * Tính toán giá tiền đặt chỗ dựa trên loại pin của xe
+     * Tính toán giá tiền đặt chỗ dựa trên SystemPrice - THỐNG NHẤT CHO TẤT CẢ
      */
     private Double calculateBookingAmountByVehicleBatteryType(Vehicle vehicle) {
-        if (vehicle == null || vehicle.getBatteryType() == null) {
-            return 25000.0; // Giá mặc định nếu không có thông tin
+        // Lấy giá thống nhất từ SystemPrice (không phân biệt loại pin)
+        double basePrice = systemPriceService.getCurrentPrice();
+
+        // Nhân với số lượng pin của xe (nếu có)
+        Integer batteryCount = vehicle.getBatteryCount();
+        if (batteryCount != null && batteryCount > 0) {
+            return basePrice * batteryCount;
         }
 
-        // Sử dụng logic giá từ Battery entity để đảm bảo nhất quán
-        switch (vehicle.getBatteryType()) {
-            case LITHIUM_ION:
-                return 30000.0; // 30k cho Lithium Ion
-            case NICKEL_METAL_HYDRIDE:
-                return 25000.0; // 25k cho Nickel Metal Hydride
-            case LEAD_ACID:
-                return 20000.0; // 20k cho Lead Acid
-            default:
-                return 25000.0; // Giá mặc định
+        return basePrice;
+    }
+
+    // Cập nhật method calculateBatteryPrice để sử dụng giá thống nhất
+    private double calculateBatteryPrice(String batteryType) {
+        // Bỏ qua batteryType vì giờ tất cả đều dùng chung 1 giá từ SystemPrice
+        return systemPriceService.getCurrentPrice();
+    }
+
+    // Method tính giá từ Battery object - ưu tiên custom price, fallback SystemPrice
+    private double calculateBatteryPrice(Battery battery) {
+        Double customPrice = battery.getCalculatedPrice();
+        if (customPrice != null) {
+            return customPrice;
         }
+
+        // Sử dụng giá thống nhất từ SystemPrice (không phân biệt loại pin)
+        return systemPriceService.getCurrentPrice();
     }
 
     /**
@@ -532,7 +616,7 @@ public class BookingService {
         }
 
         // Kiểm tra trạng thái booking
-        if (booking.getBookingStatus() != Booking.BookingStatus.PENDING) {
+        if (booking.getBookingStatus() != Booking.BookingStatus.PENDINGPAYMENT) {
             throw new IllegalStateException("Chỉ có thể cập nhật xe cho booking đang chờ xử lý");
         }
 
@@ -547,5 +631,220 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
         return convertToResponse(savedBooking);
+    }
+
+    /**
+     * Tạo booking sau khi thanh toán hoàn thành - Flow mới
+     */
+    public BookingResponse createBookingAfterPayment(PaymentCompletedRequest request) {
+        try {
+            // Validate thông tin đầu vào
+            validatePaymentRequest(request);
+
+            // Lấy thông tin vehicle và user
+            Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy xe với mã: " + request.getVehicleId()));
+
+            User user = vehicle.getUser();
+            if (user == null) {
+                throw new IllegalArgumentException("Xe này chưa được đăng ký cho người dùng nào.");
+            }
+
+            // Lấy thông tin station
+            Station station = stationRepository.findById(request.getStationId())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + request.getStationId()));
+
+            // Kiểm tra slot thời gian có còn trống không
+            LocalDate bookingDate = LocalDate.parse(request.getBookingDate());
+            LocalTime timeSlot = LocalTime.parse(request.getTimeSlot());
+
+            if (bookingRepository.existsBookingAtTimeSlot(station, bookingDate, timeSlot)) {
+                throw new IllegalStateException("Khung giờ này đã có người đặt trước.");
+            }
+
+            // Verify số tiền thanh toán có đúng không
+            Double expectedAmount = systemPriceService.getCurrentPrice() * request.getQuantity();
+            if (!expectedAmount.equals(request.getPaidAmount())) {
+                throw new IllegalArgumentException("Số tiền thanh toán không đúng. Mong đợi: " + expectedAmount + ", Nhận được: " + request.getPaidAmount());
+            }
+
+            // Tạo booking với trạng thái đã thanh toán
+            Booking booking = Booking.builder()
+                    .user(user)
+                    .station(station)
+                    .vehicle(vehicle)
+                    .vehicleType(vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : "UNKNOWN")
+                    .amount(request.getPaidAmount())
+                    .bookingDate(bookingDate)
+                    .timeSlot(timeSlot)
+                    .bookingStatus(Booking.BookingStatus.PENDINGSWAPPING) // Đã thanh toán, chờ đổi pin
+                    .notes("Booking được tạo sau khi thanh toán hoàn thành. Payment ID: " + request.getPaymentId())
+                    .build();
+
+            Booking savedBooking = bookingRepository.save(booking);
+
+            // Tạo response
+            BookingResponse response = convertToResponse(savedBooking);
+            response.setMessage("Booking được tạo thành công sau thanh toán hoàn thành!");
+
+            return response;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi tạo booking sau thanh toán: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Validate thông tin thanh toán
+     */
+    private void validatePaymentRequest(PaymentCompletedRequest request) {
+        if (request.getVehicleId() == null) {
+            throw new IllegalArgumentException("Vehicle ID không được để trống");
+        }
+        if (request.getStationId() == null) {
+            throw new IllegalArgumentException("Station ID không được để trống");
+        }
+        if (request.getBookingDate() == null || request.getBookingDate().isEmpty()) {
+            throw new IllegalArgumentException("Ngày booking không được để trống");
+        }
+        if (request.getTimeSlot() == null || request.getTimeSlot().isEmpty()) {
+            throw new IllegalArgumentException("Khung giờ không được để trống");
+        }
+        if (request.getQuantity() == null || request.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Số lượng phải lớn hơn 0");
+        }
+        if (request.getPaidAmount() == null || request.getPaidAmount() <= 0) {
+            throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0");
+        }
+        if (request.getPaymentId() == null || request.getPaymentId().isEmpty()) {
+            throw new IllegalArgumentException("Payment ID không được để trống");
+        }
+    }
+
+    /**
+     * DTO cho request tạo booking sau thanh toán
+     */
+    public static class PaymentCompletedRequest {
+        private Integer vehicleId;
+        private Integer stationId;
+        private String bookingDate; // yyyy-MM-dd
+        private String timeSlot; // HH:mm
+        private Integer quantity;
+        private Double paidAmount;
+        private String paymentId;
+        private String paymentMethod;
+
+        // Constructors
+        public PaymentCompletedRequest() {}
+
+        // Getters and setters
+        public Integer getVehicleId() { return vehicleId; }
+        public void setVehicleId(Integer vehicleId) { this.vehicleId = vehicleId; }
+
+        public Integer getStationId() { return stationId; }
+        public void setStationId(Integer stationId) { this.stationId = stationId; }
+
+        public String getBookingDate() { return bookingDate; }
+        public void setBookingDate(String bookingDate) { this.bookingDate = bookingDate; }
+
+        public String getTimeSlot() { return timeSlot; }
+        public void setTimeSlot(String timeSlot) { this.timeSlot = timeSlot; }
+
+        public Integer getQuantity() { return quantity; }
+        public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+        public Double getPaidAmount() { return paidAmount; }
+        public void setPaidAmount(Double paidAmount) { this.paidAmount = paidAmount; }
+
+        public String getPaymentId() { return paymentId; }
+        public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
+
+        public String getPaymentMethod() { return paymentMethod; }
+        public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    }
+
+    /**
+     * Kiểm tra time slot đã bị đặt chưa (cho PaymentService sử dụng)
+     */
+    @Transactional(readOnly = true)
+    public boolean isTimeSlotTaken(Station station, LocalDate date, LocalTime timeSlot) {
+        return bookingRepository.existsBookingAtTimeSlot(station, date, timeSlot);
+    }
+
+    /**
+     * Lưu booking trực tiếp (dành cho PaymentService sau khi thanh toán thành công)
+     */
+    public BookingResponse saveBookingDirectly(Booking booking) {
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Tạo response với message thành công
+        BookingResponse response = convertToResponse(savedBooking);
+        String createMessage = String.format(
+            "Booking #%d được tạo thành công sau thanh toán! Tổng tiền: %.0f VND",
+            savedBooking.getBookingId(),
+            savedBooking.getAmount()
+        );
+        response.setMessage(createMessage);
+
+        return response;
+    }
+
+    /**
+     * Xử lý danh sách battery items và chuyển thành JSON string
+     */
+    private String processBatteryItems(List<String> batteryItemIds, Station station) {
+        try {
+            List<java.util.Map<String, Object>> batteryItemsInfo = new java.util.ArrayList<>();
+
+            for (String batteryId : batteryItemIds) {
+                // Kiểm tra battery có tồn tại không
+                Battery battery = batteryRepository.findById(batteryId)
+                        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy pin với ID: " + batteryId));
+
+                // Kiểm tra battery có khả dụng không
+                if (battery.getBatteryStatus() != Battery.BatteryStatus.AVAILABLE) {
+                    throw new IllegalStateException("Pin " + batteryId + " không khả dụng để đặt");
+                }
+
+                // Tạo thông tin battery item
+                java.util.Map<String, Object> batteryInfo = new java.util.HashMap<>();
+                batteryInfo.put("batteryId", battery.getBatteryId());
+                batteryInfo.put("batteryType", battery.getBatteryType().toString());
+                batteryInfo.put("price", calculateBatteryPrice(battery));
+                batteryInfo.put("status", battery.getBatteryStatus().toString());
+
+                batteryItemsInfo.add(batteryInfo);
+            }
+
+            // Chuyển thành JSON string
+            return objectMapper.writeValueAsString(batteryItemsInfo);
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Lỗi khi xử lý thông tin battery items: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Tính tổng giá tiền cho các battery items
+     */
+    private Double calculateBatteryItemsAmount(List<String> batteryItemIds) {
+        double totalAmount = 0.0;
+
+        for (String batteryId : batteryItemIds) {
+            try {
+                Battery battery = batteryRepository.findById(batteryId).orElse(null);
+                if (battery != null) {
+                    totalAmount += calculateBatteryPrice(battery);
+                } else {
+                    // Nếu không tìm thấy battery, sử dụng gi�� mặc định
+                    totalAmount += systemPriceService.getCurrentPrice();
+                }
+            } catch (Exception e) {
+                // Nếu có lỗi, sử dụng giá mặc định
+                totalAmount += systemPriceService.getCurrentPrice();
+            }
+        }
+
+        return totalAmount;
     }
 }

@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -32,18 +31,8 @@ public class BookingResponse {
     private LocalTime timeSlot;
 
     private String bookingStatus;
-    private String paymentStatus;  // Thêm trường paymentStatus
     private String message;        // Thêm trường message để hiển thị thông báo
-    private List<BatteryItemResponse> batteryItems;
     private PaymentInfo payment;
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class BatteryItemResponse {
-        private String batteryType;
-        private Integer quantity;
-    }
 
     @Data
     @NoArgsConstructor

@@ -24,7 +24,6 @@ const DriverDashboard = () => {
       });
     }
   }
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   return (
     <div className="min-h-screen">
       {/* Page Header */}

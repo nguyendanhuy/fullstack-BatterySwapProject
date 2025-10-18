@@ -4,18 +4,18 @@ import BatterySwapStation.dto.*;
 import BatterySwapStation.service.BookingService;
 import BatterySwapStation.service.InvoiceService;
 import BatterySwapStation.service.SystemPriceService;
-import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.repository.BookingRepository;
-import BatterySwapStation.repository.BatteryRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +31,6 @@ public class BookingController {
     private final BookingService bookingService;
     private final InvoiceService invoiceService;
     private final BookingRepository bookingRepository;
-    private final BatteryRepository batteryRepository;
     private final SystemPriceService systemPriceService; // Thêm SystemPriceService
 
     @PostMapping
@@ -172,125 +171,13 @@ public class BookingController {
     public ResponseEntity<Map<String, Object>> createInvoiceFromVehicles(
             @RequestBody List<Map<String, Object>> vehicleBatteryData) {
         try {
-            if (vehicleBatteryData == null || vehicleBatteryData.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "success", false,
-                        "error", "Danh sách xe và pin không được để trống"
-                ));
-            }
-
-            // Lấy userId từ xe đầu tiên
-            Object firstVehicleIdObj = vehicleBatteryData.get(0).get("vehicleId");
-            Integer firstVehicleId = parseVehicleId(firstVehicleIdObj);
-
-            // Lấy thông tin xe để có userId
-            Map<String, Object> firstVehicleDetail = bookingService.getVehicleDetail(firstVehicleId);
-            String userId = (String) firstVehicleDetail.get("userId");
-
-            if (userId == null) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "success", false,
-                        "error", "Xe đầu tiên chưa được đăng ký cho user nào"
-                ));
-            }
-
-            double totalAmount = 0.0;
-            List<Map<String, Object>> bookingDetails = new ArrayList<>();
-
-            // Tạo invoice trước
-            Invoice invoice = new Invoice();
-            invoice.setUserId(userId);
-            invoice.setCreatedDate(java.time.LocalDate.now());
-            invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
-
-            // Lưu invoice trước để có ID
-            Invoice savedInvoice = invoiceService.createInvoice(invoice);
-
-            // Tạo booking cho từng xe
-            for (Map<String, Object> vehicleData : vehicleBatteryData) {
-                Object vehicleIdObj = vehicleData.get("vehicleId");
-                Object stationIdObj = vehicleData.get("stationId");
-                String batteryType = (String) vehicleData.get("batteryType");
-                Integer pinCount = (Integer) vehicleData.get("pinCount");
-
-                // Parse vehicleId thông minh hơn
-                Integer vehicleId = parseVehicleId(vehicleIdObj);
-                Integer stationId = parseStationId(stationIdObj);
-
-                // Kiểm tra xe có thuộc về cùng user không
-                Map<String, Object> vehicleDetail = bookingService.getVehicleDetail(vehicleId);
-                String vehicleUserId = (String) vehicleDetail.get("userId");
-
-                if (!userId.equals(vehicleUserId)) {
-                    bookingDetails.add(Map.of(
-                            "vehicleId", vehicleId,
-                            "originalVehicleId", vehicleIdObj,
-                            "error", "Xe không thuộc về cùng user với xe đầu tiên",
-                            "amount", 0.0
-                    ));
-                    continue;
-                }
-
-                // Tính giá dựa trên loại pin và số lượng
-                double batteryPrice = getBatteryPrice(batteryType);
-                double vehicleAmount = batteryPrice * pinCount;
-                totalAmount += vehicleAmount;
-
-                // Tạo booking request - không cần set userId nữa vì sẽ tự lấy từ vehicle
-                BookingRequest bookingRequest = new BookingRequest();
-                bookingRequest.setVehicleId(vehicleId);
-                bookingRequest.setStationId(stationId);
-
-                // Set ngày giờ tạm thời
-                bookingRequest.setBookingDate(java.time.LocalDate.now().plusDays(1));
-                bookingRequest.setTimeSlot("09:00");
-
-                try {
-                    BookingResponse booking = bookingService.createBooking(bookingRequest);
-
-                    // Link booking với invoice
-                    Booking bookingEntity = bookingRepository.findById(booking.getBookingId()).orElse(null);
-                    if (bookingEntity != null) {
-                        bookingEntity.setInvoice(savedInvoice);
-                        bookingRepository.save(bookingEntity);
-                    }
-
-                    bookingDetails.add(Map.of(
-                            "bookingId", booking.getBookingId(),
-                            "vehicleId", vehicleId,
-                            "originalVehicleId", vehicleIdObj,
-                            "stationId", stationId,
-                            "originalStationId", stationIdObj,
-                            "amount", vehicleAmount,
-                            "batteryType", batteryType,
-                            "pinCount", pinCount,
-                            "needSchedule", true
-                    ));
-                } catch (Exception e) {
-                    bookingDetails.add(Map.of(
-                            "vehicleId", vehicleId,
-                            "originalVehicleId", vehicleIdObj,
-                            "error", "Không thể tạo booking: " + e.getMessage(),
-                            "amount", vehicleAmount
-                    ));
-                }
-            }
-
-            // Cập nhật tổng tiền cho invoice
-            savedInvoice.setTotalAmount(totalAmount);
-            savedInvoice.setPricePerSwap(totalAmount / vehicleBatteryData.size());
-            savedInvoice.setNumberOfSwaps(vehicleBatteryData.size());
-            savedInvoice.calculateTotalAmount();
-            invoiceService.updateInvoice(savedInvoice.getInvoiceId(), savedInvoice);
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "invoiceId", savedInvoice.getInvoiceId(),
-                    "userId", userId,
-                    "totalAmount", totalAmount,
-                    "status", "PENDING",
-                    "bookings", bookingDetails,
-                    "message", "Invoice và bookings được tạo thành công. UserId được tự động lấy từ xe đầu tiên."
+            // Delegate toàn bộ luồng tách, tính tiền và lưu vào service transactional
+            java.util.Map<String, Object> result = bookingService.createInvoiceFromVehicles(vehicleBatteryData);
+            return ResponseEntity.status(201).body(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -505,7 +392,7 @@ public class BookingController {
             String date = (String) bookingData.get("date");
             String time = (String) bookingData.get("time");
             String batteryType = (String) bookingData.getOrDefault("batteryType", "LITHIUM_ION");
-            Integer pinCount = (Integer) bookingData.getOrDefault("pinCount", 1);
+            Integer batteryCount = (Integer) bookingData.getOrDefault("batteryCount", 1);
 
             // Tạo booking request - không cần set userId vì sẽ tự lấy từ vehicle
             BookingRequest bookingRequest = new BookingRequest();
@@ -513,6 +400,8 @@ public class BookingController {
             bookingRequest.setStationId(stationId);
             bookingRequest.setBookingDate(java.time.LocalDate.parse(date));
             bookingRequest.setTimeSlot(time);
+            // Set số pin muốn đổi (mặc định nếu không cung cấp sẽ lấy từ vehicle)
+            bookingRequest.setBatteryCount(batteryCount);
 
 
             // Tạo booking
@@ -529,7 +418,8 @@ public class BookingController {
                             "time", time,
                             "amount", booking.getAmount(),
                             "status", booking.getBookingStatus(),
-                            "userId", booking.getUserId()
+                            "userId", booking.getUserId(),
+                            "batteryCount", batteryCount
                     )
             ));
         } catch (Exception e) {
@@ -847,5 +737,34 @@ public class BookingController {
             return ResponseEntity.badRequest()
                     .body(new ApiResponseDto(false, "Xử lý thanh toán thất bại: " + e.getMessage()));
         }
+    }
+
+    @PostMapping("/batch")
+    @Operation(summary = "Tạo nhiều booking cùng lúc (tối đa 3)", description = "Tạo tối đa 3 booking mới cho việc thay pin. Trả về danh sách kết quả từng booking.")
+    public ResponseEntity<ApiResponseDto> createMultipleBookings(@RequestBody List<BookingRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return ResponseEntity.badRequest().body(new ApiResponseDto(false, "Danh sách booking rỗng!"));
+        }
+        if (requests.size() > 3) {
+            return ResponseEntity.badRequest().body(new ApiResponseDto(false, "Chỉ cho phép tạo tối đa 3 booking cùng lúc!"));
+        }
+        List<Object> results = new ArrayList<>();
+        for (BookingRequest request : requests) {
+            try {
+                BookingResponse response = bookingService.createBooking(request);
+                results.add(Map.of(
+                    "success", true,
+                    "message", "Booking thành công!",
+                    "booking", response
+                ));
+            } catch (Exception e) {
+                results.add(Map.of(
+                    "success", false,
+                    "error", "Booking thất bại: " + e.getMessage(),
+                    "request", request
+                ));
+            }
+        }
+        return ResponseEntity.ok(new ApiResponseDto(true, "Kết quả tạo booking hàng loạt", results));
     }
 }

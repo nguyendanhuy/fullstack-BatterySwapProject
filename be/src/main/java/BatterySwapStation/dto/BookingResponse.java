@@ -1,6 +1,5 @@
 package BatterySwapStation.dto;
 
-import BatterySwapStation.entity.Booking;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -33,6 +32,9 @@ public class BookingResponse {
     private String bookingStatus;
     private String message;        // Thêm trường message để hiển thị thông báo
     private PaymentInfo payment;
+
+    // Số pin muốn đổi (theo yêu cầu mới)
+    private Integer batteryCount;
 
     @Data
     @NoArgsConstructor

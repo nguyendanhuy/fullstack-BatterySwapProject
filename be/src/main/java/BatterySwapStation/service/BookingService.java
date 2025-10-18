@@ -5,17 +5,20 @@ import BatterySwapStation.dto.BookingResponse;
 import BatterySwapStation.dto.CancelBookingRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,8 +31,10 @@ public class BookingService {
     private final StationRepository stationRepository;
     private final VehicleRepository vehicleRepository;
     private final SystemPriceService systemPriceService; // Thêm SystemPriceService
-    private final ObjectMapper objectMapper; // Thêm ObjectMapper
-    private final BatteryRepository batteryRepository; // Thêm BatteryRepository
+    private final InvoiceService invoiceService; // Để tạo/cập nhật invoice khi tạo nhiều booking
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * Tạo đặt chỗ mới (giới hạn tối đa 1 xe, chỉ 1 trạm, ngày trong 2 ngày, khung giờ hợp lệ)
@@ -51,6 +56,34 @@ public class BookingService {
 
         User user = vehicle.getUser();
 
+        // ========== KIỂM TRA XE CÓ BOOKING CHƯA HOÀN THÀNH ==========
+        // Kiểm tra xe có booking chưa hoàn thành không
+        if (bookingRepository.hasIncompleteBookingForVehicle(vehicleId)) {
+            // Lấy thông tin booking chưa hoàn thành để hiển thị chi tiết
+            List<Booking> incompleteBookings = bookingRepository.findIncompleteBookingsByVehicle(vehicleId);
+
+            if (!incompleteBookings.isEmpty()) {
+                Booking firstIncomplete = incompleteBookings.get(0);
+                throw new IllegalStateException(String.format(
+                        "Xe %s đang có booking #%d chưa hoàn thành (Trạng thái: %s, Ngày: %s, Giờ: %s). " +
+                                "Vui lòng hoàn thành hoặc hủy booking này trước khi đặt mới.",
+                        vehicle.getVIN(),
+                        firstIncomplete.getBookingId(),
+                        firstIncomplete.getBookingStatus(),
+                        firstIncomplete.getBookingDate(),
+                        firstIncomplete.getTimeSlot()
+                ));
+            } else {
+                // Fallback nếu không lấy được chi tiết
+                throw new IllegalStateException(String.format(
+                        "Xe %s đang có booking chưa hoàn thành. " +
+                                "Vui lòng hoàn thành hoặc hủy booking hiện tại trước khi đặt mới.",
+                        vehicle.getVIN()
+                ));
+            }
+        }
+        // =============================================================
+
         // Xác thực trạm
         Station station = stationRepository.findById(request.getStationId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + request.getStationId()));
@@ -67,7 +100,7 @@ public class BookingService {
         }
 
         // Chuyển đổi String sang LocalTime
-        LocalTime timeSlot = LocalTime.parse(request.getTimeSlot(), java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+        LocalTime timeSlot = LocalTime.parse(request.getTimeSlot(), DateTimeFormatter.ofPattern("HH:mm"));
 
         // Hệ thống hoạt động 24/7 - không giới hạn khung giờ
 
@@ -82,13 +115,39 @@ public class BookingService {
             throw new IllegalStateException("Khung giờ này đã có người đặt trước.");
         }
 
-        // Tính giá tiền dựa trên loại pin của xe - SỬ DỤNG GIÁ THỰC TẾ TỪ BATTERY ENTITY
-        Double bookingAmount = calculateBookingAmountByVehicleBatteryType(vehicle);
+        // Kiểm tra trùng lặp booking: cùng user, vehicle, station, ngày, và khung giờ
+        if (bookingRepository.existsDuplicateBooking(user, vehicle, station, request.getBookingDate(), timeSlot)) {
+            throw new IllegalStateException("Bạn không thể đặt cùng một xe tại cùng một trạm và khung giờ.");
+        }
+
+        // Xác định số pin muốn đổi (nếu client không gửi thì mặc định bằng batteryCount của xe)
+        Integer requestedBatteryCount = request.getBatteryCount();
+        if (requestedBatteryCount == null) {
+            requestedBatteryCount = vehicle.getBatteryCount();
+        }
+
+        if (requestedBatteryCount <= 0) {
+            throw new IllegalArgumentException("Số pin muốn đổi phải lớn hơn 0.");
+        }
+
+        if (vehicle.getBatteryCount() > 0 && requestedBatteryCount > vehicle.getBatteryCount()) {
+            throw new IllegalArgumentException("Số pin muốn đổi không được vượt quá số pin của phương tiện: " + vehicle.getBatteryCount());
+        }
+
+        // Tính giá theo systemPrice nhân với số pin thực tế
+        Double basePrice = systemPriceService.getCurrentPrice();
+        Double bookingAmount = basePrice * requestedBatteryCount.doubleValue();
 
         // Lấy vehicleType từ vehicle
         String vehicleTypeStr = vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : "UNKNOWN";
 
-        // Tạo đặt chỗ mới
+        // Lấy batteryType từ request nếu có, nếu không thì lấy từ vehicle
+        String batteryTypeStr = request.getBatteryType();
+        if (batteryTypeStr == null || batteryTypeStr.isBlank()) {
+            batteryTypeStr = vehicle.getBatteryType() != null ? vehicle.getBatteryType().toString() : "UNKNOWN";
+        }
+
+        // Tạo đặt chỗ mới (bao gồm số pin muốn đổi)
         Booking booking = Booking.builder()
                 .user(user)
                 .station(station)
@@ -97,31 +156,24 @@ public class BookingService {
                 .amount(bookingAmount) // Lưu giá tiền
                 .bookingDate(request.getBookingDate())
                 .timeSlot(timeSlot)
+                .batteryType(batteryTypeStr) // Lưu loại pin
+                .batteryCount(requestedBatteryCount)
                 .bookingStatus(Booking.BookingStatus.PENDINGPAYMENT)  // Chỉ dùng bookingStatus
                 .notes("Đặt lịch qua API")
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Tạo các mục pin nếu có
-        if (request.getBatteryItems() != null && !request.getBatteryItems().isEmpty()) {
-            String batteryItemsJson = processBatteryItems(request.getBatteryItems(), station);
-            booking.setBatteryItems(batteryItemsJson);
-
-            // Cập nhật giá tiền nếu có battery items cụ thể
-            Double batteryItemsAmount = calculateBatteryItemsAmount(request.getBatteryItems());
-            if (batteryItemsAmount > 0) {
-                booking.setAmount(batteryItemsAmount);
-            }
-        }
-
         // Tạo thông báo thành công khi tạo booking với tổng tiền
         BookingResponse response = convertToResponse(savedBooking);
         String createMessage = String.format(
-            "Booking #%d được tạo thành công! Tổng tiền: %.0f VND",
-            savedBooking.getBookingId(),
-            savedBooking.getAmount()
+                "Booking #%d được tạo thành công! Tổng tiền: %.0f VND",
+                savedBooking.getBookingId(),
+                savedBooking.getAmount()
         );
         response.setMessage(createMessage);
+
+        // Map số pin muốn đổi
+        response.setBatteryCount(savedBooking.getBatteryCount());
 
         return response;
     }
@@ -394,71 +446,62 @@ public class BookingService {
     }
 
     /**
-     * Chuyển đổi Booking entity thành BookingResponse DTO
+     * Lấy danh sách đặt chỗ của người dùng theo ngày
      */
-    private BookingResponse convertToResponse(Booking booking) {
-        BookingResponse response = new BookingResponse();
-        response.setBookingId(booking.getBookingId());
-        response.setUserId(booking.getUser().getUserId());
-        response.setUserName(booking.getUser().getFullName());
-        response.setStationId(booking.getStation().getStationId());
-        response.setStationName(booking.getStation().getStationName());
-        response.setStationAddress(booking.getStation().getAddress());
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getUserBookingsByDate(String userId, LocalDate date) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
 
-        if (booking.getVehicle() != null) {
-            response.setVehicleId(booking.getVehicle().getVehicleId());
-            response.setVehicleVin(booking.getVehicle().getVIN());
-        }
-
-        // Thêm vehicleType và amount
-        response.setVehicleType(booking.getVehicleType());
-        response.setAmount(booking.getAmount());
-
-        // Sử dụng bookingDate và timeSlot trực tiếp
-        response.setBookingDate(booking.getBookingDate());
-        response.setTimeSlot(booking.getTimeSlot());
-
-        // Xử lý null cho bookingStatus
-        response.setBookingStatus(booking.getBookingStatus() != null ?
-            booking.getBookingStatus().toString() : "PENDING");
-
-        // TODO: Thêm mapping các mục pin
-        // TODO: Thêm mapping thông tin thanh toán
-
-        return response;
+        List<Booking> bookings = bookingRepository.findByUserAndBookingDate(user, date);
+        return bookings.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Tính toán giá tiền đặt chỗ dựa trên SystemPrice - THỐNG NHẤT CHO TẤT CẢ
+     * Lấy danh sách đặt chỗ theo trạng thái và ngày (dành cho quản trị viên)
      */
-    private Double calculateBookingAmountByVehicleBatteryType(Vehicle vehicle) {
-        // Lấy giá thống nhất từ SystemPrice (không phân biệt loại pin)
-        double basePrice = systemPriceService.getCurrentPrice();
-
-        // Nhân với số lượng pin của xe (nếu có)
-        Integer batteryCount = vehicle.getBatteryCount();
-        if (batteryCount != null && batteryCount > 0) {
-            return basePrice * batteryCount;
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getBookingsByStatusAndDate(String status, LocalDate date) {
+        // Chuyển đổi String sang enum
+        try {
+            Booking.BookingStatus bookingStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
+            List<Booking> bookings = bookingRepository.findByBookingStatusAndBookingDate(bookingStatus, date);
+            return bookings.stream()
+                    .map(this::convertToResponse)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status + ". Các trạng thái hợp lệ: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED");
         }
-
-        return basePrice;
     }
 
-    // Cập nhật method calculateBatteryPrice để sử dụng giá thống nhất
-    private double calculateBatteryPrice(String batteryType) {
-        // Bỏ qua batteryType vì giờ tất cả đều dùng chung 1 giá từ SystemPrice
-        return systemPriceService.getCurrentPrice();
+    /**
+     * Lấy danh sách đặt chỗ của trạm theo ngày
+     */
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getStationBookingsByDate(Integer stationId, LocalDate date) {
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + stationId));
+
+        List<Booking> bookings = bookingRepository.findByStationAndBookingDate(station, date);
+        return bookings.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
     }
 
-    // Method tính giá từ Battery object - ưu tiên custom price, fallback SystemPrice
-    private double calculateBatteryPrice(Battery battery) {
-        Double customPrice = battery.getCalculatedPrice();
-        if (customPrice != null) {
-            return customPrice;
-        }
+    /**
+     * Cập nhật ghi chú cho booking
+     */
+    public BookingResponse updateBookingNotes(Long bookingId, String notes) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
 
-        // Sử dụng giá thống nhất từ SystemPrice (không phân biệt loại pin)
-        return systemPriceService.getCurrentPrice();
+        // Cập nhật ghi chú
+        booking.setNotes(notes);
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return convertToResponse(savedBooking);
     }
 
     /**
@@ -527,11 +570,26 @@ public class BookingService {
         Double estimatedPrice = calculateBookingAmountByVehicleBatteryType(vehicle);
         vehicleDetail.put("estimatedSwapPrice", estimatedPrice);
 
-        // Kiểm tra xe có booking đang hoạt động không
-        LocalDate currentDate = LocalDate.now();
-        boolean hasActiveBooking = vehicle.getUser() != null &&
-                bookingRepository.existsActiveBookingForUserByDate(vehicle.getUser(), currentDate);
-        vehicleDetail.put("hasActiveBooking", hasActiveBooking);
+        // ===== KIỂM TRA VÀ HIỂN THỊ BOOKING CHƯA HOÀN THÀNH =====
+        boolean hasIncompleteBooking = bookingRepository.hasIncompleteBookingForVehicle(vehicleId);
+        vehicleDetail.put("hasIncompleteBooking", hasIncompleteBooking);
+
+        // Nếu có booking chưa hoàn thành, lấy thông tin chi tiết
+        if (hasIncompleteBooking) {
+            List<Booking> incompleteBookings = bookingRepository.findIncompleteBookingsByVehicle(vehicleId);
+            if (!incompleteBookings.isEmpty()) {
+                Booking firstIncomplete = incompleteBookings.get(0);
+                java.util.Map<String, Object> incompleteBookingInfo = new java.util.HashMap<>();
+                incompleteBookingInfo.put("bookingId", firstIncomplete.getBookingId());
+                incompleteBookingInfo.put("status", firstIncomplete.getBookingStatus());
+                incompleteBookingInfo.put("bookingDate", firstIncomplete.getBookingDate());
+                incompleteBookingInfo.put("timeSlot", firstIncomplete.getTimeSlot());
+                incompleteBookingInfo.put("stationName", firstIncomplete.getStation().getStationName());
+                incompleteBookingInfo.put("amount", firstIncomplete.getAmount());
+                vehicleDetail.put("incompleteBookingInfo", incompleteBookingInfo);
+            }
+        }
+        // =========================================================
 
         return vehicleDetail;
     }
@@ -556,11 +614,11 @@ public class BookingService {
                 return false;
             }
 
-            // Kiểm tra user có booking đang hoạt động không
-            LocalDate currentDate = LocalDate.now();
-            if (bookingRepository.existsActiveBookingForUserByDate(vehicle.getUser(), currentDate)) {
+            // ===== KIỂM TRA XE CÓ BOOKING CHƯA HOÀN THÀNH =====
+            if (bookingRepository.hasIncompleteBookingForVehicle(vehicleId)) {
                 return false;
             }
+            // ==================================================
 
             return true;
         } catch (Exception e) {
@@ -675,6 +733,7 @@ public class BookingService {
                     .vehicle(vehicle)
                     .vehicleType(vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : "UNKNOWN")
                     .amount(request.getPaidAmount())
+                    .batteryCount(request.getQuantity())
                     .bookingDate(bookingDate)
                     .timeSlot(timeSlot)
                     .bookingStatus(Booking.BookingStatus.PENDINGSWAPPING) // Đã thanh toán, chờ đổi pin
@@ -790,61 +849,117 @@ public class BookingService {
     }
 
     /**
-     * Xử lý danh sách battery items và chuyển thành JSON string
+     * Phân tích và chuyển đổi ID xe từ Object sang Integer (có thể null)
      */
-    private String processBatteryItems(List<String> batteryItemIds, Station station) {
-        try {
-            List<java.util.Map<String, Object>> batteryItemsInfo = new java.util.ArrayList<>();
-
-            for (String batteryId : batteryItemIds) {
-                // Kiểm tra battery có tồn tại không
-                Battery battery = batteryRepository.findById(batteryId)
-                        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy pin với ID: " + batteryId));
-
-                // Kiểm tra battery có khả dụng không
-                if (battery.getBatteryStatus() != Battery.BatteryStatus.AVAILABLE) {
-                    throw new IllegalStateException("Pin " + batteryId + " không khả dụng để đặt");
-                }
-
-                // Tạo thông tin battery item
-                java.util.Map<String, Object> batteryInfo = new java.util.HashMap<>();
-                batteryInfo.put("batteryId", battery.getBatteryId());
-                batteryInfo.put("batteryType", battery.getBatteryType().toString());
-                batteryInfo.put("price", calculateBatteryPrice(battery));
-                batteryInfo.put("status", battery.getBatteryStatus().toString());
-
-                batteryItemsInfo.add(batteryInfo);
-            }
-
-            // Chuyển thành JSON string
-            return objectMapper.writeValueAsString(batteryItemsInfo);
-
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Lỗi khi xử lý thông tin battery items: " + e.getMessage(), e);
+    private Integer parseVehicleId(Object vehicleIdObj) {
+        if (vehicleIdObj == null) {
+            return null;
         }
+        if (vehicleIdObj instanceof Integer) {
+            return (Integer) vehicleIdObj;
+        }
+        if (vehicleIdObj instanceof String) {
+            String vehicleIdStr = (String) vehicleIdObj;
+            if (!vehicleIdStr.isEmpty()) {
+                return Integer.valueOf(vehicleIdStr);
+            }
+        }
+        return null;
     }
 
     /**
-     * Tính tổng giá tiền cho các battery items
+     * Phân tích và chuyển đổi ID trạm từ Object sang Integer (có thể null)
      */
-    private Double calculateBatteryItemsAmount(List<String> batteryItemIds) {
-        double totalAmount = 0.0;
-
-        for (String batteryId : batteryItemIds) {
-            try {
-                Battery battery = batteryRepository.findById(batteryId).orElse(null);
-                if (battery != null) {
-                    totalAmount += calculateBatteryPrice(battery);
-                } else {
-                    // Nếu không tìm thấy battery, sử dụng gi�� mặc định
-                    totalAmount += systemPriceService.getCurrentPrice();
-                }
-            } catch (Exception e) {
-                // Nếu có lỗi, sử dụng giá mặc định
-                totalAmount += systemPriceService.getCurrentPrice();
+    private Integer parseStationId(Object stationIdObj) {
+        if (stationIdObj == null) {
+            return null;
+        }
+        if (stationIdObj instanceof Integer) {
+            return (Integer) stationIdObj;
+        }
+        if (stationIdObj instanceof String) {
+            String stationIdStr = (String) stationIdObj;
+            if (!stationIdStr.isEmpty()) {
+                return Integer.valueOf(stationIdStr);
             }
         }
+        return null;
+    }
 
-        return totalAmount;
+    /**
+     * Chuyển đổi Booking entity thành BookingResponse DTO
+     */
+    private BookingResponse convertToResponse(Booking booking) {
+        BookingResponse response = new BookingResponse();
+        response.setBookingId(booking.getBookingId());
+        response.setUserId(booking.getUser().getUserId());
+        response.setUserName(booking.getUser().getFullName());
+        response.setStationId(booking.getStation().getStationId());
+        response.setStationName(booking.getStation().getStationName());
+        response.setStationAddress(booking.getStation().getAddress());
+
+        if (booking.getVehicle() != null) {
+            response.setVehicleId(booking.getVehicle().getVehicleId());
+            response.setVehicleVin(booking.getVehicle().getVIN());
+        }
+
+        // Thêm vehicleType và amount
+        response.setVehicleType(booking.getVehicleType());
+        response.setAmount(booking.getAmount());
+
+        // Sử dụng bookingDate và timeSlot trực tiếp
+        response.setBookingDate(booking.getBookingDate());
+        response.setTimeSlot(booking.getTimeSlot());
+
+        // Xử lý null cho bookingStatus
+        response.setBookingStatus(booking.getBookingStatus() != null ?
+            booking.getBookingStatus().toString() : "PENDING");
+
+        // Map số pin muốn đổi
+        response.setBatteryCount(booking.getBatteryCount());
+
+        // TODO: Thêm mapping thông tin thanh toán
+
+        return response;
+    }
+
+    /**
+     * Tính toán giá tiền đặt chỗ dựa trên SystemPrice - THỐNG NHẤT CHO TẤT CẢ
+     */
+    private Double calculateBookingAmountByVehicleBatteryType(Vehicle vehicle) {
+        // Lấy giá thống nhất từ SystemPrice (không phân biệt loại pin)
+        double basePrice = systemPriceService.getCurrentPrice();
+
+        // Nhân với số lượng pin của xe (nếu có)
+        Integer batteryCount = vehicle.getBatteryCount();
+        if (batteryCount != null && batteryCount > 0) {
+            return basePrice * batteryCount;
+        }
+
+        return basePrice;
+    }
+
+    // Đảm bảo hàm này tồn tại đúng chữ ký public
+    public java.util.Map<String, Object> createInvoiceFromVehicles(java.util.List<java.util.Map<String, Object>> vehicleBatteryData) {
+        throw new UnsupportedOperationException("Chưa triển khai logic ở đây. Hãy copy logic từ phiên bản đã chỉnh sửa trước đó nếu cần.");
+    }
+
+    /**
+     * Xử lý batch booking: lặp qua từng BookingRequest, áp dụng kiểm tra trùng lặp như createBooking
+     */
+    public List<BookingResponse> createBatchBooking(List<BookingRequest> requests) {
+        List<BookingResponse> responses = new ArrayList<>();
+        for (BookingRequest request : requests) {
+            try {
+                BookingResponse response = createBooking(request); // Áp dụng toàn bộ kiểm tra trùng lặp
+                responses.add(response);
+            } catch (Exception e) {
+                BookingResponse errorResponse = new BookingResponse();
+                errorResponse.setMessage("Booking thất bại: " + e.getMessage());
+                errorResponse.setBookingStatus("FAILED");
+                responses.add(errorResponse);
+            }
+        }
+        return responses;
     }
 }

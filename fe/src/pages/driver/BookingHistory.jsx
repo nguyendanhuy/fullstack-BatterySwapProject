@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, set } from "date-fns";
 import { cn } from "@/lib/utils";
-import { DatePicker } from 'antd';
+import { DatePicker, QRCode } from 'antd';
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { SystemContext } from "../../contexts/system.context";
@@ -36,6 +36,7 @@ const BookingHistory = () => {
   const { userData } = useContext(SystemContext);
   const [allBookings, setAllBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const loadUserHistory = async () => {
     setIsLoading(true);
     try {
@@ -79,7 +80,8 @@ const BookingHistory = () => {
   // ];
 
   // Filter and sort bookings
-  const filteredBookings = allBookings.filter((booking) => {
+
+  const filteredBookings = (allBookings ?? []).filter((booking) => {
     const matchesSearch =
       `BK${booking?.bookingId}`.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
       booking?.stationAddress?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
@@ -111,7 +113,7 @@ const BookingHistory = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "CONFIRMED":
+      case "PENDINGSWAPPING":
         return "default";
       case "CANCELLED":
         return "destructive";
@@ -119,6 +121,29 @@ const BookingHistory = () => {
         return "outline";
       default:
         return "default";
+    }
+  };
+  const doDownload = (url, fileName) => {
+    const a = document.createElement('a');
+    a.download = fileName;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const downloadCanvasQRCode = () => {
+    // Tìm canvas trong container có ID
+    const canvas = document.getElementById('qr-container')?.querySelector('canvas');
+    if (canvas) {
+      const url = canvas.toDataURL('image/png');
+      doDownload(url, `QRCode-BK${selectedBooking?.bookingId || 'unknown'}.png`);
+    } else {
+      toast({
+        title: "Lỗi tải QR Code",
+        description: "Không tìm thấy QR Code để tải xuống",
+        variant: "destructive"
+      });
     }
   };
 
@@ -231,7 +256,7 @@ const BookingHistory = () => {
                     <SelectContent>
                       <SelectItem value="all">Tất cả trạng thái</SelectItem>
                       <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
-                      <SelectItem value="CONFIRMED">Đã thanh toán</SelectItem>
+                      <SelectItem value="PENDINGSWAPPING">Đã thanh toán</SelectItem>
                       <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                     </SelectContent>
                   </Select>
@@ -302,7 +327,7 @@ const BookingHistory = () => {
                                   variant={getStatusColor(booking.bookingStatus)}
                                   className="text-xs"
                                 >
-                                  {booking.bookingStatus === "CONFIRMED" && "Đã thanh toán"}
+                                  {booking.bookingStatus === "PENDINGSWAPPING" && "Đã thanh toán"}
                                   {booking.bookingStatus === "CANCELLED" && "Đã hủy"}
                                   {booking.bookingStatus === "COMPLETED" && "Hoàn thành"}
                                 </Badge>
@@ -313,7 +338,7 @@ const BookingHistory = () => {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              {booking.bookingStatus === "CONFIRMED" && (
+                              {booking.bookingStatus === "PENDINGSWAPPING" && (
                                 <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
                                   <DialogTrigger asChild>
                                     <Button
@@ -363,7 +388,7 @@ const BookingHistory = () => {
                                 </Dialog>
                               )}
 
-                              {booking.bookingStatus === "CONFIRMED" && (
+                              {booking.bookingStatus === "PENDINGSWAPPING" && (
                                 <Dialog>
                                   <DialogTrigger asChild>
                                     <Button variant="outline" size="sm">
@@ -381,17 +406,30 @@ const BookingHistory = () => {
 
                                     <div className="text-center p-6">
                                       <div className="w-48 h-48 mx-auto bg-muted rounded-lg flex items-center justify-center mb-4">
-                                        <div className="text-center">
-                                          <CreditCard className="h-16 w-16 mx-auto mb-2 text-primary" />
-                                          <p className="text-sm font-medium">QR Code #{booking.bookingId}</p>
+                                        <div className="text-center" id="qr-container">
+                                          <QRCode
+                                            value={`${booking.bookingId}` || '-'}
+                                            type="canvas"
+                                            size={160}
+                                          />
+                                          <p className="text-sm font-medium mt-2">QR Code #BK{booking.bookingId}</p>
                                         </div>
                                       </div>
                                       <p className="text-sm text-muted-foreground">
                                         Mã đặt chỗ: {booking.bookingId}
                                       </p>
-                                      <p className="text-sm text-muted-foreground">
+                                      <p className="text-sm text-muted-foreground mb-4">
                                         Trạm: {booking.stationAddress}
                                       </p>
+                                      <Button
+                                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
+                                        onClick={() => {
+                                          setSelectedBooking(booking);
+                                          setTimeout(downloadCanvasQRCode, 100); // Delay nhỏ để đảm bảo canvas đã render
+                                        }}
+                                      >
+                                        Tải xuống QR Code
+                                      </Button>
                                     </div>
 
                                     <DialogFooter>

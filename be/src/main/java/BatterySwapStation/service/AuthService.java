@@ -1,16 +1,10 @@
 package BatterySwapStation.service;
 
-import java.time.LocalDateTime;
-
 import BatterySwapStation.dto.RoleDTO;
-import BatterySwapStation.utils.UserIdGenerator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import BatterySwapStation.dto.LoginRequest;
-import BatterySwapStation.dto.RegisterRequest;
 import BatterySwapStation.dto.AuthResponse;
 import BatterySwapStation.entity.Role;
 import BatterySwapStation.entity.User;
@@ -28,7 +22,7 @@ public class AuthService {
     private RoleRepository roleRepository;
 
     //    @Autowired
-//    private final UserIdGenerator userIdGenerator;
+
     private final JwtService jwtService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();

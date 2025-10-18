@@ -18,10 +18,6 @@ public class Payment {
     @Column(name = "PaymentId")
     private Long paymentId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "BookingId", nullable = false)
-    private Booking booking;
-
     @Column(name = "Amount", nullable = false)
     private double amount;
 
@@ -38,6 +34,36 @@ public class Payment {
 
     @OneToOne(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true)
     private CreditCardPayment creditCardInfo;
+
+    // 🆕 --- Bổ sung cho VNPAY ---
+    @Column(name = "Gateway", length = 50)
+    private String gateway; // VNPAY, MOMO, PAYPAL,...
+
+    @Column(name = "VnpTxnRef", length = 100, unique = true)
+    private String vnpTxnRef;
+
+    @Column(name = "VnpTransactionNo", length = 100)
+    private String vnpTransactionNo;
+
+    @Column(name = "VnpResponseCode", length = 10)
+    private String vnpResponseCode;
+
+    @Column(name = "VnpTransactionStatus", length = 10)
+    private String vnpTransactionStatus;
+
+    @Column(name = "VnpBankCode", length = 20)
+    private String vnpBankCode;
+
+    @Column(name = "VnpPayDate", length = 20)
+    private String vnpPayDate;
+
+    @Column(name = "ChecksumOk")
+    private Boolean checksumOk;
+
+    // NEW: link tới Invoice (mỗi payment theo hóa đơn)
+    @ManyToOne(fetch = FetchType.LAZY)              // hoặc @OneToOne nếu bạn chắc 1-1
+    @JoinColumn(name = "invoiceid", nullable = true)
+    private Invoice invoice;
 
     public enum PaymentMethod {
         CREDIT_CARD,

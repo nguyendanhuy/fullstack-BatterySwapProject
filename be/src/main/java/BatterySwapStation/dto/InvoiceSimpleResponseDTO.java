@@ -33,7 +33,6 @@ public class InvoiceSimpleResponseDTO {
         private String vehicleType;
         private Double amount;
         private String bookingStatus;
-        private String paymentStatus;
 
         // Chỉ thông tin cơ bản của station
         private Integer stationId;

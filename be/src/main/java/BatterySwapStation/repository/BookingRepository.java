@@ -25,11 +25,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm booking theo ID và User (để đảm bảo user chỉ thao tác với booking của mình)
     Optional<Booking> findByBookingIdAndUser(Long bookingId, User user);
 
-    // Kiểm tra xem user đã có booking PENDING hoặc CONFIRMED chưa (theo ngày)
+    // Kiểm tra xem user đã có booking PENDINGPAYMENT hoặc PENDINGSWAPPING chưa (theo ngày)
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.user = :user " +
-            "AND (b.bookingStatus = 'PENDING' OR b.bookingStatus = 'CONFIRMED') " +
-            "AND b.bookingDate >= :currentDate")
-    boolean existsActiveBookingForUserByDate(@Param("user") User user, @Param("currentDate") LocalDate currentDate);
+            "AND b.bookingDate = :bookingDate " +
+            "AND (b.bookingStatus = 'PENDINGPAYMENT' OR b.bookingStatus = 'PENDINGSWAPPING') " +
+            "AND b.bookingStatus != 'CANCELLED'")
+    boolean existsActiveBookingForUserByDate(@Param("user") User user, @Param("bookingDate") LocalDate bookingDate);
+
+    // Kiểm tra booking đang hoạt động trong khoảng thời gian
+    @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.user = :user " +
+            "AND b.bookingDate BETWEEN :startDate AND :endDate " +
+            "AND (b.bookingStatus = 'PENDINGPAYMENT' OR b.bookingStatus = 'PENDINGSWAPPING')")
+    boolean existsActiveBookingForUserInDateRange(@Param("user") User user,
+                                                  @Param("startDate") LocalDate startDate,
+                                                  @Param("endDate") LocalDate endDate);
 
     // Tìm booking theo station và ngày
     @Query("SELECT b FROM Booking b WHERE b.station = :station " +
@@ -41,7 +50,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.station = :station " +
             "AND b.bookingDate = :bookingDate " +
             "AND b.timeSlot = :timeSlot " +
-            "AND (b.bookingStatus = 'PENDING' OR b.bookingStatus = 'CONFIRMED')")
+            "AND (b.bookingStatus = 'PENDINGPAYMENT' OR b.bookingStatus = 'PENDINGSWAPPING') " +
+            "AND b.bookingStatus != 'CANCELLED'")
     boolean existsBookingAtTimeSlot(@Param("station") Station station,
                                    @Param("bookingDate") LocalDate bookingDate,
                                    @Param("timeSlot") LocalTime timeSlot);
@@ -60,7 +70,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     // Kiểm tra vehicle có booking đang hoạt động không
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.vehicle = :vehicle " +
-            "AND (b.bookingStatus = 'PENDING' OR b.bookingStatus = 'CONFIRMED') " +
+            "AND (b.bookingStatus = 'PENDINGPAYMENT' OR b.bookingStatus = 'PENDINGSWAPPING') " +
             "AND b.bookingDate >= :currentDate")
     boolean existsActiveBookingForVehicle(@Param("vehicle") BatterySwapStation.entity.Vehicle vehicle,
                                          @Param("currentDate") LocalDate currentDate);

@@ -24,6 +24,9 @@ public class InvoiceService {
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Autowired
+    private SystemPriceService systemPriceService; // Thêm SystemPriceService
+
     /**
      * Lấy chi tiết invoice bao gồm thông tin các booking
      */
@@ -92,8 +95,8 @@ public class InvoiceService {
      */
     @Transactional
     public Invoice createInvoiceForBooking(Booking booking) {
-        // Kiểm tra trạng thái thanh toán
-        if (booking.getPaymentStatus() != Booking.PaymentStatus.PAID) {
+        // Kiểm tra trạng thái booking - chỉ tạo invoice cho booking đã thanh toán (PENDINGSWAPPING trở lên)
+        if (booking.getBookingStatus() == Booking.BookingStatus.PENDINGPAYMENT) {
             throw new IllegalStateException("Không thể tạo invoice cho booking chưa thanh toán");
         }
 
@@ -313,7 +316,6 @@ public class InvoiceService {
                 .vehicleType(booking.getVehicleType())
                 .amount(booking.getAmount())
                 .bookingStatus(booking.getBookingStatus().toString())
-                .paymentStatus(booking.getPaymentStatus().toString())
                 // Chỉ lấy thông tin cơ bản của station
                 .stationId(booking.getStation().getStationId())
                 .stationName(booking.getStation().getStationName())

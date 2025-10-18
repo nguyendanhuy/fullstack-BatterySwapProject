@@ -69,9 +69,12 @@ public class Booking {
     @Column(name = "Notes", length = 1000)
     private String notes;
 
-    @Column(name = "BatteryItems", length = 2000)
-    private String batteryItems; // Lưu danh sách ID pin dưới dạng JSON string
+    // Lưu số pin muốn đổi (bị giới hạn bởi Vehicle.batteryCount)
+    @Column(name = "BatteryCount")
+    private Integer batteryCount;
 
+    @Column(name = "batterytype", length = 50)
+    private String batteryType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "InvoiceId")

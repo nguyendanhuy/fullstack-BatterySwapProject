@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,13 +7,28 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { QrCode, ArrowLeft, CheckCircle, User, Zap, Star, Smartphone, Box } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { Divider, Space, Upload } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
+import { ReaderException } from "@zxing/library";
+import { BrowserQRCodeReader } from "@zxing/browser";
 
 const QRCheckIn = () => {
   const { toast } = useToast();
   const [scannedCustomer, setScannedCustomer] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [batterySlotNumber, setBatterySlotNumber] = useState < number | null > (null);
+  const [batterySlotNumber, setBatterySlotNumber] = useState(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  // revoke URL khi unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    }
+  }, [previewUrl]);
 
   const mockCustomer = {
     name: "Nguyễn Văn A",
@@ -36,39 +51,35 @@ const QRCheckIn = () => {
       });
     }, 2000);
   };
+  //hàm xử lý quét QR 
 
+  const onPickFile = async (file) => {
+    setError("");
+    if (!file) return;
+
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return prev;
+    });
+
+    const reader = new BrowserQRCodeReader();
+    const url = URL.createObjectURL(file);
+
+    setPreviewUrl(url);
+    try {
+      const res = await reader.decodeFromImageUrl(url);
+      console.log("QR Code detected:", res);
+    } catch (err) {
+      console.error(err);
+      setError("Không phát hiện QR trong ảnh. Hãy chọn ảnh rõ/crop sát QR.");
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Enhanced Header */}
-      <header className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float"></div>
-          <div
-            className="absolute top-10 right-1/4 w-72 h-72 bg-gradient-to-r from-indigo-400 to-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float"
-            style={{ animationDelay: '2s' }}
-          ></div>
-        </div>
-
-        <div className="relative z-20 container mx-auto px-6 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <div className="relative p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                <QrCode className="h-10 w-10 text-white" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-ping"></div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"></div>
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold text-white mb-2">Quét QR thông minh</h1>
-                <p className="text-white/90 text-lg">Check-in nhanh chóng và chính xác cho khách hàng</p>
-              </div>
-            </div>
-            <Link to="/staff">
-              <Button variant="ghost" className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/20 px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105">
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Dashboard
-              </Button>
-            </Link>
-          </div>
+      <header className="bg-white dark:bg-slate-900 border-b">
+        <div className="container mx-auto px-6 py-6">
+          <h1 className="text-3xl font-bold text-foreground">Quét QR thông minh</h1>
         </div>
       </header>
 
@@ -76,11 +87,13 @@ const QRCheckIn = () => {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* QR Scanner */}
           <div>
+            {/* QR Scanner (clean vertical layout) */}
             <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm animate-fade-in rounded-3xl overflow-hidden">
               <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+
               <CardHeader>
-                <CardTitle className="text-center text-2xl font-bold text-gray-800">
-                  <div className="flex items-center justify-center space-x-3 mb-2">
+                <CardTitle className="text-center text-2xl font-bold text-gray-900">
+                  <div className="flex items-center justify-center gap-3 mb-1">
                     <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
                       <QrCode className="h-6 w-6 text-white" />
                     </div>
@@ -91,53 +104,126 @@ const QRCheckIn = () => {
                   Quét mã QR của khách hàng để xác nhận đặt lịch và bắt đầu dịch vụ
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-center">
-                <div className="mb-8">
-                  <div className={`w-80 h-80 mx-auto border-4 border-dashed rounded-2xl flex items-center justify-center transition-all duration-500 ${isScanning
-                    ? 'border-blue-500 bg-blue-50 shadow-lg'
-                    : 'border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50'
-                    }`}>
-                    {isScanning ? (
-                      <div className="text-center">
-                        <div className="animate-spin mb-4">
-                          <QrCode className="h-20 w-20 text-blue-600 mx-auto" />
-                        </div>
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                        </div>
-                        <p className="text-blue-600 font-semibold mt-2">Đang quét...</p>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <QrCode className="h-20 w-20 text-blue-600 mx-auto mb-4" />
-                        <p className="text-gray-600">Sẵn sàng quét QR Code</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  onClick={handleScan}
-                  disabled={isScanning}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 px-8 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg min-w-[250px]"
+
+              <CardContent className="text-center space-y-6">
+                {/* Khung hiển thị QR */}
+                <div
+                  className={`relative mx-auto w-80 h-80 rounded-2xl overflow-hidden transition-all duration-500
+                  ${isScanning
+                      ? "ring-4 ring-blue-500 bg-blue-50 shadow-lg"
+                      : "ring-4 ring-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50"
+                    }`}
                 >
-                  {isScanning ? (
-                    <>
-                      <div className="animate-spin mr-2">
-                        <QrCode className="h-5 w-5" />
-                      </div>
-                      Đang quét...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-5 w-5 mr-2" />
-                      Bắt đầu quét QR
-                    </>
+                  {/* Ảnh QR nếu có */}
+                  {previewUrl && (
+                    <img
+                      src={previewUrl}
+                      alt="QR preview"
+                      className={`w-full h-full object-contain transition-all duration-500
+                      ${isScanning ? "opacity-40 blur-[1px]" : "opacity-100"}`}
+                    />
                   )}
-                </Button>
+
+                  {/* Nút xóa ảnh chỉ hiện khi có preview và không đang quét */}
+                  {previewUrl && !isScanning && (
+                    <div className="absolute top-3 right-3">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="bg-white/90 hover:bg-white rounded-lg"
+                        onClick={() => {
+                          if (previewUrl) URL.revokeObjectURL(previewUrl);
+                          setPreviewUrl(null);
+                          setError("");
+                        }}
+                      >
+                        Xóa ảnh
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Overlay hiển thị khi đang quét */}
+                  {isScanning && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/30 backdrop-blur-[2px]">
+                      <div className="animate-spin mb-4">
+                        <QrCode className="h-20 w-20 text-blue-600" />
+                      </div>
+                      <p className="text-blue-600 font-semibold">Đang quét...</p>
+                    </div>
+                  )}
+
+                  {/* Nếu không có ảnh và không đang quét → placeholder */}
+                  {!previewUrl && !isScanning && (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <QrCode className="h-20 w-20 text-blue-600 mb-3" />
+                      <p className="text-gray-600 font-medium">Sẵn sàng quét QR Code</p>
+                    </div>
+                  )}
+
+                  {/* Hiển thị lỗi nếu có */}
+                  {error && (
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-2 bg-red-50 text-red-700 text-sm rounded-lg ring-1 ring-red-200 max-w-[85%]">
+                      {error}
+                    </div>
+                  )}
+                </div>
+                {/* Hai nút dọc như code cũ */}
+                <Space direction="vertical" className="w-full items-center">
+                  <Upload
+                    disabled={isScanning}
+                    accept="image/*"
+                    showUploadList={false}
+                    beforeUpload={(file) => {
+                      const isImage = file.type.startsWith("image/");
+                      if (!isImage) {
+                        toast({
+                          title: "Tệp không hợp lệ",
+                          description: "Vui lòng chọn một hình ảnh (jpg, png, webp...)",
+                          variant: "destructive",
+                        });
+                        return Upload.LIST_IGNORE;
+                      }
+                      onPickFile(file);
+                      return false;
+                    }}
+                  >
+                    <Button
+                      disabled={isScanning}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 px-8 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg min-w-[250px]"
+                      icon={<UploadOutlined />}
+                    >
+                      Upload QR
+                    </Button>
+                  </Upload>
+
+                  <Button
+                    onClick={handleScan}
+                    disabled={isScanning}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl py-4 px-8 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg min-w-[250px]"
+                  >
+                    {isScanning ? (
+                      <>
+                        <div className="animate-spin mr-2">
+                          <QrCode className="h-5 w-5" />
+                        </div>
+                        Đang quét...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-5 w-5 mr-2" />
+                        Bắt đầu quét QR
+                      </>
+                    )}
+                  </Button>
+                </Space>
+
+                {/* Gợi ý nhỏ */}
+                <p className="text-xs text-gray-500">
+                  Hỗ trợ JPG, PNG, WEBP. Ảnh rõ, crop sát QR sẽ cho kết quả tốt hơn.
+                </p>
               </CardContent>
             </Card>
+
 
             {/* Instructions */}
             <Card className="mt-6 border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 animate-slide-up">

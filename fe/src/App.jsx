@@ -33,7 +33,9 @@ import DriverPrivateRoute from "./pages/DriverPrivateRouter";
 import StaffPrivateRoute from "./pages/StaffPrivateRouter";
 import AdminPrivateRoute from "./pages/AdminPrivateRouter";
 import AuthProvider from "./components/AuthProvider";
+import { StaffLayout } from "./components/StaffLayout";
 const queryClient = new QueryClient();
+<<<<<<< HEAD
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <SystemProvider>
@@ -70,6 +72,53 @@ const App = () => (
               <Route path="/staff/transaction-history" element={<StaffPrivateRoute><TransactionHistory /></StaffPrivateRoute>} />
               <Route path="/staff/battery-inventory" element={<StaffPrivateRoute><BatteryInventory /></StaffPrivateRoute>} />
               <Route path="/staff/battery-inspection" element={<StaffPrivateRoute><BatteryInspection /></StaffPrivateRoute>} />
+=======
+const App = () => (<QueryClientProvider client={queryClient}>
+  <SystemProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            {/* Driver (bảo vệ cả nhánh) */}
+            <Route
+              path="/driver"
+              element={
+                <DriverPrivateRoute>
+                  <DriverLayout />
+                </DriverPrivateRoute>
+              }
+            >
+              <Route index element={<DriverDashboard />} />
+              <Route path="register-vehicle" element={<VehicleRegistration />} />
+              <Route path="find-stations" element={<StationFinder />} />
+              <Route path="reservation" element={<Reservation />} />
+              <Route path="payment" element={<Payment />} />
+              <Route path="subscriptions" element={<Subscriptions />} />
+              <Route path="booking-history" element={<BookingHistory />} />
+            </Route>
+
+            {/* Staff routes */}
+            <Route
+              path="/staff"
+              element={
+                <StaffPrivateRoute>
+                  <StaffLayout />
+                </StaffPrivateRoute>
+              }
+            >
+              <Route index element={<StaffDashboard />} />
+              <Route path="qr-checkin" element={<QRCheckIn />} />
+              <Route path="transaction-history" element={<TransactionHistory />} />
+              <Route path="battery-inventory" element={<BatteryInventory />} />
+              <Route path="battery-inspection" element={<BatteryInspection />} />
+            </Route>
+>>>>>>> 476f6b6be4a92f5c50bbc87f31ec787ec4bb6321
 
               {/* Admin routes */}
               <Route path="/admin" element={<AdminPrivateRoute><AdminDashboard /></AdminPrivateRoute>} />

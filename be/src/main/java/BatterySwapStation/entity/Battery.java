@@ -94,7 +94,7 @@ public class Battery {
         AVAILABLE,
         IN_USE,
         CHARGING,
-        DAMAGED
+        MAINTENANCE
     }
 
     @Column(name = "CycleCount")

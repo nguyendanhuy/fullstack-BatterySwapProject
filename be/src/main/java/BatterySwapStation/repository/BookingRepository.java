@@ -44,7 +44,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT b FROM Booking b WHERE b.station = :station " +
             "AND b.bookingDate = :bookingDate")
     List<Booking> findByStationAndBookingDate(@Param("station") Station station,
-                                            @Param("bookingDate") LocalDate bookingDate);
+                                              @Param("bookingDate") LocalDate bookingDate);
 
     // Kiểm tra time slot đã được đặt chưa
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.station = :station " +
@@ -53,8 +53,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND (b.bookingStatus = 'PENDINGPAYMENT' OR b.bookingStatus = 'PENDINGSWAPPING') " +
             "AND b.bookingStatus != 'CANCELLED'")
     boolean existsBookingAtTimeSlot(@Param("station") Station station,
-                                   @Param("bookingDate") LocalDate bookingDate,
-                                   @Param("timeSlot") LocalTime timeSlot);
+                                    @Param("bookingDate") LocalDate bookingDate,
+                                    @Param("timeSlot") LocalTime timeSlot);
 
     // Tìm tất cả booking của station
     List<Booking> findByStation(Station station);
@@ -68,10 +68,49 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm booking theo vehicle và user
     List<Booking> findByVehicleAndUser(BatterySwapStation.entity.Vehicle vehicle, User user);
 
-    // Kiểm tra vehicle có booking đang hoạt động không
+    // ========== CÁC METHOD MỚI - KIỂM TRA BOOKING CHƯA HOÀN THÀNH ==========
+
+    /**
+     * Kiểm tra xe có booking chưa hoàn thành không
+     * Chỉ cho phép đặt booking mới nếu tất cả booking cũ đều COMPLETED, CANCELLED hoặc FAILED
+     */
+    @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.vehicle.vehicleId = :vehicleId " +
+            "AND b.bookingStatus NOT IN ('COMPLETED', 'CANCELLED', 'FAILED')")
+    boolean hasIncompleteBookingForVehicle(@Param("vehicleId") Integer vehicleId);
+
+    /**
+     * Lấy danh sách booking chưa hoàn thành của xe (để hiển thị thông tin chi tiết)
+     */
+    @Query("SELECT b FROM Booking b WHERE b.vehicle.vehicleId = :vehicleId " +
+            "AND b.bookingStatus NOT IN ('COMPLETED', 'CANCELLED', 'FAILED') " +
+            "ORDER BY b.bookingDate DESC, b.timeSlot DESC")
+    List<Booking> findIncompleteBookingsByVehicle(@Param("vehicleId") Integer vehicleId);
+
+    // ========================================================================
+
+    // Kiểm tra vehicle có booking đang hoạt động không (method cũ - giữ lại để tương thích)
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.vehicle = :vehicle " +
             "AND (b.bookingStatus = 'PENDINGPAYMENT' OR b.bookingStatus = 'PENDINGSWAPPING') " +
             "AND b.bookingDate >= :currentDate")
     boolean existsActiveBookingForVehicle(@Param("vehicle") BatterySwapStation.entity.Vehicle vehicle,
-                                         @Param("currentDate") LocalDate currentDate);
+                                          @Param("currentDate") LocalDate currentDate);
+
+    // --- Added derived query methods required by BookingService ---
+    // Tìm booking của user theo ngày
+    List<Booking> findByUserAndBookingDate(User user, LocalDate bookingDate);
+
+    // Tìm booking theo trạng thái và ngày
+    List<Booking> findByBookingStatusAndBookingDate(Booking.BookingStatus bookingStatus, LocalDate bookingDate);
+
+    // Tìm booking của user theo trạng thái và ngày
+    List<Booking> findByUserAndBookingStatusAndBookingDate(User user, Booking.BookingStatus bookingStatus, LocalDate bookingDate);
+
+    // Kiểm tra trùng lặp booking theo user, vehicle, station, ngày và khung giờ
+    @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.user = :user AND b.vehicle = :vehicle AND b.station = :station AND b.bookingDate = :bookingDate AND b.timeSlot = :timeSlot AND (b.bookingStatus = 'PENDINGPAYMENT' OR b.bookingStatus = 'PENDINGSWAPPING')")
+    boolean existsDuplicateBooking(@Param("user") User user,
+                                   @Param("vehicle") BatterySwapStation.entity.Vehicle vehicle,
+                                   @Param("station") Station station,
+                                   @Param("bookingDate") LocalDate bookingDate,
+                                   @Param("timeSlot") LocalTime timeSlot);
+
 }

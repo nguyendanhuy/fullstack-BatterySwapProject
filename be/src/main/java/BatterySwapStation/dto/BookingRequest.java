@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -22,6 +21,7 @@ public class BookingRequest {
 
     private String timeSlot; // Đổi từ LocalTime sang String để Swagger không sinh ra second/nano
 
-    private List<String> batteryItems; // Danh sách ID của các pin cần đặt
+    private String batteryType; // Loại pin lấy từ vehicle
+    private Integer batteryCount; // Số pin muốn đổi (bị giới hạn theo Vehicle.batteryCount)
 
 }

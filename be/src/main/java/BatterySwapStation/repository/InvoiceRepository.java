@@ -14,4 +14,3 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findByIdWithoutBookings(@Param("id") Long id);
 
 }
-

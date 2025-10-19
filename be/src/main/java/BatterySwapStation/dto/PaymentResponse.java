@@ -1,21 +1,23 @@
 package BatterySwapStation.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 public class PaymentResponse {
-    private boolean success;
-    private String message;
-    private String invoiceNumber;
-    private Long pendingBookingId;
+    private String txnRef;
+    private String paymentStatus;
+    private String invoiceStatus;
+    private Long invoiceId;
     private Double amount;
-    private LocalDateTime paymentDeadline;
+    private String gateway;
+    private String vnpTransactionNo;
+    private String vnpResponseCode;
+    private String vnpBankCode;
+    private String vnpPayDate;
+    private LocalDateTime createdAt;
+    private String message;
 }

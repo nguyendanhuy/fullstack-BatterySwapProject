@@ -52,8 +52,6 @@ public class Invoice {
     public enum InvoiceStatus {
         PENDING,    // Chờ xử lý
         PAID,       // Đã thanh toán
-        CANCELLED,  // Đã hủy
-        COMPLETED   // Đã hoàn thành
     }
 
     @Enumerated(EnumType.STRING)
@@ -154,10 +152,21 @@ public class Invoice {
 
     // Method để tính tổng tiền dựa trên số lần swap và giá hệ thống
     public void calculateTotalAmount() {
-        Double currentPrice = getPricePerSwap(); // Sử dụng getter để tự động lấy giá
-        if (this.numberOfSwaps != null && currentPrice != null) {
-            this.totalAmount = this.numberOfSwaps * currentPrice;
+        int totalBookings = 0;
+        double totalSum = 0.0;
+
+        if (this.bookings != null && !this.bookings.isEmpty()) {
+            for (Booking booking : this.bookings) {
+                if (booking != null) {
+                    totalBookings++;
+                    if (booking.getAmount() != null) {
+                        totalSum += booking.getAmount();
+                    }
+                }
+            }
         }
+        this.numberOfSwaps = totalBookings;
+        this.totalAmount = totalSum;
     }
 
     @PrePersist

@@ -113,4 +113,20 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                    @Param("bookingDate") LocalDate bookingDate,
                                    @Param("timeSlot") LocalTime timeSlot);
 
+
+    /**
+     * Tính tổng số pin (batteryCount) đã được đặt và CHƯA HOÀN THÀNH
+     * tại một trạm vào một ngày và khung giờ cụ thể.
+     */
+    @Query("SELECT SUM(b.batteryCount) FROM Booking b " +
+            "WHERE b.station = :station " +
+            "AND b.bookingDate = :date " +
+            "AND b.timeSlot = :timeSlot " +
+            "AND b.bookingStatus NOT IN (BatterySwapStation.entity.Booking.BookingStatus.COMPLETED, " +
+            "BatterySwapStation.entity.Booking.BookingStatus.CANCELLED, " +
+            "BatterySwapStation.entity.Booking.BookingStatus.FAILED)")
+    Integer getBookedBatteryCountAtTimeSlot(@Param("station") Station station,
+                                            @Param("date") LocalDate date,
+                                            @Param("timeSlot") LocalTime timeSlot);
+
 }

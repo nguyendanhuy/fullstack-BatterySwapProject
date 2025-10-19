@@ -189,29 +189,30 @@ public class InvoiceService {
 
     /**
      * Link nhiều booking vào 1 invoice và tự động tính tổng tiền
-     * @param invoiceId ID của invoice cần link
+     * [ĐÃ CẬP NHẬT LOGIC]
+     * * @param invoiceId ID của invoice cần link
      * @param bookingIds Danh sách ID của các booking cần link
      * @return Invoice đã được cập nhật
      */
     @Transactional
     public Invoice linkBookingsToInvoice(Long invoiceId, List<Long> bookingIds) {
-        // Kiểm tra invoice tồn tại
+        // 1. Kiểm tra invoice tồn tại
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
 
-        // Lấy danh sách booking
+        // 2. Lấy danh sách booking
         List<Booking> bookings = bookingRepository.findAllById(bookingIds);
 
         if (bookings.isEmpty()) {
             throw new RuntimeException("Không tìm thấy booking nào để link");
         }
 
-        // ✅ THÊM: Nếu invoice chưa có userId, lấy từ booking đầu tiên
+        // 3. THÊM: Nếu invoice chưa có userId, lấy từ booking đầu tiên
         if (invoice.getUserId() == null && !bookings.isEmpty()) {
             invoice.setUserId(bookings.get(0).getUser().getUserId());
         }
 
-        // Kiểm tra xem có booking nào đã có invoice chưa
+        // 4. Kiểm tra xem có booking nào đã có invoice chưa
         List<Booking> alreadyLinked = bookings.stream()
                 .filter(b -> b.getInvoice() != null)
                 .collect(Collectors.toList());
@@ -223,24 +224,33 @@ public class InvoiceService {
             throw new RuntimeException("Các booking sau đã được link với invoice khác: " + bookingIdsStr);
         }
 
-        // Link các booking vào invoice
+        // 5. Link các booking vào invoice
         for (Booking booking : bookings) {
             booking.setInvoice(invoice);
 
+            // Đặt giá cho booking nếu nó chưa có (giữ nguyên logic đồng giá của bạn)
             if (booking.getAmount() == null) {
                 booking.setAmount(invoice.getPricePerSwap());
             }
         }
 
-        // Lưu các booking
+        // 6. Lưu các booking
         bookingRepository.saveAll(bookings);
 
-        // Cập nhật số lần đổi pin = tổng số booking
-        invoice.setNumberOfSwaps(bookings.size());
+        // --- SỬA LỖI LOGIC TẠI ĐÂY ---
 
-        // Tính lại tổng tiền
+        // 7. Lấy số swap hiện có (đảm bảo không bị null)
+        int existingSwaps = (invoice.getNumberOfSwaps() != null) ? invoice.getNumberOfSwaps() : 0;
+
+        // 8. Cập nhật số lần đổi pin = [SỐ CŨ] + [SỐ MỚI]
+        invoice.setNumberOfSwaps(existingSwaps + bookings.size());
+
+        // 9. Tính lại tổng tiền (Hàm này sẽ tự động lấy numberOfSwaps * pricePerSwap)
         invoice.calculateTotalAmount();
 
+        // --- KẾT THÚC SỬA LỖI ---
+
+        // 10. Lưu lại invoice đã cập nhật
         return invoiceRepository.save(invoice);
     }
 
@@ -370,5 +380,31 @@ public class InvoiceService {
     public InvoiceSimpleResponseDTO createInvoiceSimple(Invoice invoice) {
         Invoice savedInvoice = createInvoice(invoice);
         return getInvoiceSimple(savedInvoice.getInvoiceId());
+    }
+
+    /**
+     * Lọc Invoices theo trạng thái (CHỈ PENDING HOẶC PAID)
+     */
+    public List<InvoiceSimpleResponseDTO> getInvoicesByStatus(String statusString) {
+        Invoice.InvoiceStatus status;
+        String upperStatus = statusString.trim().toUpperCase();
+
+        // ✅ LOGIC CẬP NHẬT: Chỉ chấp nhận PENDING hoặc PAID
+        if ("PENDING".equals(upperStatus)) {
+            status = Invoice.InvoiceStatus.PENDING;
+        } else if ("PAID".equals(upperStatus)) {
+            status = Invoice.InvoiceStatus.PAID;
+        } else {
+            // Ném lỗi nếu nhập trạng thái khác
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + statusString + ". Chỉ chấp nhận PENDING hoặc PAID.");
+        }
+
+        // Gọi phương thức Repository (vẫn như cũ)
+        List<Invoice> invoices = invoiceRepository.findByInvoiceStatus(status);
+
+        // Chuyển đổi sang DTO (vẫn như cũ)
+        return invoices.stream()
+                .map(invoice -> getInvoiceSimple(invoice.getInvoiceId()))
+                .collect(Collectors.toList());
     }
 }

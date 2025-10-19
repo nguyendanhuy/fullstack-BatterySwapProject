@@ -29,20 +29,20 @@ public class PaymentService {
     private final InvoiceRepository invoiceRepository;
     private final BookingRepository bookingRepository;
 
-    /** 1️⃣ Tạo URL thanh toán */
+    /**
+     * 1️⃣ Tạo URL thanh toán (FE gọi)
+     * 👉 Chỉ tạo Payment với trạng thái PENDING, chưa update DB khác.
+     */
     @Transactional
-    public String createVnPayPaymentUrlByInvoice(
-            VnPayCreatePaymentRequest req, HttpServletRequest http) {
-
+    public String createVnPayPaymentUrlByInvoice(VnPayCreatePaymentRequest req, HttpServletRequest http) {
         Invoice invoice = invoiceRepository.findById(req.getInvoiceId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn: " + req.getInvoiceId()));
 
-        double amount = invoice.getTotalAmount() == null ? 0d : invoice.getTotalAmount();
+        double amount = Optional.ofNullable(invoice.getTotalAmount()).orElse(0d);
         if (amount <= 0)
             throw new IllegalArgumentException("Hóa đơn phải có giá trị lớn hơn 0");
 
-        boolean alreadyPaid = paymentRepository.existsByInvoiceAndPaymentStatus(
-                invoice, Payment.PaymentStatus.SUCCESS);
+        boolean alreadyPaid = paymentRepository.existsByInvoiceAndPaymentStatus(invoice, Payment.PaymentStatus.SUCCESS);
         if (alreadyPaid)
             throw new IllegalStateException("Hóa đơn đã được thanh toán");
 
@@ -64,7 +64,7 @@ public class PaymentService {
         params.put("vnp_Amount", String.valueOf(amountTimes100));
         params.put("vnp_CurrCode", props.getCurrCode());
         params.put("vnp_TxnRef", txnRef);
-        params.put("vnp_OrderInfo", "Thanh toan hoa don #" + invoice.getInvoiceId());
+        params.put("vnp_OrderInfo", "Thanh toán hóa đơn #" + invoice.getInvoiceId());
         params.put("vnp_OrderType", req.getOrderType());
         params.put("vnp_Locale", (req.getLocale() == null || req.getLocale().isBlank()) ? "vn" : req.getLocale());
         params.put("vnp_ReturnUrl", props.getReturnUrl());
@@ -75,6 +75,7 @@ public class PaymentService {
             params.put("vnp_BankCode", req.getBankCode());
         }
 
+        // 💾 Lưu Payment trạng thái chờ
         Payment payment = Payment.builder()
                 .invoice(invoice)
                 .amount(amount)
@@ -84,12 +85,15 @@ public class PaymentService {
                 .vnpTxnRef(txnRef)
                 .createdAt(LocalDateTime.now(zone))
                 .build();
-        paymentRepository.save(payment);
 
+        paymentRepository.save(payment);
         return VnPayUtils.buildPaymentUrl(props.getPayUrl(), params, props.getHashSecret());
     }
 
-    /** 2️⃣ Xử lý IPN callback (VNPAY → BE) */
+    /**
+     * 2️⃣ IPN callback (VNPAY → BE)
+     * 👉 Xử lý chính thức: cập nhật DB, trạng thái hóa đơn & booking.
+     */
     @Transactional
     public Map<String, String> handleVnPayIpn(Map<String, String> query) {
         Map<String, String> response = new HashMap<>();
@@ -108,17 +112,11 @@ public class PaymentService {
             }
 
             String txnRef = fields.get("vnp_TxnRef");
-            Optional<Payment> optionalPayment = paymentRepository.findByVnpTxnRef(txnRef);
-            if (optionalPayment.isEmpty()) {
-                response.put("RspCode", "01");
-                response.put("Message", "Không tìm thấy đơn hàng");
-                return response;
-            }
+            Payment payment = paymentRepository.findByVnpTxnRef(txnRef)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giao dịch"));
 
-            Payment payment = optionalPayment.get();
             long amountFromVnp = Long.parseLong(fields.get("vnp_Amount"));
-            boolean checkAmount = (amountFromVnp == (long) (payment.getAmount() * 100));
-            if (!checkAmount) {
+            if (amountFromVnp != (long) (payment.getAmount() * 100)) {
                 response.put("RspCode", "04");
                 response.put("Message", "Tổng tiền không hợp lệ");
                 return response;
@@ -126,7 +124,7 @@ public class PaymentService {
 
             if (payment.getPaymentStatus() != Payment.PaymentStatus.PENDING) {
                 response.put("RspCode", "02");
-                response.put("Message", "Thanh toán đã được xử lý");
+                response.put("Message", "Đã xử lý rồi");
                 return response;
             }
 
@@ -143,15 +141,21 @@ public class PaymentService {
             payment.setPaymentStatus(success ? Payment.PaymentStatus.SUCCESS : Payment.PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
+            // 🧾 Cập nhật Invoice + Booking
             Invoice invoice = payment.getInvoice();
             if (invoice != null && invoice.getBookings() != null) {
-                for (Booking booking : invoice.getBookings()) {
-                    if (success) {
+                if (success) {
+                    invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+                    invoiceRepository.save(invoice);
+                    for (Booking booking : invoice.getBookings()) {
                         booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING);
-                    } else {
-                        booking.setBookingStatus(Booking.BookingStatus.FAILED);
+                        bookingRepository.save(booking);
                     }
-                    bookingRepository.save(booking);
+                } else {
+                    for (Booking booking : invoice.getBookings()) {
+                        booking.setBookingStatus(Booking.BookingStatus.FAILED);
+                        bookingRepository.save(booking);
+                    }
                 }
             }
 
@@ -160,13 +164,15 @@ public class PaymentService {
             return response;
         } catch (Exception e) {
             response.put("RspCode", "99");
-            response.put("Message", "Lỗi không xác định");
+            response.put("Message", "Lỗi xử lý IPN");
             return response;
         }
     }
 
-    /** 3️⃣ Xử lý return URL (BE → FE) */
-    @Transactional
+    /**
+     * 3️⃣ Return URL (BE → FE redirect)
+     * 👉 Chỉ kiểm checksum & báo FE, không cập nhật DB.
+     */
     public Map<String, Object> handleVnPayReturn(Map<String, String> query) {
         Map<String, Object> result = new HashMap<>();
         Map<String, String> fields = new HashMap<>(query);
@@ -177,55 +183,16 @@ public class PaymentService {
         String dataToSign = VnPayUtils.buildDataToSign(fields);
         String signed = VnPayUtils.hmacSHA512(props.getHashSecret(), dataToSign);
         boolean checksumOk = signed.equalsIgnoreCase(secureHash);
-        String respCode = query.get("vnp_ResponseCode");
-        boolean success = checksumOk && "00".equals(respCode);
+        boolean success = checksumOk && "00".equals(query.get("vnp_ResponseCode"));
 
-        result.put("checksumOk", checksumOk);
         result.put("success", success);
-        result.put("vnp_ResponseCode", respCode);
-        result.put("vnp_TxnRef", query.get("vnp_TxnRef"));
-        result.put("vnp_TransactionNo", query.get("vnp_TransactionNo"));
+        result.put("checksumOk", checksumOk);
         result.put("vnp_Amount", query.get("vnp_Amount"));
-        result.put("vnp_PayDate", query.get("vnp_PayDate"));
-        result.put("vnp_BankCode", query.get("vnp_BankCode"));
-        result.put("message", success ? "Giao dịch thành công" : "Giao dịch thất bại hoặc sai chữ ký");
-
-        if (checksumOk) {
-            paymentRepository.findByVnpTxnRef(query.get("vnp_TxnRef")).ifPresent(p -> {
-                p.setChecksumOk(true);
-                if (success) {
-                    p.setPaymentStatus(Payment.PaymentStatus.SUCCESS);
-                    p.setVnpPayDate(query.get("vnp_PayDate"));
-                    p.setVnpTransactionNo(query.get("vnp_TransactionNo"));
-                    p.setVnpResponseCode(respCode);
-                    p.setVnpBankCode(query.get("vnp_BankCode"));
-                    paymentRepository.save(p);
-
-                    Invoice invoice = p.getInvoice();
-                    invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
-                    invoiceRepository.save(invoice);
-
-                    if (invoice.getBookings() != null) {
-                        for (Booking booking : invoice.getBookings()) {
-                            booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING);
-                            bookingRepository.save(booking);
-                        }
-                    }
-                } else {
-                    p.setPaymentStatus(Payment.PaymentStatus.FAILED);
-                    paymentRepository.save(p);
-
-                    Invoice invoice = p.getInvoice();
-                    if (invoice != null && invoice.getBookings() != null) {
-                        for (Booking booking : invoice.getBookings()) {
-                            booking.setBookingStatus(Booking.BookingStatus.FAILED);
-                            bookingRepository.save(booking);
-                        }
-                    }
-                }
-            });
-        }
+        result.put("vnp_TxnRef", query.get("vnp_TxnRef"));
+        result.put("message", success ? "Giao dịch thành công" : "Giao dịch thất bại");
 
         return result;
     }
+
 }
+

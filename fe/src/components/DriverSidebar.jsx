@@ -25,10 +25,8 @@ const mainItems = [
     { title: "Dashboard", url: "/driver", icon: Home },
     { title: "Đăng ký xe", url: "/driver/register-vehicle", icon: Car },
     { title: "Tìm trạm", url: "/driver/find-stations", icon: MapPin },
-    // { title: "Đặt lịch", url: "/driver/reservation", icon: Calendar },
     { title: "Lịch sử", url: "/driver/booking-history", icon: History },
     { title: "Gói thuê pin", url: "/driver/subscriptions", icon: Battery },
-    // { title: "Thanh toán", url: "/driver/payment", icon: CreditCard },
 ];
 
 export function DriverSidebar() {
@@ -36,7 +34,10 @@ export function DriverSidebar() {
     const navigate = useNavigate();
     const [settingsOpen, setSettingsOpen] = useState(false);
 
-    const handleLogout = () => navigate("/login");
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        navigate("/login")
+    };
 
     return (
         <>

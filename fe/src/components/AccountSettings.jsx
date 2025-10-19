@@ -12,7 +12,7 @@ const AccountSettings = ({ userRole }) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("0912345678");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);

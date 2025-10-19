@@ -11,6 +11,8 @@ import { SystemContext } from "../contexts/system.context";
 import { loginAPI, getInfoByToken } from "../services/axios.services";
 import { MouseSparkles } from "@/components/MouseSparkles";
 import authBackground from "@/assets/auth-background.jpg";
+import { GoogleLogin } from '@react-oauth/google';
+
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,12 +23,12 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setUserData } = useContext(SystemContext);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      localStorage.removeItem("token");
-    } else return;
+    if (token) localStorage.removeItem("token");
   }, []);
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -102,6 +104,33 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  const handleGoogleLogin = async (credentialResponse) => {
+    try {
+      setLoading(true);
+      console.log('Google credential:', credentialResponse);
+
+      // TODO: Gửi credential.token lên backend để verify
+      // const res = await axios.post('/api/auth/google', {
+      //   token: credentialResponse.credential
+      // });
+
+      toast({
+        title: 'Đăng nhập Google thành công!',
+        description: 'Tính năng đang được phát triển',
+        className: 'bg-green-500 text-white',
+      });
+    } catch (err) {
+      toast({
+        title: 'Đăng nhập Google thất bại!',
+        description: err?.message || 'Không thể xác thực với Google',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
       <div
@@ -146,6 +175,17 @@ const Login = () => {
             >
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
+            <GoogleLogin
+              onSuccess={handleGoogleLogin}
+              onError={() => {
+                toast({
+                  title: 'Đăng nhập thất bại',
+                  description: 'Không thể đăng nhập với Google',
+                  variant: 'destructive',
+                });
+              }}
+              useOneTap
+            />
           </form>
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-muted-foreground">

@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Battery, Eye, EyeOff, User, Mail, Phone, MapPin, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -11,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { registerAPI } from "../services/axios.services";
 import { MouseSparkles } from "@/components/MouseSparkles";
 import authBackground from "@/assets/auth-background.jpg";
+import { useEffect } from "react";
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -25,6 +25,13 @@ const SignUp = () => {
     confirmPassword: "",
     agreeTerms: false,
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) localStorage.removeItem("token");
+  }, []);
+
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const handleInputChange = (field, value) => {

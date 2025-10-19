@@ -50,8 +50,32 @@ const verifyEmailAPI = (token) => {
 const resendEmailAPIbyToken = (token) => {
     return axios.post(`/auth/resend-verification?token=${token}`);
 }
-const getBookingHistoryByUserId=(userId)=>{
+const getBookingHistoryByUserId = (userId) => {
     return axios.get(`/bookings/user/${userId}`);
+}
+
+const getSwapDefaultPrice = () => {
+    return axios.get("/system-price/current");
+}
+
+const createBookingForVehicles = (data) => {
+    return axios.post("/bookings/batch", data)
+}
+
+const createInvoiceForBookings = (data) => {
+    return axios.post("/invoices/create-from-multiple-bookings", data)
+}
+
+const createVNPayUrl = (data) => {
+    return axios.post("/payments/vnpay/create", data)
+}
+
+const checkVNPayPaymentStatus = (txnRef) => {
+    return axios.get(`/payments/vnpay/status/${txnRef}`);
+}
+
+const getInvoicebyUserId = (userId) => {
+    return axios.get(`/invoices/user/${userId}`);
 }
 export {
     registerAPI,
@@ -66,4 +90,10 @@ export {
     verifyEmailAPI,
     resendEmailAPIbyToken,
     getBookingHistoryByUserId,
+    getSwapDefaultPrice,
+    createBookingForVehicles,
+    createInvoiceForBookings,
+    createVNPayUrl,
+    checkVNPayPaymentStatus,
+    getInvoicebyUserId
 };

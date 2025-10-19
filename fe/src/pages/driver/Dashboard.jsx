@@ -1,17 +1,28 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Car, MapPin, Calendar, CreditCard, Battery, Home, Settings, Zap, Star, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Car, MapPin, Calendar, CreditCard, Battery, Home, Settings, Zap, Star, TrendingUp, AlertCircle, Clock, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
 import AccountSettings from "@/components/AccountSettings";
-import { viewUserVehicles } from "../../services/axios.services";
+import { viewUserVehicles, getInvoicebyUserId } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
+import { useToast } from "@/hooks/use-toast";
 const DriverDashboard = () => {
-  const { userVehicles, setUserVehicles } = useContext(SystemContext);
+  const { userVehicles, setUserVehicles, userData } = useContext(SystemContext);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [pendingInvoices, setPendingInvoices] = useState([]);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+
   useEffect(() => {
     loadUserVehicles();
+    loadPendingInvoices();
   }, []);
+
   const loadUserVehicles = async () => {
     const res = await viewUserVehicles();
     if (res) {
@@ -23,15 +34,143 @@ const DriverDashboard = () => {
         variant: "destructive",
       });
     }
-  }
+  };
+
+  const loadPendingInvoices = async () => {
+    if (!userData?.userId) return;
+
+    try {
+      const response = await getInvoicebyUserId(userData.userId);
+
+      // Handle response structure
+      let invoices = [];
+      if (Array.isArray(response)) {
+        invoices = response;
+      } else if (response?.data && Array.isArray(response.data)) {
+        invoices = response.data;
+      } else if (response?.invoices && Array.isArray(response.invoices)) {
+        invoices = response.invoices;
+      }
+
+      const pending = invoices.filter(inv => inv.invoiceStatus === "PENDING");
+      setPendingInvoices(pending);
+
+      // Auto show modal if there are pending invoices
+      if (pending.length > 0) {
+        setShowPendingModal(true);
+      }
+    } catch (error) {
+      console.error("Error loading pending invoices:", error);
+    }
+  };
   return (
     <div className="min-h-screen">
       {/* Page Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 mb-6">
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+          {pendingInvoices.length > 0 && (
+            <Button
+              onClick={() => setShowPendingModal(true)}
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl shadow-lg animate-pulse"
+            >
+              <AlertCircle className="h-5 w-5 mr-2" />
+              {pendingInvoices.length} hóa đơn chưa thanh toán
+            </Button>
+          )}
         </div>
       </header>
+
+      {/* Pending Invoice Popup */}
+      <Dialog open={showPendingModal} onOpenChange={setShowPendingModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-2xl font-bold text-orange-800">
+              <AlertCircle className="h-6 w-6 mr-3 text-orange-500" />
+              Hóa đơn chưa thanh toán
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-orange-700">
+              Bạn có <strong>{pendingInvoices.length}</strong> hóa đơn đang chờ thanh toán. Vui lòng hoàn tất thanh toán để tiếp tục sử dụng dịch vụ.
+            </p>
+
+            {pendingInvoices.map((invoice, idx) => (
+              <div key={idx} className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Badge className="bg-orange-500 text-white">
+                        <Clock className="h-3 w-3 mr-1" />
+                        PENDING
+                      </Badge>
+                      <span className="text-sm text-gray-600">
+                        Mã HĐ: #{invoice.invoiceId}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      📅 Ngày tạo: {invoice.createdDate ? format(new Date(invoice.createdDate), "dd/MM/yyyy", { locale: vi }) : "N/A"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-600 mb-1">Tổng tiền</div>
+                    <div className="text-xl font-bold text-orange-600">
+                      {invoice.totalAmount?.toLocaleString("vi-VN")} VNĐ
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bookings Summary */}
+                {invoice.bookings && invoice.bookings.length > 0 && (
+                  <div className="mb-3">
+                    <Badge variant="outline" className="mb-2">
+                      {invoice.bookings.length} lượt đặt lịch
+                    </Badge>
+                    <div className="space-y-1 text-xs text-gray-600">
+                      {invoice.bookings.slice(0, 2).map((booking, bookingIdx) => (
+                        <div key={bookingIdx} className="flex justify-between">
+                          <span>• {booking.vehicleType} - {format(new Date(booking.bookingDate), "dd/MM", { locale: vi })}</span>
+                          <span className="font-semibold">{booking.amount?.toLocaleString("vi-VN")} VNĐ</span>
+                        </div>
+                      ))}
+                      {invoice.bookings.length > 2 && (
+                        <div className="text-gray-500 italic">
+                          ...và {invoice.bookings.length - 2} lượt nữa
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={() => {
+                  setShowPendingModal(false);
+                  navigate("/driver/payment", {
+                    state: {
+                      pendingInvoice: pendingInvoices[0] // Pass first pending invoice
+                    }
+                  });
+                }}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl py-3 text-lg font-semibold"
+              >
+                <Zap className="h-5 w-5 mr-2" />
+                Thanh toán ngay
+              </Button>
+              <Button
+                onClick={() => setShowPendingModal(false)}
+                variant="outline"
+                className="border-2 border-gray-300 hover:bg-gray-100 rounded-xl py-3"
+              >
+                Để sau
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Main Content */}
       <div className="container mx-auto px-6 max-w-7xl">
         <div className="mb-8 animate-fade-in">

@@ -3,6 +3,7 @@ package BatterySwapStation.service;
 import BatterySwapStation.dto.BookingRequest;
 import BatterySwapStation.dto.BookingResponse;
 import BatterySwapStation.dto.CancelBookingRequest;
+import BatterySwapStation.dto.FlexibleBatchBookingRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -434,13 +436,21 @@ public class BookingService {
     /**
      * Chuyển trạng thái booking từ PENDINGPAYMENT sang FAILED
      */
+    @Transactional
     public BookingResponse markBookingAsFailed(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
+
         if (booking.getBookingStatus() != Booking.BookingStatus.PENDINGPAYMENT) {
             throw new IllegalStateException("Chỉ có thể chuyển sang FAILED khi trạng thái hiện tại là PENDINGPAYMENT");
         }
+
+        // Set trạng thái FAILED
         booking.setBookingStatus(Booking.BookingStatus.FAILED);
+
+        // Set lý do hủy
+        booking.setCancellationReason("Thanh toán thất bại");
+
         Booking savedBooking = bookingRepository.save(booking);
         return convertToResponse(savedBooking);
     }
@@ -887,38 +897,54 @@ public class BookingService {
     }
 
     /**
-     * Chuyển đổi Booking entity thành BookingResponse DTO
+     * Convert Booking entity sang BookingResponse DTO
      */
     private BookingResponse convertToResponse(Booking booking) {
         BookingResponse response = new BookingResponse();
+
+        // Thông tin booking cơ bản
         response.setBookingId(booking.getBookingId());
-        response.setUserId(booking.getUser().getUserId());
-        response.setUserName(booking.getUser().getFullName());
-        response.setStationId(booking.getStation().getStationId());
-        response.setStationName(booking.getStation().getStationName());
-        response.setStationAddress(booking.getStation().getAddress());
-
-        if (booking.getVehicle() != null) {
-            response.setVehicleId(booking.getVehicle().getVehicleId());
-            response.setVehicleVin(booking.getVehicle().getVIN());
-        }
-
-        // Thêm vehicleType và amount
-        response.setVehicleType(booking.getVehicleType());
+        response.setBookingStatus(booking.getBookingStatus().name());
         response.setAmount(booking.getAmount());
-
-        // Sử dụng bookingDate và timeSlot trực tiếp
         response.setBookingDate(booking.getBookingDate());
         response.setTimeSlot(booking.getTimeSlot());
 
-        // Xử lý null cho bookingStatus
-        response.setBookingStatus(booking.getBookingStatus() != null ?
-            booking.getBookingStatus().toString() : "PENDING");
+        // Thông tin user
+        if (booking.getUser() != null) {
+            response.setUserId(booking.getUser().getUserId());
+            response.setUserName(booking.getUser().getFullName());
+        }
 
-        // Map số pin muốn đổi
+        // Thông tin trạm
+        if (booking.getStation() != null) {
+            response.setStationId(booking.getStation().getStationId());
+            response.setStationName(booking.getStation().getStationName());
+            response.setStationAddress(booking.getStation().getAddress());
+        }
+
+        // Thông tin xe
+        if (booking.getVehicle() != null) {
+            response.setVehicleId(booking.getVehicle().getVehicleId());
+            response.setVehicleVin(booking.getVehicle().getVIN());
+            response.setVehicleType(booking.getVehicle().getVehicleType().name()); // Convert enum to String
+        }
+
+        // Thông tin pin
         response.setBatteryCount(booking.getBatteryCount());
+        response.setBatteryType(booking.getBatteryType());
 
-        // TODO: Thêm mapping thông tin thanh toán
+        // Thông tin bổ sung
+        response.setNotes(booking.getNotes());
+        response.setCancellationReason(booking.getCancellationReason());
+        response.setCompletedTime(booking.getCompletedTime());
+
+        // Thông tin hóa đơn
+        if (booking.getInvoice() != null) {
+            response.setInvoiceId(String.valueOf(booking.getInvoice().getInvoiceId())); // Convert Long to String
+        }
+
+        // Thông tin thanh toán (để null, sẽ implement sau)
+        response.setPayment(null);
 
         return response;
     }
@@ -961,5 +987,84 @@ public class BookingService {
             }
         }
         return responses;
+    }
+
+    /**
+     * Tạo flexible batch booking - mỗi xe có thể đặt khác trạm/giờ
+     */
+    @Transactional
+    public Map<String, Object> createFlexibleBatchBooking(FlexibleBatchBookingRequest request) {
+        List<BookingResponse> successBookings = new ArrayList<>();
+        List<Map<String, Object>> failedBookings = new ArrayList<>();
+        double totalAmount = 0.0;
+
+        // Validate tối đa 3 bookings
+        if (request.getBookings().size() > 3) {
+            throw new IllegalArgumentException("Chỉ cho phép book tối đa 3 xe cùng lúc!");
+        }
+
+        // Lặp qua từng booking request
+        for (BookingRequest bookingRequest : request.getBookings()) {
+            try {
+                // Gọi createBooking() - Tái sử dụng toàn bộ logic
+                BookingResponse response = createBooking(bookingRequest);
+
+                // Thêm message chi tiết
+                response.setMessage(String.format(
+                        " Xe #%d thành công - Trạm: %d - Ngày: %s - Giờ: %s - Số tiền: %.0f VND",
+                        bookingRequest.getVehicleId(),
+                        bookingRequest.getStationId(),
+                        bookingRequest.getBookingDate(),
+                        bookingRequest.getTimeSlot(),
+                        response.getAmount()
+                ));
+
+                successBookings.add(response);
+                totalAmount += response.getAmount();
+
+            } catch (Exception e) {
+                // Lưu lỗi
+                Map<String, Object> failedBooking = new HashMap<>();
+                failedBooking.put("vehicleId", bookingRequest.getVehicleId());
+                failedBooking.put("stationId", bookingRequest.getStationId());
+                failedBooking.put("bookingDate", bookingRequest.getBookingDate());
+                failedBooking.put("timeSlot", bookingRequest.getTimeSlot());
+                failedBooking.put("success", false);
+                failedBooking.put("error", e.getMessage());
+
+                failedBookings.add(failedBooking);
+            }
+        }
+
+        // Tạo response message
+        boolean allSuccess = failedBookings.isEmpty();
+        String message;
+
+        if (allSuccess) {
+            message = String.format(
+                    " Đặt lịch thành công cho tất cả %d xe! Tổng tiền: %.0f VND",
+                    successBookings.size(), totalAmount
+            );
+        } else if (successBookings.isEmpty()) {
+            message = " Tất cả booking đều thất bại!";
+        } else {
+            message = String.format(
+                    " Đặt lịch thành công cho %d/%d xe. Tổng tiền: %.0f VND. %d xe thất bại.",
+                    successBookings.size(), request.getBookings().size(), totalAmount, failedBookings.size()
+            );
+        }
+
+        // Return kết quả
+        Map<String, Object> result = new HashMap<>();
+        result.put("allSuccess", allSuccess);
+        result.put("totalVehicles", request.getBookings().size());
+        result.put("successCount", successBookings.size());
+        result.put("failedCount", failedBookings.size());
+        result.put("totalAmount", totalAmount);
+        result.put("successBookings", successBookings);
+        result.put("failedBookings", failedBookings);
+        result.put("message", message);
+
+        return result;
     }
 }

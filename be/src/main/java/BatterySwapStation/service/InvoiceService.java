@@ -61,9 +61,9 @@ public class InvoiceService {
     public Invoice createInvoice(Invoice invoice) {
         invoice.setInvoiceId(null); // Đảm bảo sử dụng sequence tự động
 
-        // Đặt giá mặc định nếu chưa có (sử dụng giá mặc định từ Battery entity)
+        // Đặt giá mặc định nếu chưa có
         if (invoice.getPricePerSwap() == null) {
-            invoice.setPricePerSwap(25000.0); // Giá mặc định tương đương với NICKEL_METAL_HYDRIDE và default case trong Battery
+            invoice.setPricePerSwap(systemPriceService.getCurrentPrice());
         }
 
         // Đặt ngày tạo
@@ -74,6 +74,14 @@ public class InvoiceService {
         // Đặt trạng thái mặc định nếu chưa có
         if (invoice.getInvoiceStatus() == null) {
             invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
+        }
+
+        // ✅ NẾU CÓ BOOKING, LẤY userId TỪ BOOKING ĐẦU TIÊN
+        if (invoice.getUserId() == null && invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
+            Booking firstBooking = invoice.getBookings().get(0);
+            if (firstBooking.getUser() != null) {
+                invoice.setUserId(firstBooking.getUser().getUserId());
+            }
         }
 
         // Tính số lần đổi pin dựa trên bookings
@@ -189,7 +197,7 @@ public class InvoiceService {
     public Invoice linkBookingsToInvoice(Long invoiceId, List<Long> bookingIds) {
         // Kiểm tra invoice tồn tại
         Invoice invoice = invoiceRepository.findById(invoiceId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
 
         // Lấy danh sách booking
         List<Booking> bookings = bookingRepository.findAllById(bookingIds);
@@ -198,15 +206,20 @@ public class InvoiceService {
             throw new RuntimeException("Không tìm thấy booking nào để link");
         }
 
+        // ✅ THÊM: Nếu invoice chưa có userId, lấy từ booking đầu tiên
+        if (invoice.getUserId() == null && !bookings.isEmpty()) {
+            invoice.setUserId(bookings.get(0).getUser().getUserId());
+        }
+
         // Kiểm tra xem có booking nào đã có invoice chưa
         List<Booking> alreadyLinked = bookings.stream()
-            .filter(b -> b.getInvoice() != null)
-            .collect(Collectors.toList());
+                .filter(b -> b.getInvoice() != null)
+                .collect(Collectors.toList());
 
         if (!alreadyLinked.isEmpty()) {
             String bookingIdsStr = alreadyLinked.stream()
-                .map(b -> String.valueOf(b.getBookingId()))
-                .collect(Collectors.joining(", "));
+                    .map(b -> String.valueOf(b.getBookingId()))
+                    .collect(Collectors.joining(", "));
             throw new RuntimeException("Các booking sau đã được link với invoice khác: " + bookingIdsStr);
         }
 
@@ -214,7 +227,6 @@ public class InvoiceService {
         for (Booking booking : bookings) {
             booking.setInvoice(invoice);
 
-            // Đảm bảo amount của booking đư��c set (nếu chưa có)
             if (booking.getAmount() == null) {
                 booking.setAmount(invoice.getPricePerSwap());
             }
@@ -241,7 +253,7 @@ public class InvoiceService {
     public Invoice createInvoiceWithBookings(List<Long> bookingIds) {
         // Tạo invoice mới
         Invoice invoice = new Invoice();
-        invoice.setPricePerSwap(25000.0); // Giá mặc định tương đương với Battery default
+        invoice.setPricePerSwap(systemPriceService.getCurrentPrice());
         invoice.setCreatedDate(LocalDate.now());
         invoice.setNumberOfSwaps(0);
         invoice.setTotalAmount(0.0);
@@ -281,7 +293,21 @@ public class InvoiceService {
     /**
      * Xóa invoice
      */
+    @Transactional
     public void deleteInvoice(Long id) {
+        // Lấy invoice trước
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
+
+        // Gỡ link tất cả booking khỏi invoice trước khi xóa
+        if (invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
+            for (Booking booking : invoice.getBookings()) {
+                booking.setInvoice(null);
+            }
+            bookingRepository.saveAll(invoice.getBookings());
+        }
+
+        // Bây giờ mới xóa invoice
         invoiceRepository.deleteById(id);
     }
 

@@ -7,15 +7,16 @@ import BatterySwapStation.service.SystemPriceService;
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.repository.BookingRepository;
+import BatterySwapStation.dto.BookingRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.persistence.EntityNotFoundException;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -399,7 +400,7 @@ public class BookingController {
             bookingRequest.setVehicleId(vehicleId);
             bookingRequest.setStationId(stationId);
             bookingRequest.setBookingDate(java.time.LocalDate.parse(date));
-            bookingRequest.setTimeSlot(time);
+            bookingRequest.setTimeSlot(String.valueOf(java.time.LocalTime.parse(time)));
             // Set số pin muốn đổi (mặc định nếu không cung cấp sẽ lấy từ vehicle)
             bookingRequest.setBatteryCount(batteryCount);
 
@@ -740,31 +741,35 @@ public class BookingController {
     }
 
     @PostMapping("/batch")
-    @Operation(summary = "Tạo nhiều booking cùng lúc (tối đa 3)", description = "Tạo tối đa 3 booking mới cho việc thay pin. Trả về danh sách kết quả từng booking.")
-    public ResponseEntity<ApiResponseDto> createMultipleBookings(@RequestBody List<BookingRequest> requests) {
-        if (requests == null || requests.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ApiResponseDto(false, "Danh sách booking rỗng!"));
-        }
-        if (requests.size() > 3) {
-            return ResponseEntity.badRequest().body(new ApiResponseDto(false, "Chỉ cho phép tạo tối đa 3 booking cùng lúc!"));
-        }
-        List<Object> results = new ArrayList<>();
-        for (BookingRequest request : requests) {
-            try {
-                BookingResponse response = bookingService.createBooking(request);
-                results.add(Map.of(
-                    "success", true,
-                    "message", "Booking thành công!",
-                    "booking", response
-                ));
-            } catch (Exception e) {
-                results.add(Map.of(
-                    "success", false,
-                    "error", "Booking thất bại: " + e.getMessage(),
-                    "request", request
-                ));
+    @Operation(
+            summary = "Tạo nhiều booking linh hoạt (tối đa 3 xe)",
+            description = "Mỗi xe có thể đặt khác trạm, khác giờ"
+    )
+    public ResponseEntity<ApiResponseDto> createBatchBooking(
+            @RequestBody @Valid FlexibleBatchBookingRequest request) {
+        try {
+            if (request.getBookings() == null || request.getBookings().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponseDto(false, "Danh sách booking không được rỗng!"));
             }
+
+            if (request.getBookings().size() > 3) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponseDto(false, "Chỉ cho phép book tối đa 3 xe cùng lúc!"));
+            }
+
+            Map<String, Object> response = bookingService.createFlexibleBatchBooking(request);
+
+            return ResponseEntity.ok(new ApiResponseDto(
+                    true,
+                    (String) response.get("message"),
+                    response
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, "Batch booking thất bại: " + e.getMessage()));
         }
-        return ResponseEntity.ok(new ApiResponseDto(true, "Kết quả tạo booking hàng loạt", results));
     }
+
 }

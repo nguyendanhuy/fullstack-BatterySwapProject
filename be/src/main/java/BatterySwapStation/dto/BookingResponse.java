@@ -12,16 +12,11 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BookingResponse {
+
+    // Thông tin booking cơ bản
     private Long bookingId;
-    private String userId;
-    private String userName;
-    private Integer stationId;
-    private String stationName;
-    private String stationAddress;
-    private Integer vehicleId;
-    private String vehicleVin;
-    private String vehicleType;  // Loại xe
-    private Double amount;        // Giá tiền booking
+    private String bookingStatus;
+    private Double amount;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate bookingDate;
@@ -29,12 +24,39 @@ public class BookingResponse {
     @JsonFormat(pattern = "HH:mm")
     private LocalTime timeSlot;
 
-    private String bookingStatus;
-    private String message;        // Thêm trường message để hiển thị thông báo
-    private PaymentInfo payment;
+    // Thông tin user
+    private String userId;
+    private String userName;
 
-    // Số pin muốn đổi (theo yêu cầu mới)
+    // Thông tin trạm
+    private Integer stationId;
+    private String stationName;
+    private String stationAddress;
+
+    // Thông tin xe
+    private Integer vehicleId;
+    private String vehicleVin;
+    private String vehicleType;
+
+    // Thông tin pin
     private Integer batteryCount;
+    private String batteryType;
+
+    // Thông tin bổ sung
+    private String notes;
+    private String cancellationReason;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate completedTime;
+
+    // Thông tin hóa đơn
+    private String invoiceId;
+
+    // Message động cho batch booking
+    private String message;
+
+    // Thông tin thanh toán (nested object)
+    private PaymentInfo payment;
 
     @Data
     @NoArgsConstructor
@@ -44,5 +66,8 @@ public class BookingResponse {
         private String paymentMethod;
         private Double amount;
         private String paymentStatus;
+
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+        private LocalDate paymentDate;
     }
 }

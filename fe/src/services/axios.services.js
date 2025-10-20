@@ -50,9 +50,10 @@ const verifyEmailAPI = (token) => {
 const resendEmailAPIbyToken = (token) => {
     return axios.post(`/auth/resend-verification?token=${token}`);
 }
-const getBookingHistoryByUserId=(userId)=>{
+const getBookingHistoryByUserId = (userId) => {
     return axios.get(`/bookings/user/${userId}`);
 }
+<<<<<<< HEAD
 const getInvoiceById=(invoiceId)=>{
     return axios.get(`/invoices/${invoiceId}`);
 }
@@ -63,6 +64,31 @@ const cancelBookingById=(bookingId, userId, cancelReason)=>{
         cancelReason: cancelReason
     }
     return axios.put(`/bookings/cancel`, data);
+=======
+
+const getSwapDefaultPrice = () => {
+    return axios.get("/system-price/current");
+}
+
+const createBookingForVehicles = (data) => {
+    return axios.post("/bookings/batch", data)
+}
+
+const createInvoiceForBookings = (data) => {
+    return axios.post("/invoices/create-from-multiple-bookings", data)
+}
+
+const createVNPayUrl = (data) => {
+    return axios.post("/payments/vnpay/create", data)
+}
+
+const checkVNPayPaymentStatus = (txnRef) => {
+    return axios.get(`/payments/vnpay/status/${txnRef}`);
+}
+
+const getInvoicebyUserId = (userId) => {
+    return axios.get(`/invoices/user/${userId}`);
+>>>>>>> d48b1b73125822df2393ec76eeae3073bb0896ce
 }
 export {
     registerAPI,
@@ -77,6 +103,15 @@ export {
     verifyEmailAPI,
     resendEmailAPIbyToken,
     getBookingHistoryByUserId,
+<<<<<<< HEAD
     getInvoiceById,
     cancelBookingById
+=======
+    getSwapDefaultPrice,
+    createBookingForVehicles,
+    createInvoiceForBookings,
+    createVNPayUrl,
+    checkVNPayPaymentStatus,
+    getInvoicebyUserId
+>>>>>>> d48b1b73125822df2393ec76eeae3073bb0896ce
 };

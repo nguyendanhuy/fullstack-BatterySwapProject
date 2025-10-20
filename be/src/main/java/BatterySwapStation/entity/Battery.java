@@ -109,23 +109,11 @@ public class Battery {
     @Column(name = "ExpiryDate")
     private LocalDate expiryDate;
 
-    // Thêm giá pin cho việc tính tiền
-    @Column(name = "Price")
-    private Double price = 25000.0; // Giá mặc định 25,000 VND
 
     // Liên kết với Station
     @Column(name = "StationId")
     private Integer stationId;
 
-    // Cập nhật phương thức tính giá - chỉ sử dụng giá custom của battery
-    public Double getCalculatedPrice() {
-        if (this.price != null && this.price > 0) {
-            return this.price; // Sử dụng giá custom nếu có
-        }
-
-        // Trả về null để service layer xử lý việc lấy giá từ SystemPrice
-        return null;
-    }
 
     // Kiểm tra pin có sẵn để đặt không
     public boolean isAvailableForBooking() {

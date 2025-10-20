@@ -1,12 +1,14 @@
 package BatterySwapStation.controller;
 
+import BatterySwapStation.dto.ApiResponseDto;
+import BatterySwapStation.dto.InvoiceSimpleResponseDTO;
 import BatterySwapStation.service.InvoiceService;
-import BatterySwapStation.service.BookingService;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.BookingRepository;
+import BatterySwapStation.service.SystemPriceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,9 +25,9 @@ import java.util.*;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
-    private final BookingService bookingService;
     private final BatteryRepository batteryRepository;
     private final BookingRepository bookingRepository;
+    private final SystemPriceService systemPriceService;
 
     @GetMapping("/{invoiceId}")
     @Operation(summary = "Lấy thông tin invoice đơn giản", description = "Trả về thông tin invoice cơ bản, không có nested objects")
@@ -154,22 +156,26 @@ public class InvoiceController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            // Tính tổng tiền từ danh sách pin THỰC TẾ
+            // ✅ BƯỚC 2: Lấy giá cố định (15.000) từ service
+            double standardSwapPrice = systemPriceService.getCurrentPrice();
+
+            // Tính tổng tiền từ danh sách pin
             double totalAmount = 0.0;
             List<Map<String, Object>> batteryDetails = new ArrayList<>();
 
             for (String batteryId : batteryIds) {
                 // Lấy battery thực tế từ database
                 Battery battery = batteryRepository.findById(batteryId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy pin: " + batteryId));
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy pin: " + batteryId));
 
                 // Kiểm tra pin có sẵn không
                 if (!battery.isAvailableForBooking()) {
                     throw new RuntimeException("Pin " + batteryId + " không khả dụng");
                 }
 
-                // Tính tiền cho pin - SỬ DỤNG GIÁ THỰC TỪ BATTERY
-                double batteryAmount = battery.getCalculatedPrice();
+                // ✅ BƯỚC 3: SỬA LỖI TẠI ĐÂY
+                // Tính tiền cho pin - SỬ DỤNG GIÁ CỐ ĐỊNH LẤY TỪ SERVICE
+                double batteryAmount = standardSwapPrice; // Thay thế cho battery.getCalculatedPrice()
                 totalAmount += batteryAmount;
 
                 // Cập nhật trạng thái pin sang IN_USE
@@ -180,7 +186,7 @@ public class InvoiceController {
                 Map<String, Object> batteryInfo = new HashMap<>();
                 batteryInfo.put("batteryId", battery.getBatteryId());
                 batteryInfo.put("batteryType", battery.getBatteryType().toString());
-                batteryInfo.put("price", batteryAmount);
+                batteryInfo.put("price", batteryAmount); // <--- Dùng giá cố định
                 batteryInfo.put("stationId", battery.getStationId());
                 batteryDetails.add(batteryInfo);
             }
@@ -189,7 +195,9 @@ public class InvoiceController {
             Invoice invoice = new Invoice();
             invoice.setUserId(userId);
             invoice.setTotalAmount(totalAmount);
+            // Tính giá trung bình
             invoice.setPricePerSwap(totalAmount / batteryIds.size());
+            // Số lượng swap (pin)
             invoice.setNumberOfSwaps(batteryIds.size());
             invoice.setCreatedDate(java.time.LocalDate.now());
 
@@ -279,6 +287,29 @@ public class InvoiceController {
             errorResponse.put("error", "Không thể tạo invoice từ danh sách booking");
             errorResponse.put("message", e.getMessage());
             return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * API để lọc Invoices theo trạng thái
+     * Ví dụ: GET /api/invoices/status/PAID
+     * GET /api/invoices/status/PENDING
+     */
+    @GetMapping("/status/{status}")
+    // ✅ CẬP NHẬT MÔ TẢ
+    @Operation(summary = "Lọc hóa đơn theo trạng thái", description = "Lấy danh sách hóa đơn theo trạng thái (PENDING hoặc PAID)")
+    public ResponseEntity<?> getInvoicesByStatus(
+            @Parameter(description = "Trạng thái cần lọc (PENDING, PAID)") @PathVariable String status) {
+
+        try {
+            List<InvoiceSimpleResponseDTO> invoices = invoiceService.getInvoicesByStatus(status);
+            if (invoices.isEmpty()) {
+                return ResponseEntity.noContent().build(); // 204
+            }
+            return ResponseEntity.ok(invoices);
+        } catch (IllegalArgumentException e) {
+            // Bắt lỗi (ví dụ: user nhập "CANCELLED")
+            return ResponseEntity.badRequest().body(new ApiResponseDto(false, e.getMessage()));
         }
     }
 }

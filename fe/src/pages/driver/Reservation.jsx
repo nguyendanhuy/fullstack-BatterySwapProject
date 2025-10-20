@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Steps } from "antd";
 import { UserOutlined, CalendarOutlined, ClockCircleOutlined, CreditCardOutlined, LoadingOutlined } from "@ant-design/icons";
+import { getSwapDefaultPrice } from "../../services/axios.services";
 
 const Reservation = () => {
   // lấy từ StationFinder
@@ -33,6 +34,21 @@ const Reservation = () => {
       setActiveId(lines[0].vehicleInfo?.vehicleId);
     }
   }, [lines, activeId]);
+
+  const [defaultPrice, setDefaultPrice] = useState(null);
+
+  useEffect(() => {
+    const fetchDefaultPrice = async () => {
+      try {
+        const res = await getSwapDefaultPrice();
+        setDefaultPrice(res?.price ?? 15000);
+      } catch (error) {
+        console.error("Error fetching default price:", error);
+      }
+    };
+    fetchDefaultPrice();
+  }, [])
+
 
   // cập nhật date/time vào sb[vehicleId]
   const setDateTime = (vehicleId, { date, time }) => {
@@ -223,7 +239,7 @@ const Reservation = () => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const maxDate = new Date(today);
-                        maxDate.setDate(today.getDate() + 14);
+                        maxDate.setDate(today.getDate() + 7);
                         return d < today || d > maxDate;
                       }}
                     />
@@ -314,12 +330,6 @@ const Reservation = () => {
                         </div>
 
                         <div className="flex items-center mt-2 justify-between">
-                          <div className="flex items-center">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm text-yellow-600 ml-1">
-                              {st?.rating ?? "Chưa có"} đánh giá
-                            </span>
-                          </div>
                           <div className="text-sm">
                             <span className="text-gray-600">Pin {type}:</span>{" "}
                             <b className="text-gray-800">{qty}</b>
@@ -345,16 +355,20 @@ const Reservation = () => {
                 <div className="border-t border-gray-200 pt-6">
                   <div className="flex justify-between mb-3">
                     <span className="text-gray-700">Phí đổi pin :</span>
-                    <span className="font-semibold text-gray-800">25.000 VNĐ</span>
+                    <span className="font-semibold text-gray-800">
+                      {defaultPrice ? `${defaultPrice.toLocaleString("vi-VN")} VNĐ` : "Đang tải..."}
+                    </span>
                   </div>
                   <div className="flex justify-between mb-3">
                     <span className="text-gray-700">Tổng số pin:</span>
                     <span className="font-semibold text-gray-800">x{totalBatteries}</span>
                   </div>
                   <div className="flex justify-between text-xl font-bold">
-                    <span className="text-gray-800">Tổng cộng:</span>
+                    <span className="text-gray-800">Tạm tính:</span>
                     <span className="text-blue-600">
-                      {(totalBatteries * 25000).toLocaleString("vi-VN")} VNĐ
+                      {defaultPrice
+                        ? `${(totalBatteries * defaultPrice).toLocaleString("vi-VN")} VNĐ`
+                        : "Đang tải..."}
                     </span>
                   </div>
                 </div>
@@ -363,6 +377,7 @@ const Reservation = () => {
                 <div className="space-y-3 pt-6">
                   <Link
                     to="/driver/payment"
+                    state={{ reservationData: sb, totalPrice: totalBatteries * defaultPrice }}
                     className={`block ${!anyTimePicked ? "pointer-events-none opacity-50" : ""}`}
                   >
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
@@ -371,7 +386,7 @@ const Reservation = () => {
                     </Button>
                   </Link>
                   <p className="text-xs text-gray-500 text-center">
-                    💡 Bạn có thể thanh toán toàn bộ hoặc đặt cọc để giữ chỗ
+                    💡 Bạn sẽ được chuyển qua trang thanh toán
                   </p>
                 </div>
               </CardContent>

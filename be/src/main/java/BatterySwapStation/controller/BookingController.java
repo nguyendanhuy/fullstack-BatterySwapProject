@@ -7,20 +7,27 @@ import BatterySwapStation.service.SystemPriceService;
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.repository.BookingRepository;
+import BatterySwapStation.dto.BookingRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.persistence.EntityNotFoundException;
+
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -399,7 +406,7 @@ public class BookingController {
             bookingRequest.setVehicleId(vehicleId);
             bookingRequest.setStationId(stationId);
             bookingRequest.setBookingDate(java.time.LocalDate.parse(date));
-            bookingRequest.setTimeSlot(time);
+            bookingRequest.setTimeSlot(String.valueOf(java.time.LocalTime.parse(time)));
             // Set số pin muốn đổi (mặc định nếu không cung cấp sẽ lấy từ vehicle)
             bookingRequest.setBatteryCount(batteryCount);
 
@@ -740,31 +747,89 @@ public class BookingController {
     }
 
     @PostMapping("/batch")
-    @Operation(summary = "Tạo nhiều booking cùng lúc (tối đa 3)", description = "Tạo tối đa 3 booking mới cho việc thay pin. Trả về danh sách kết quả từng booking.")
-    public ResponseEntity<ApiResponseDto> createMultipleBookings(@RequestBody List<BookingRequest> requests) {
-        if (requests == null || requests.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ApiResponseDto(false, "Danh sách booking rỗng!"));
+    @Operation(
+            summary = "Tạo nhiều booking linh hoạt (tối đa 3 xe)",
+            description = "Mỗi xe có thể đặt khác trạm, khác giờ"
+    )
+    public ResponseEntity<ApiResponseDto> createBatchBooking(
+            @RequestBody @Valid FlexibleBatchBookingRequest request) {
+
+        // (Giữ nguyên các validation ban đầu của bạn)
+        if (request.getBookings() == null || request.getBookings().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, "Danh sách booking không được rỗng!"));
         }
-        if (requests.size() > 3) {
-            return ResponseEntity.badRequest().body(new ApiResponseDto(false, "Chỉ cho phép tạo tối đa 3 booking cùng lúc!"));
+        if (request.getBookings().size() > 3) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, "Chỉ cho phép book tối đa 3 xe cùng lúc!"));
         }
-        List<Object> results = new ArrayList<>();
-        for (BookingRequest request : requests) {
-            try {
-                BookingResponse response = bookingService.createBooking(request);
-                results.add(Map.of(
-                    "success", true,
-                    "message", "Booking thành công!",
-                    "booking", response
-                ));
-            } catch (Exception e) {
-                results.add(Map.of(
-                    "success", false,
-                    "error", "Booking thất bại: " + e.getMessage(),
-                    "request", request
-                ));
-            }
+
+        try {
+            // [KHÔNG THAY ĐỔI]
+            // Service sẽ trả về Map nếu TẤT CẢ thành công
+            Map<String, Object> response = bookingService.createFlexibleBatchBooking(request);
+
+            return ResponseEntity.ok(new ApiResponseDto(
+                    true,
+                    (String) response.get("message"),
+                    response
+            ));
+
+        } catch (Exception e) {
+
+            // [LOGIC MỚI CHO YÊU CẦU 5 & 6]
+            // Bắt Exception từ Service (ví dụ: "Trạm không đủ pin...")
+            // Trả về thông báo lỗi chung, chỉ rõ lý do
+            // và xác nhận không ghi nhận booking nào.
+
+            String errorMessage = String.format(
+                    "Đặt lịch batch thất bại. Lý do: %s. Không có booking nào được ghi nhận.",
+                    e.getMessage() // e.g., "Trạm không đủ pin cho khung giờ này..."
+            );
+
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, errorMessage)); // Không trả về chi tiết booking
         }
-        return ResponseEntity.ok(new ApiResponseDto(true, "Kết quả tạo booking hàng loạt", results));
     }
+
+    /**
+     * API để xóa một hoặc nhiều booking cùng lúc
+     * Xử lý cả trường hợp xóa 1 ID: Body: [101]
+     * và xóa nhiều ID: Body: [101, 102, 103]
+     *
+     * @param bookingIds Danh sách ID của các booking cần xóa
+     * @return ApiResponseDto
+     */
+    @DeleteMapping("/delete") // Bạn có thể dùng /batch hoặc /delete tùy ý
+    @Operation(summary = "Xóa một hoặc nhiều booking",
+            description = "Xóa booking theo danh sách ID, bất kể trạng thái. Gửi [101] để xóa 1 booking.")
+    public ResponseEntity<ApiResponseDto> deleteBatchBookings(
+            @Parameter(description = "Danh sách ID của các booking cần xóa. Ví dụ: [1, 2]")
+            @RequestBody List<Long> bookingIds) {
+
+        if (bookingIds == null || bookingIds.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, "Danh sách ID không được rỗng."));
+        }
+
+        try {
+            Map<String, Integer> result = bookingService.deleteBookings(bookingIds);
+            int deletedCount = result.get("deleted");
+            int notFoundCount = result.get("notFound");
+
+            // Tạo thông báo kết quả
+            String message = String.format("Đã xóa thành công %d booking.", deletedCount);
+            if (notFoundCount > 0) {
+                message += String.format(" Không tìm thấy %d booking.", notFoundCount);
+            }
+
+            return ResponseEntity.ok(new ApiResponseDto(true, message, result));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponseDto(false, "Lỗi máy chủ khi xóa: " + e.getMessage()));
+        }
+    }
+
+
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+@Data
 @Entity
 @Table(name = "Swap")
 @Getter @Setter
@@ -31,7 +32,7 @@ public class Swap {
     @Column(name = "BatteryInId", length = 20)
     private String batteryInId;
 
-    @Column(name = "StaffUserId", nullable = false, length = 20)
+    @Column(name = "StaffId", nullable = false, length = 20)
     private String staffUserId;
 
     @Enumerated(EnumType.STRING)

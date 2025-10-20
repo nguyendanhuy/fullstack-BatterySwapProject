@@ -15,4 +15,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findByIdWithoutBookings(@Param("id") Long id);
 
     List<Invoice> findByInvoiceStatus(Invoice.InvoiceStatus status);
+
+    List<Invoice> findByUserId(String userId);
 }

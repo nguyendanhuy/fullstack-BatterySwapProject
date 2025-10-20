@@ -1,1 +1,0 @@
-ALTER TABLE Booking DROP COLUMN IF EXISTS paymentstatus;

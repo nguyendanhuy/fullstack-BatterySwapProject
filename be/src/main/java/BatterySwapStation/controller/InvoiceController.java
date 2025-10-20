@@ -2,6 +2,7 @@ package BatterySwapStation.controller;
 
 import BatterySwapStation.dto.ApiResponseDto;
 import BatterySwapStation.dto.InvoiceSimpleResponseDTO;
+import BatterySwapStation.repository.InvoiceRepository;
 import BatterySwapStation.service.InvoiceService;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Battery;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/invoices")
@@ -28,6 +30,7 @@ public class InvoiceController {
     private final BatteryRepository batteryRepository;
     private final BookingRepository bookingRepository;
     private final SystemPriceService systemPriceService;
+    private final InvoiceRepository invoiceRepository;
 
     @GetMapping("/{invoiceId}")
     @Operation(summary = "Lấy thông tin invoice đơn giản", description = "Trả về thông tin invoice cơ bản, không có nested objects")
@@ -90,28 +93,25 @@ public class InvoiceController {
     @Operation(summary = "Lấy invoice của user", description = "Trả về danh sách invoice của một user cụ thể")
     public ResponseEntity<Map<String, Object>> getUserInvoices(
             @PathVariable @Parameter(description = "ID của user") String userId) {
+
         try {
-            List<Invoice> allInvoices = invoiceService.getAllInvoices();
+            // Gọi hàm repository mới (findByUserId)
+            List<Invoice> userInvoices = invoiceRepository.findByUserId(userId);
 
-            List<Map<String, Object>> userInvoices = new ArrayList<>();
-            for (Invoice invoice : allInvoices) {
-                if (userId.equals(invoice.getUserId())) {
-                    Map<String, Object> invoiceMap = new HashMap<>();
-                    invoiceMap.put("invoiceId", invoice.getInvoiceId());
-                    invoiceMap.put("totalAmount", invoice.getTotalAmount() != null ? invoice.getTotalAmount() : 0.0);
-                    invoiceMap.put("numberOfSwaps", invoice.getNumberOfSwaps() != null ? invoice.getNumberOfSwaps() : 0);
-                    invoiceMap.put("createdDate", invoice.getCreatedDate() != null ? invoice.getCreatedDate().toString() : "");
-                    userInvoices.add(invoiceMap);
-                }
-            }
+            // Chuyển đổi sang DTO (đã bao gồm invoiceStatus từ service)
+            List<InvoiceSimpleResponseDTO> invoiceDTOs = userInvoices.stream()
+                    .map(invoice -> invoiceService.getInvoiceSimple(invoice.getInvoiceId()))
+                    .collect(Collectors.toList());
 
+            // Trả về response
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("userId", userId);
-            response.put("total", userInvoices.size());
-            response.put("invoices", userInvoices);
+            response.put("total", invoiceDTOs.size());
+            response.put("invoices", invoiceDTOs); // Trả về DTO
 
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);

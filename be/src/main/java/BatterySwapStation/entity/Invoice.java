@@ -4,24 +4,22 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Configurable;
-import BatterySwapStation.service.SystemPriceService;
+// [ĐÃ XÓA] các import: Autowired, Configurable, SystemPriceService
 import java.time.LocalDate;
 import java.util.List;
-@Data
 
+@Data
 @Entity
 @Table(name = "Invoice")
-@Configurable // Cho phép dependency injection trong entity
+// [ĐÃ XÓA] @Configurable
 public class Invoice {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "invoice_seq")
     @SequenceGenerator(
-        name = "invoice_seq",
-        sequenceName = "invoice_sequence",
-        initialValue = 10000,
-        allocationSize = 1
+            name = "invoice_seq",
+            sequenceName = "invoice_sequence",
+            initialValue = 10000,
+            allocationSize = 1
     )
     @Column(name = "invoiceid")
     private Long invoiceId;
@@ -43,10 +41,10 @@ public class Invoice {
     @Column(name = "numberofswaps")
     private Integer numberOfSwaps = 0;
 
-    // Dependency injection để lấy giá từ SystemPrice
-    @Autowired
-    @Transient
-    private SystemPriceService systemPriceService;
+    // [ĐÃ XÓA] - Trường SystemPriceService đã bị xóa
+    // @Autowired
+    // @Transient
+    // private SystemPriceService systemPriceService;
 
     // Trạng thái invoice
     public enum InvoiceStatus {
@@ -143,14 +141,11 @@ public class Invoice {
         this.pricePerSwap = systemPrice != null ? systemPrice : 15000.0;
     }
 
-    // Method để tự động lấy giá từ SystemPrice
-    public void loadCurrentSystemPrice() {
-        if (systemPriceService != null) {
-            this.pricePerSwap = systemPriceService.getCurrentPrice();
-        }
-    }
+    // [ĐÃ XÓA] - Hàm loadCurrentSystemPrice()
+    // public void loadCurrentSystemPrice() { ... }
 
-    // Method để tính tổng tiền dựa trên số lần swap và giá hệ thống
+    // Method để tính tổng tiền (VẪN GIỮ NGUYÊN)
+    // Hàm này sẽ được gọi từ Service (ví dụ: deleteBookings, linkBookings)
     public void calculateTotalAmount() {
         int totalBookings = 0;
         double totalSum = 0.0;
@@ -169,11 +164,7 @@ public class Invoice {
         this.totalAmount = totalSum;
     }
 
-    @PrePersist
-    protected void onPrePersist() {
-        // Tự động lấy giá từ SystemPrice khi tạo mới
-        if (this.pricePerSwap == null) {
-            loadCurrentSystemPrice();
-        }
-    }
+    // [ĐÃ XÓA] - Hàm @PrePersist
+    // @PrePersist
+    // protected void onPrePersist() { ... }
 }

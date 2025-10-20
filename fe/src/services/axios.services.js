@@ -1,4 +1,5 @@
 import axios from "./axios.config";
+
 const registerAPI = (fullName, email, phone, address, password, confirmPassword) => {
     const data = {
         fullName: fullName,
@@ -10,7 +11,6 @@ const registerAPI = (fullName, email, phone, address, password, confirmPassword)
     }
     return axios.post("/auth/register", data);
 }
-
 
 const loginAPI = (email, password) => {
     const data = {
@@ -26,7 +26,7 @@ const getInfoByToken = () => {
 
 const getVehicleInfoByVin = (vin) => {
     return axios.get(`/v1/vehicles/${vin}`);
-};
+}
 
 const registerVehicleByVin = (vin) => {
     if (!vin) throw new Error("VIN is required");
@@ -53,7 +53,6 @@ const resendEmailAPIbyToken = (token) => {
 const getBookingHistoryByUserId = (userId) => {
     return axios.get(`/bookings/user/${userId}`);
 }
-<<<<<<< HEAD
 const getInvoiceById=(invoiceId)=>{
     return axios.get(`/invoices/${invoiceId}`);
 }
@@ -64,7 +63,7 @@ const cancelBookingById=(bookingId, userId, cancelReason)=>{
         cancelReason: cancelReason
     }
     return axios.put(`/bookings/cancel`, data);
-=======
+}
 
 const getSwapDefaultPrice = () => {
     return axios.get("/system-price/current");
@@ -88,7 +87,6 @@ const checkVNPayPaymentStatus = (txnRef) => {
 
 const getInvoicebyUserId = (userId) => {
     return axios.get(`/invoices/user/${userId}`);
->>>>>>> d48b1b73125822df2393ec76eeae3073bb0896ce
 }
 export {
     registerAPI,
@@ -103,15 +101,12 @@ export {
     verifyEmailAPI,
     resendEmailAPIbyToken,
     getBookingHistoryByUserId,
-<<<<<<< HEAD
     getInvoiceById,
-    cancelBookingById
-=======
+    cancelBookingById,
     getSwapDefaultPrice,
     createBookingForVehicles,
     createInvoiceForBookings,
     createVNPayUrl,
     checkVNPayPaymentStatus,
     getInvoicebyUserId
->>>>>>> d48b1b73125822df2393ec76eeae3073bb0896ce
 };

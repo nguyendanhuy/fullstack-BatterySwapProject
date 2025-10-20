@@ -43,12 +43,24 @@ const BookingHistory = () => {
     try {
       const res = await getBookingHistoryByUserId(userData.userId);
       if (res) {
-        setAllBookings(res.data);
+        if (Array.isArray(res.data)) {
+          const filterRes = res?.data?.filter(b => b.bookingStatus !== "PENDINGPAYMENT");
+          setAllBookings(filterRes);
+        }
       } else if (res?.error) {
-        toast.error("Lỗi gọi hiển thị lịch sử", { description: JSON.stringify(res.error) });
+        toast({
+          title: "Lỗi gọi hiển thị lịch sử",
+          description: JSON.stringify(res.error),
+          variant: "destructive",
+          duration: 5000,
+        });
       }
     } catch (err) {
-      toast.error("Lỗi mạng khi tải lịch sử", { description: String(err?.message ?? err) });
+      toast({
+        title: "Lỗi mạng khi tải lịch sử",
+        description: "Lỗi mạng",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -210,7 +222,7 @@ const BookingHistory = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">Đang chờ</p>
-                  <p className="text-3xl font-bold text-gray-800">{allBookings.filter(b => b.bookingStatus === "CONFIRMED").length}</p>
+                  <p className="text-3xl font-bold text-gray-800">{allBookings.filter(b => b.bookingStatus === "PENDINGSWAPPING").length}</p>
                 </div>
                 <div className="p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl">
                   <Battery className="h-8 w-8 text-white" />
@@ -378,7 +390,7 @@ const BookingHistory = () => {
                                     </Button>
                                   </DialogTrigger>
 
-                                  <DialogContent className="sm:max-w-md">
+                                  <DialogContent className="sm:max-w-md ">
                                     <DialogHeader>
                                       <DialogTitle>Xác nhận hủy đặt chỗ</DialogTitle>
                                       <DialogDescription>
@@ -441,6 +453,25 @@ const BookingHistory = () => {
                                 </Dialog>
                               )}
 
+                              {
+                                booking.bookingStatus === "COMPLETED" || booking.bookingStatus === "PENDINGSWAPPING" && (
+                                  <>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedBooking(booking);
+                                        setInvoiceDialogOpen(true);
+                                      }}
+                                      className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                                    >
+                                      <FileText className="h-4 w-4 mr-1" />
+                                      Xem hóa đơn
+                                    </Button>
+                                  </>
+                                )
+                              }
+
                               {booking.bookingStatus === "PENDINGSWAPPING" && (
                                 <Dialog>
                                   <DialogTrigger asChild>
@@ -493,24 +524,6 @@ const BookingHistory = () => {
                                   </DialogContent>
                                 </Dialog>
                               )}
-                              {
-                                booking.bookingStatus === "COMPLETED" && (
-                                  <>
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedBooking(booking);
-                                        setInvoiceDialogOpen(true);
-                                      }}
-                                      className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
-                                    >
-                                      <FileText className="h-4 w-4 mr-1" />
-                                      Xem hóa đơn
-                                    </Button>
-                                  </>
-                                )
-                              }
                             </div>
                           </div>
 
@@ -527,17 +540,27 @@ const BookingHistory = () => {
                             <div className="space-y-1">
                               <div className="flex items-center text-xs text-muted-foreground">
                                 <MapPin className="h-3 w-3 mr-1" />
+                                Trạm
+                              </div>
+                              <p className="font-medium text-sm">{booking.stationName}</p>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex items-center text-xs text-muted-foreground">
+                                <MapPin className="h-3 w-3 mr-1" />
                                 Địa điểm
                               </div>
                               <p className="font-medium text-sm">{booking.stationAddress}</p>
                             </div>
 
-                            <div className="space-y-1">
-                              <div className="flex items-center text-xs text-muted-foreground">
+                            <div className="space-y-1 text-right">
+                              <div className="flex items-center justify-end text-xs text-muted-foreground">
                                 <CreditCard className="h-3 w-3 mr-1" />
                                 Số tiền
                               </div>
-                              <p className="font-semibold text-sm text-green-600">{booking?.amount?.toLocaleString() ?? ""} VNĐ</p>
+                              <p className="font-semibold text-sm text-green-600">
+                                {booking?.amount?.toLocaleString() ?? ""} VNĐ
+                              </p>
                             </div>
 
                             <div className="space-y-1">
@@ -550,6 +573,7 @@ const BookingHistory = () => {
                           </div>
                         </CardContent>
                       </Card>
+
                     ))}
                   </div>
                 )}

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, MapPin, Car, Battery, CreditCard, X, AlertTriangle, Filter, Search, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, Car, Battery, CreditCard, X, AlertTriangle, Filter, Search, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,7 +16,7 @@ import { DatePicker, QRCode } from 'antd';
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { SystemContext } from "../../contexts/system.context";
-import { getBookingHistoryByUserId } from "../../services/axios.services";
+import { cancelBookingById, getBookingHistoryByUserId } from "../../services/axios.services";
 import { Spin } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import InvoiceDialog from "../../components/InvoiceDialog";
@@ -36,7 +36,8 @@ const BookingHistory = () => {
   const { userData } = useContext(SystemContext);
   const [allBookings, setAllBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCanceling, setIsCanceling] = useState(false);
   const loadUserHistory = async () => {
     setIsLoading(true);
     try {
@@ -103,12 +104,29 @@ const BookingHistory = () => {
 
   const bookings = filteredBookings;
 
-  const handleCancelBooking = () => {
-    toast({
-      title: "Yêu cầu hủy đặt chỗ đã được gửi",
-      description: "Chúng tôi sẽ xử lý và hoàn tiền trong vòng 24h",
-    });
-    setCancelDialogOpen(false);
+  const handleCancelBooking = async () => {
+    if (!selectedBooking.bookingId) return;
+    setIsCanceling(true);
+    // Gọi API hủy đặt chỗ ở đây, sử dụng selectedBooking.bookingId
+    try {
+      const res = await cancelBookingById(selectedBooking.bookingId, userData.userId, cancelReason);
+      if (res) {
+        toast({
+          title: "Yêu cầu hủy đặt chỗ đã được gửi",
+          description: "Chúng tôi sẽ xử lý và hoàn tiền trong vòng 24h",
+        });
+        setCancelDialogOpen(false);
+        setCancelReason("");
+        loadUserHistory();
+      } else if (res?.error) {
+        toast.error("Lỗi hủy đăt chỗ", { description: JSON.stringify(res.error?.message ?? res.error) });
+      }
+    } catch (err) {
+      toast.error("Lỗi mạng khi hủy đặt chỗ", { description: String(err?.message ?? err) });
+    }
+    finally {
+      setIsCanceling(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -339,7 +357,16 @@ const BookingHistory = () => {
                             </div>
                             <div className="flex items-center space-x-2">
                               {booking.bookingStatus === "PENDINGSWAPPING" && (
-                                <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                                <Dialog
+                                  open={cancelDialogOpen}
+                                  onOpenChange={(v) => {
+                                    setCancelDialogOpen(v);
+                                    if (!v) {
+                                      setIsCanceling(false);
+                                      setCancelReason("");
+                                    }
+                                  }}
+                                >
                                   <DialogTrigger asChild>
                                     <Button
                                       variant="destructive"
@@ -350,6 +377,7 @@ const BookingHistory = () => {
                                       Hủy đặt chỗ
                                     </Button>
                                   </DialogTrigger>
+
                                   <DialogContent className="sm:max-w-md">
                                     <DialogHeader>
                                       <DialogTitle>Xác nhận hủy đặt chỗ</DialogTitle>
@@ -366,6 +394,20 @@ const BookingHistory = () => {
                                       <p className="text-sm text-muted-foreground mb-4">
                                         Tiền sẽ được hoàn lại trong vòng 24 giờ
                                       </p>
+
+                                      {/* Ô nhập lý do hủy */}
+                                      <div className="mt-4 text-left">
+                                        <label className="block text-sm font-medium mb-1">
+                                          Lý do hủy đặt chỗ
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="Nhập lý do hủy..."
+                                          value={cancelReason}
+                                          onChange={(e) => setCancelReason(e.target.value)}
+                                          className="w-full border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                        />
+                                      </div>
                                     </div>
 
                                     <DialogFooter className="flex space-x-2">
@@ -380,8 +422,19 @@ const BookingHistory = () => {
                                         variant="destructive"
                                         onClick={handleCancelBooking}
                                         className="flex-1"
+                                        disabled={!cancelReason?.trim() || isCanceling}
                                       >
-                                        Xác nhận hủy
+                                        {
+                                          isCanceling ?
+                                            (
+                                              <span className="inline-flex items-center">
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Đang hủy...
+                                              </span>
+                                            ) : (
+                                              "Xác nhận hủy"
+                                            )
+                                        }
                                       </Button>
                                     </DialogFooter>
                                   </DialogContent>

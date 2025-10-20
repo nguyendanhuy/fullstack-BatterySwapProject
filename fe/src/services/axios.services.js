@@ -53,6 +53,17 @@ const resendEmailAPIbyToken = (token) => {
 const getBookingHistoryByUserId=(userId)=>{
     return axios.get(`/bookings/user/${userId}`);
 }
+const getInvoiceById=(invoiceId)=>{
+    return axios.get(`/invoices/${invoiceId}`);
+}
+const cancelBookingById=(bookingId, userId, cancelReason)=>{
+    const data={
+        bookingId: bookingId,
+        userId: userId,
+        cancelReason: cancelReason
+    }
+    return axios.put(`/bookings/cancel`, data);
+}
 export {
     registerAPI,
     loginAPI,
@@ -66,4 +77,6 @@ export {
     verifyEmailAPI,
     resendEmailAPIbyToken,
     getBookingHistoryByUserId,
+    getInvoiceById,
+    cancelBookingById
 };

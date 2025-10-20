@@ -1,5 +1,5 @@
 // components/InvoiceDialog.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter,
     DialogHeader, DialogTitle
@@ -7,6 +7,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Battery, MapPin, Car, FileText, Building2, Phone, Mail } from "lucide-react";
+import { getInvoiceById } from "../services/axios.services";
+import { use } from "react";
 
 /**
  * Props:
@@ -16,6 +18,25 @@ import { Battery, MapPin, Car, FileText, Building2, Phone, Mail } from "lucide-r
  * - onDownload?: () => void
  */
 export default function InvoiceDialog({ open, onOpenChange, booking, onDownload }) {
+    const [invoice, setInvoice] = useState({});
+    const getInvoice = async () => {
+        try {
+            const res = await getInvoiceById(booking.invoiceId);
+            if (res) {
+                console.log("Invoice data:", res);
+                // setInvoice(res);
+            } else if (res?.error) {
+                toast.error("Lỗi gọi hóa đơn", { description: JSON.stringify(res.error) });
+            }
+        } catch (err) {
+            toast.error("Lỗi mạng khi tải hóa đơn", { description: String(err?.message ?? err) });
+        }
+    };
+    useEffect(() => {
+        if (open && booking?.invoiceId) {
+            getInvoice();
+        }
+    }, [booking])
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">

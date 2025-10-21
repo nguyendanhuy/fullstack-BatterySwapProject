@@ -20,6 +20,7 @@ public interface DockSlotRepository extends JpaRepository<DockSlot, Integer> {
             DockSlot.SlotStatus slotStatus,
             Battery.BatteryStatus batteryStatus
     );
+<<<<<<< Updated upstream
     long countByDock_Station_StationIdAndBattery_BatteryStatus(Integer stationId, Battery.BatteryStatus status);
     Optional<DockSlot> findFirstByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
             Integer stationId,
@@ -27,5 +28,7 @@ public interface DockSlotRepository extends JpaRepository<DockSlot, Integer> {
             Battery.BatteryStatus batteryStatus,
             DockSlot.SlotStatus slotStatus
     );
+=======
+>>>>>>> Stashed changes
 
 }

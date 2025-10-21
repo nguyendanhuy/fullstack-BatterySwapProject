@@ -835,7 +835,11 @@ public class BookingController {
     }
 
     @GetMapping("/{bookingId}/generateQr")
+<<<<<<< Updated upstream
     @Operation(summary = "Tạo QR token cho booking", description = "FE gọi để lấy token text dùng sinh QR hình ảnh, cho phép tạo QR ngay cả khi chưa thanh toán")
+=======
+    @Operation(summary = "Tạo QR token cho booking", description = "FE gọi để lấy token text dùng sinh QR hình ảnh")
+>>>>>>> Stashed changes
     public ResponseEntity<ApiResponseDto> generateQr(@PathVariable Long bookingId) {
         try {
             Map<String, Object> bookingData = bookingService.getBookingById(bookingId);
@@ -844,6 +848,7 @@ public class BookingController {
                         .body(new ApiResponseDto(false, "Không tìm thấy booking #" + bookingId));
             }
 
+<<<<<<< Updated upstream
             // ✅ Kiểm tra trạng thái booking
             String status = (String) bookingData.get("bookingStatus");
             if ("COMPLETED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) {
@@ -854,6 +859,9 @@ public class BookingController {
             }
 
             // ✅ Cho phép tạo QR khi chưa thanh toán hoặc đang chờ swap
+=======
+            // ✅ Sinh token mã hoá ngắn bằng QrTokenUtil
+>>>>>>> Stashed changes
             String qrToken = QrTokenUtil.generateToken(bookingId);
             return ResponseEntity.ok(new ApiResponseDto(true, "Đã tạo QR", Map.of("token", qrToken)));
 
@@ -864,12 +872,19 @@ public class BookingController {
     }
 
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
     @GetMapping("/verifyQr")
     @Operation(summary = "Xác thực QR booking", description = "FE staff quét QR và gửi token lên để lấy thông tin booking")
     public ResponseEntity<ApiResponseDto> verifyQr(@RequestParam("token") String token) {
         try {
+<<<<<<< Updated upstream
 
+=======
+            // ✅ Giải mã token để lấy bookingId thật
+>>>>>>> Stashed changes
             long bookingId = QrTokenUtil.extractBookingId(token);
 
             Map<String, Object> bookingData = bookingService.getBookingById(bookingId);

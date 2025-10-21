@@ -14,7 +14,6 @@ import { Spin } from "antd";
 export default function InvoiceDialog({ open, onOpenChange, booking, onDownload }) {
     const { userData } = useContext(SystemContext);
     const { toast } = useToast();
-
     const [loading, setLoading] = useState(false);
     const [invoice, setInvoice] = useState(null);
 

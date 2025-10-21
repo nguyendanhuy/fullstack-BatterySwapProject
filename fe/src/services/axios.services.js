@@ -88,6 +88,15 @@ const checkVNPayPaymentStatus = (txnRef) => {
 const getInvoicebyUserId = (userId) => {
     return axios.get(`/invoices/user/${userId}`);
 }
+const generateQRBooking=(bookingId)=>{
+    return axios.get(`/bookings/${bookingId}/generateQr`);
+}
+const verifyQrBooking=(qrData)=>{
+    return axios.get(`/bookings/verifyQr?token=${qrData}`);
+}
+const commitSwap=(data)=>{
+    return axios.post("/swaps/commit", data);
+}
 export {
     registerAPI,
     loginAPI,
@@ -108,5 +117,8 @@ export {
     createInvoiceForBookings,
     createVNPayUrl,
     checkVNPayPaymentStatus,
-    getInvoicebyUserId
+    getInvoicebyUserId,
+    generateQRBooking,
+    verifyQrBooking,
+    commitSwap
 };

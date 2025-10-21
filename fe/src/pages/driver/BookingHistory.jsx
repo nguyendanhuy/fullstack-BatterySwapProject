@@ -16,7 +16,7 @@ import { DatePicker, QRCode } from 'antd';
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { SystemContext } from "../../contexts/system.context";
-import { cancelBookingById, getBookingHistoryByUserId } from "../../services/axios.services";
+import { cancelBookingById, generateQRBooking, getBookingHistoryByUserId } from "../../services/axios.services";
 import { Spin } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import InvoiceDialog from "../../components/InvoiceDialog";
@@ -38,13 +38,15 @@ const BookingHistory = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isCanceling, setIsCanceling] = useState(false);
+  const [qr, setQr] = useState(null);
+  const [isQrLoading, setIsQrLoading] = useState(false);
   const loadUserHistory = async () => {
     setIsLoading(true);
     try {
       const res = await getBookingHistoryByUserId(userData.userId);
       if (res) {
         if (Array.isArray(res.data)) {
-          const filterRes = res?.data?.filter(b => b.bookingStatus !== "PENDINGPAYMENT");
+          const filterRes = res.data.filter(b => (b.bookingStatus !== "PENDINGPAYMENT" && b.bookingStatus !== "FAILED"));
           setAllBookings(filterRes);
         }
       } else if (res?.error) {
@@ -65,6 +67,31 @@ const BookingHistory = () => {
       setIsLoading(false);
     }
   };
+  const generateQR = async (bookingId) => {
+    setIsQrLoading(true);
+    setQr(null);
+    try {
+      const res = await (generateQRBooking(bookingId));
+      if (res) {
+        setQr(res.data.token);
+      } else if (res?.error) {
+        toast({
+          title: "Lỗi gọi hiển thị QR Code",
+          description: JSON.stringify(res.message),
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi mạng khi tải QR Code",
+        description: "Lỗi mạng",
+        variant: "destructive",
+      });
+    } finally {
+      setIsQrLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadUserHistory();
@@ -475,11 +502,26 @@ const BookingHistory = () => {
                               {booking.bookingStatus === "PENDINGSWAPPING" && (
                                 <Dialog>
                                   <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      <CreditCard className="h-4 w-4 mr-1" />
-                                      Xem QR
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => generateQR(booking.bookingId)}
+                                      disabled={isQrLoading} // chặn bấm khi đang tải
+                                    >
+                                      {isQrLoading ? (
+                                        <span className="inline-flex items-center">
+                                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                          Đang tải...
+                                        </span>
+                                      ) : (
+                                        <>
+                                          <CreditCard className="h-4 w-4 mr-1" />
+                                          Xem QR
+                                        </>
+                                      )}
                                     </Button>
                                   </DialogTrigger>
+
                                   <DialogContent className="sm:max-w-md">
                                     <DialogHeader>
                                       <DialogTitle>QR Code đổi pin</DialogTitle>
@@ -490,32 +532,47 @@ const BookingHistory = () => {
 
                                     <div className="text-center p-6">
                                       <div className="w-48 h-48 mx-auto bg-muted rounded-lg flex items-center justify-center mb-4">
-                                        <div className="text-center" id="qr-container">
-                                          <QRCode
-                                            value={`${booking.bookingId}` || '-'}
-                                            type="canvas"
-                                            size={160}
-                                          />
-                                          <p className="text-sm font-medium mt-2">QR Code #BK{booking.bookingId}</p>
-                                        </div>
+                                        {isQrLoading ? (
+                                          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                                        ) : (
+                                          <div className="text-center" id="qr-container">
+                                            <QRCode
+                                              value={qr ?? `${booking.bookingId}`}
+                                              type="canvas"
+                                              size={160}
+                                            />
+                                            <p className="text-sm font-medium mt-2">
+                                              QR Code #BK{booking.bookingId}
+                                            </p>
+                                          </div>
+                                        )}
                                       </div>
+
                                       <p className="text-sm text-muted-foreground">
                                         Mã đặt chỗ: {booking.bookingId}
                                       </p>
                                       <p className="text-sm text-muted-foreground mb-4">
                                         Trạm: {booking.stationAddress}
                                       </p>
+
                                       <Button
                                         className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
                                         onClick={() => {
                                           setSelectedBooking(booking);
-                                          setTimeout(downloadCanvasQRCode, 100); // Delay nhỏ để đảm bảo canvas đã render
+                                          setTimeout(downloadCanvasQRCode, 100);
                                         }}
+                                        disabled={isQrLoading}
                                       >
-                                        Tải xuống QR Code
+                                        {isQrLoading ? (
+                                          <span className="inline-flex items-center">
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Đang chuẩn bị...
+                                          </span>
+                                        ) : (
+                                          "Tải xuống QR Code"
+                                        )}
                                       </Button>
                                     </div>
-
                                     <DialogFooter>
                                       <Button variant="outline" className="w-full">
                                         Đóng

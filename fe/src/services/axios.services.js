@@ -19,6 +19,11 @@ const loginAPI = (email, password) => {
     };
     return axios.post("/auth/login", data);
 }
+
+const loginByGoogleAPI = (token) => {
+    return axios.post("/auth/google", token);
+}
+
 const getInfoByToken = () => {
     return axios.get("/auth/me",);
 }
@@ -53,11 +58,11 @@ const resendEmailAPIbyToken = (token) => {
 const getBookingHistoryByUserId = (userId) => {
     return axios.get(`/bookings/user/${userId}`);
 }
-const getInvoiceById=(invoiceId)=>{
+const getInvoiceById = (invoiceId) => {
     return axios.get(`/invoices/${invoiceId}`);
 }
-const cancelBookingById=(bookingId, userId, cancelReason)=>{
-    const data={
+const cancelBookingById = (bookingId, userId, cancelReason) => {
+    const data = {
         bookingId: bookingId,
         userId: userId,
         cancelReason: cancelReason
@@ -88,18 +93,19 @@ const checkVNPayPaymentStatus = (txnRef) => {
 const getInvoicebyUserId = (userId) => {
     return axios.get(`/invoices/user/${userId}`);
 }
-const generateQRBooking=(bookingId)=>{
+const generateQRBooking = (bookingId) => {
     return axios.get(`/bookings/${bookingId}/generateQr`);
 }
-const verifyQrBooking=(qrData)=>{
+const verifyQrBooking = (qrData) => {
     return axios.get(`/bookings/verifyQr?token=${qrData}`);
 }
-const commitSwap=(data)=>{
+const commitSwap = (data) => {
     return axios.post("/swaps/commit", data);
 }
 export {
     registerAPI,
     loginAPI,
+    loginByGoogleAPI,
     getInfoByToken,
     registerVehicleByVin,
     getVehicleInfoByVin,

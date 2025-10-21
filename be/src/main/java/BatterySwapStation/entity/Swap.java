@@ -32,7 +32,7 @@ public class Swap {
     @Column(name = "BatteryInId", length = 20)
     private String batteryInId;
 
-    @Column(name = "StaffId", nullable = false, length = 20)
+    @Column(name = "StaffUserId", nullable = false, length = 20)
     private String staffUserId;
 
     @Enumerated(EnumType.STRING)

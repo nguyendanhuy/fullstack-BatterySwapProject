@@ -165,7 +165,7 @@ public class AuthController {
             GoogleUserInfo info = googleService.verifyAndExtract(request.getToken());
             AuthResponse result = authService.handleGoogleLogin(info);
 
-            // ✅ trả thẳng result ra, KHÔNG bọc data
+            // trả thẳng result ra, KHÔNG bọc data
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

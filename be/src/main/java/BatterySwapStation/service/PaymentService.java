@@ -141,7 +141,7 @@ public class PaymentService {
             payment.setPaymentStatus(success ? Payment.PaymentStatus.SUCCESS : Payment.PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
-            // Cập nhật Invoice + Booking
+            // Cập nhật Invoice + Booking theo kết quả
             Invoice invoice = payment.getInvoice();
             if (invoice != null && invoice.getBookings() != null) {
                 if (success) {
@@ -172,9 +172,10 @@ public class PaymentService {
     }
 
     /**
-     * 3️⃣ Return URL (BE → FE redirect)
-     * 👉 Chỉ kiểm checksum & báo FE, không cập nhật DB.
+     * 3️⃣ Return URL (VNPAY → BE → FE)
+     * 👉 Nếu user hủy (code=24) → cập nhật DB thành FAILED, sau đó redirect về FE.
      */
+    @Transactional
     public Map<String, Object> handleVnPayReturn(Map<String, String> query) {
         Map<String, Object> result = new HashMap<>();
         Map<String, String> fields = new HashMap<>(query);
@@ -185,16 +186,47 @@ public class PaymentService {
         String dataToSign = VnPayUtils.buildDataToSign(fields);
         String signed = VnPayUtils.hmacSHA512(props.getHashSecret(), dataToSign);
         boolean checksumOk = signed.equalsIgnoreCase(secureHash);
-        boolean success = checksumOk && "00".equals(query.get("vnp_ResponseCode"));
+
+        String respCode = query.get("vnp_ResponseCode");
+        String txnRef = query.get("vnp_TxnRef");
+
+        boolean success = checksumOk && "00".equals(respCode);
+
+        // ✅ Nếu người dùng HỦY giao dịch (responseCode = 24) → cập nhật DB thành FAILED
+        if (checksumOk && "24".equals(respCode)) {
+            paymentRepository.findByVnpTxnRef(txnRef).ifPresent(payment -> {
+                if (payment.getPaymentStatus() == Payment.PaymentStatus.PENDING) {
+                    payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
+                    paymentRepository.save(payment);
+
+                    Invoice invoice = payment.getInvoice();
+                    if (invoice != null) {
+                        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
+                        invoiceRepository.save(invoice);
+                        if (invoice.getBookings() != null) {
+                            for (Booking booking : invoice.getBookings()) {
+                                booking.setBookingStatus(Booking.BookingStatus.FAILED);
+                                bookingRepository.save(booking);
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
         result.put("success", success);
         result.put("checksumOk", checksumOk);
         result.put("vnp_Amount", query.get("vnp_Amount"));
-        result.put("vnp_TxnRef", query.get("vnp_TxnRef"));
-        result.put("message", success ? "Giao dịch thành công" : "Giao dịch thất bại");
+        result.put("vnp_TxnRef", txnRef);
+
+        if ("24".equals(respCode)) {
+            result.put("message", "Người dùng đã hủy giao dịch");
+        } else if (success) {
+            result.put("message", "Giao dịch thành công");
+        } else {
+            result.put("message", "Giao dịch thất bại");
+        }
 
         return result;
     }
-
 }
-

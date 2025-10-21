@@ -41,7 +41,6 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-<<<<<<< Updated upstream
 
         <dependency>
             <groupId>com.google.api-client</groupId>
@@ -51,8 +50,6 @@
 
 
 
-=======
->>>>>>> Stashed changes
         <!-- 🔑 Environment .env -->
         <dependency>
             <groupId>me.paulschwarz</groupId>

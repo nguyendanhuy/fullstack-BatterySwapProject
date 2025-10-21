@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, MapPin, Car, Battery, CreditCard, X, AlertTriangle, Filter, Search, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, Car, Battery, CreditCard, X, AlertTriangle, Filter, Search, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -16,7 +16,7 @@ import { DatePicker, QRCode } from 'antd';
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { SystemContext } from "../../contexts/system.context";
-import { getBookingHistoryByUserId } from "../../services/axios.services";
+import { cancelBookingById, generateQRBooking, getBookingHistoryByUserId } from "../../services/axios.services";
 import { Spin } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import InvoiceDialog from "../../components/InvoiceDialog";
@@ -36,22 +36,62 @@ const BookingHistory = () => {
   const { userData } = useContext(SystemContext);
   const [allBookings, setAllBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [qr, setQr] = useState(null);
+  const [isQrLoading, setIsQrLoading] = useState(false);
   const loadUserHistory = async () => {
     setIsLoading(true);
     try {
       const res = await getBookingHistoryByUserId(userData.userId);
       if (res) {
-        setAllBookings(res.data);
+        if (Array.isArray(res.data)) {
+          const filterRes = res.data.filter(b => (b.bookingStatus !== "PENDINGPAYMENT" && b.bookingStatus !== "FAILED"));
+          setAllBookings(filterRes);
+        }
       } else if (res?.error) {
-        toast.error("Lỗi gọi hiển thị lịch sử", { description: JSON.stringify(res.error) });
+        toast({
+          title: "Lỗi gọi hiển thị lịch sử",
+          description: JSON.stringify(res.error),
+          variant: "destructive",
+          duration: 5000,
+        });
       }
     } catch (err) {
-      toast.error("Lỗi mạng khi tải lịch sử", { description: String(err?.message ?? err) });
+      toast({
+        title: "Lỗi mạng khi tải lịch sử",
+        description: "Lỗi mạng",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
+  const generateQR = async (bookingId) => {
+    setIsQrLoading(true);
+    setQr(null);
+    try {
+      const res = await (generateQRBooking(bookingId));
+      if (res) {
+        setQr(res.data.token);
+      } else if (res?.error) {
+        toast({
+          title: "Lỗi gọi hiển thị QR Code",
+          description: JSON.stringify(res.message),
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi mạng khi tải QR Code",
+        description: "Lỗi mạng",
+        variant: "destructive",
+      });
+    } finally {
+      setIsQrLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadUserHistory();
@@ -103,12 +143,29 @@ const BookingHistory = () => {
 
   const bookings = filteredBookings;
 
-  const handleCancelBooking = () => {
-    toast({
-      title: "Yêu cầu hủy đặt chỗ đã được gửi",
-      description: "Chúng tôi sẽ xử lý và hoàn tiền trong vòng 24h",
-    });
-    setCancelDialogOpen(false);
+  const handleCancelBooking = async () => {
+    if (!selectedBooking.bookingId) return;
+    setIsCanceling(true);
+    // Gọi API hủy đặt chỗ ở đây, sử dụng selectedBooking.bookingId
+    try {
+      const res = await cancelBookingById(selectedBooking.bookingId, userData.userId, cancelReason);
+      if (res) {
+        toast({
+          title: "Yêu cầu hủy đặt chỗ đã được gửi",
+          description: "Chúng tôi sẽ xử lý và hoàn tiền trong vòng 24h",
+        });
+        setCancelDialogOpen(false);
+        setCancelReason("");
+        loadUserHistory();
+      } else if (res?.error) {
+        toast.error("Lỗi hủy đăt chỗ", { description: JSON.stringify(res.error?.message ?? res.error) });
+      }
+    } catch (err) {
+      toast.error("Lỗi mạng khi hủy đặt chỗ", { description: String(err?.message ?? err) });
+    }
+    finally {
+      setIsCanceling(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -192,7 +249,7 @@ const BookingHistory = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">Đang chờ</p>
-                  <p className="text-3xl font-bold text-gray-800">{allBookings.filter(b => b.bookingStatus === "CONFIRMED").length}</p>
+                  <p className="text-3xl font-bold text-gray-800">{allBookings.filter(b => b.bookingStatus === "PENDINGSWAPPING").length}</p>
                 </div>
                 <div className="p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl">
                   <Battery className="h-8 w-8 text-white" />
@@ -339,7 +396,16 @@ const BookingHistory = () => {
                             </div>
                             <div className="flex items-center space-x-2">
                               {booking.bookingStatus === "PENDINGSWAPPING" && (
-                                <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                                <Dialog
+                                  open={cancelDialogOpen}
+                                  onOpenChange={(v) => {
+                                    setCancelDialogOpen(v);
+                                    if (!v) {
+                                      setIsCanceling(false);
+                                      setCancelReason("");
+                                    }
+                                  }}
+                                >
                                   <DialogTrigger asChild>
                                     <Button
                                       variant="destructive"
@@ -350,7 +416,8 @@ const BookingHistory = () => {
                                       Hủy đặt chỗ
                                     </Button>
                                   </DialogTrigger>
-                                  <DialogContent className="sm:max-w-md">
+
+                                  <DialogContent className="sm:max-w-md ">
                                     <DialogHeader>
                                       <DialogTitle>Xác nhận hủy đặt chỗ</DialogTitle>
                                       <DialogDescription>
@@ -366,6 +433,20 @@ const BookingHistory = () => {
                                       <p className="text-sm text-muted-foreground mb-4">
                                         Tiền sẽ được hoàn lại trong vòng 24 giờ
                                       </p>
+
+                                      {/* Ô nhập lý do hủy */}
+                                      <div className="mt-4 text-left">
+                                        <label className="block text-sm font-medium mb-1">
+                                          Lý do hủy đặt chỗ
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="Nhập lý do hủy..."
+                                          value={cancelReason}
+                                          onChange={(e) => setCancelReason(e.target.value)}
+                                          className="w-full border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                        />
+                                      </div>
                                     </div>
 
                                     <DialogFooter className="flex space-x-2">
@@ -380,68 +461,27 @@ const BookingHistory = () => {
                                         variant="destructive"
                                         onClick={handleCancelBooking}
                                         className="flex-1"
+                                        disabled={!cancelReason?.trim() || isCanceling}
                                       >
-                                        Xác nhận hủy
+                                        {
+                                          isCanceling ?
+                                            (
+                                              <span className="inline-flex items-center">
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Đang hủy...
+                                              </span>
+                                            ) : (
+                                              "Xác nhận hủy"
+                                            )
+                                        }
                                       </Button>
                                     </DialogFooter>
                                   </DialogContent>
                                 </Dialog>
                               )}
 
-                              {booking.bookingStatus === "PENDINGSWAPPING" && (
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      <CreditCard className="h-4 w-4 mr-1" />
-                                      Xem QR
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-md">
-                                    <DialogHeader>
-                                      <DialogTitle>QR Code đổi pin</DialogTitle>
-                                      <DialogDescription>
-                                        Mã QR đã được sử dụng cho giao dịch này
-                                      </DialogDescription>
-                                    </DialogHeader>
-
-                                    <div className="text-center p-6">
-                                      <div className="w-48 h-48 mx-auto bg-muted rounded-lg flex items-center justify-center mb-4">
-                                        <div className="text-center" id="qr-container">
-                                          <QRCode
-                                            value={`${booking.bookingId}` || '-'}
-                                            type="canvas"
-                                            size={160}
-                                          />
-                                          <p className="text-sm font-medium mt-2">QR Code #BK{booking.bookingId}</p>
-                                        </div>
-                                      </div>
-                                      <p className="text-sm text-muted-foreground">
-                                        Mã đặt chỗ: {booking.bookingId}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground mb-4">
-                                        Trạm: {booking.stationAddress}
-                                      </p>
-                                      <Button
-                                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
-                                        onClick={() => {
-                                          setSelectedBooking(booking);
-                                          setTimeout(downloadCanvasQRCode, 100); // Delay nhỏ để đảm bảo canvas đã render
-                                        }}
-                                      >
-                                        Tải xuống QR Code
-                                      </Button>
-                                    </div>
-
-                                    <DialogFooter>
-                                      <Button variant="outline" className="w-full">
-                                        Đóng
-                                      </Button>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
-                              )}
                               {
-                                booking.bookingStatus === "COMPLETED" && (
+                                booking.bookingStatus === "COMPLETED" || booking.bookingStatus === "PENDINGSWAPPING" && (
                                   <>
                                     <Button
                                       variant="default"
@@ -458,6 +498,89 @@ const BookingHistory = () => {
                                   </>
                                 )
                               }
+
+                              {booking.bookingStatus === "PENDINGSWAPPING" && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => generateQR(booking.bookingId)}
+                                      disabled={isQrLoading} // chặn bấm khi đang tải
+                                    >
+                                      {isQrLoading ? (
+                                        <span className="inline-flex items-center">
+                                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                          Đang tải...
+                                        </span>
+                                      ) : (
+                                        <>
+                                          <CreditCard className="h-4 w-4 mr-1" />
+                                          Xem QR
+                                        </>
+                                      )}
+                                    </Button>
+                                  </DialogTrigger>
+
+                                  <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle>QR Code đổi pin</DialogTitle>
+                                      <DialogDescription>
+                                        Mã QR đã được sử dụng cho giao dịch này
+                                      </DialogDescription>
+                                    </DialogHeader>
+
+                                    <div className="text-center p-6">
+                                      <div className="w-48 h-48 mx-auto bg-muted rounded-lg flex items-center justify-center mb-4">
+                                        {isQrLoading ? (
+                                          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                                        ) : (
+                                          <div className="text-center" id="qr-container">
+                                            <QRCode
+                                              value={qr ?? `${booking.bookingId}`}
+                                              type="canvas"
+                                              size={160}
+                                            />
+                                            <p className="text-sm font-medium mt-2">
+                                              QR Code #BK{booking.bookingId}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <p className="text-sm text-muted-foreground">
+                                        Mã đặt chỗ: {booking.bookingId}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground mb-4">
+                                        Trạm: {booking.stationAddress}
+                                      </p>
+
+                                      <Button
+                                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
+                                        onClick={() => {
+                                          setSelectedBooking(booking);
+                                          setTimeout(downloadCanvasQRCode, 100);
+                                        }}
+                                        disabled={isQrLoading}
+                                      >
+                                        {isQrLoading ? (
+                                          <span className="inline-flex items-center">
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Đang chuẩn bị...
+                                          </span>
+                                        ) : (
+                                          "Tải xuống QR Code"
+                                        )}
+                                      </Button>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button variant="outline" className="w-full">
+                                        Đóng
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
                             </div>
                           </div>
 
@@ -474,17 +597,27 @@ const BookingHistory = () => {
                             <div className="space-y-1">
                               <div className="flex items-center text-xs text-muted-foreground">
                                 <MapPin className="h-3 w-3 mr-1" />
+                                Trạm
+                              </div>
+                              <p className="font-medium text-sm">{booking.stationName}</p>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex items-center text-xs text-muted-foreground">
+                                <MapPin className="h-3 w-3 mr-1" />
                                 Địa điểm
                               </div>
                               <p className="font-medium text-sm">{booking.stationAddress}</p>
                             </div>
 
-                            <div className="space-y-1">
-                              <div className="flex items-center text-xs text-muted-foreground">
+                            <div className="space-y-1 text-right">
+                              <div className="flex items-center justify-end text-xs text-muted-foreground">
                                 <CreditCard className="h-3 w-3 mr-1" />
                                 Số tiền
                               </div>
-                              <p className="font-semibold text-sm text-green-600">{booking?.amount?.toLocaleString() ?? ""} VNĐ</p>
+                              <p className="font-semibold text-sm text-green-600">
+                                {booking?.amount?.toLocaleString() ?? ""} VNĐ
+                              </p>
                             </div>
 
                             <div className="space-y-1">
@@ -497,6 +630,7 @@ const BookingHistory = () => {
                           </div>
                         </CardContent>
                       </Card>
+
                     ))}
                   </div>
                 )}

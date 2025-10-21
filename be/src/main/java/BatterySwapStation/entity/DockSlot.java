@@ -51,8 +51,10 @@ public class DockSlot {
         RESERVED
     }
 
-    // Custom label ví dụ: DOCK-1-SLOT-2
-    public String getSlotLabel() {
-        return dock.getDockName() + "-SLOT-" + slotNumber;
+    public void setBattery(Battery battery) {
+        this.battery = battery;
+        if (battery != null && this.dock != null && this.dock.getStation() != null) {
+            battery.setStationId(this.dock.getStation().getStationId());
+        }
     }
 }

@@ -1,4 +1,5 @@
 import axios from "./axios.config";
+
 const registerAPI = (fullName, email, phone, address, password, confirmPassword) => {
     const data = {
         fullName: fullName,
@@ -10,7 +11,6 @@ const registerAPI = (fullName, email, phone, address, password, confirmPassword)
     }
     return axios.post("/auth/register", data);
 }
-
 
 const loginAPI = (email, password) => {
     const data = {
@@ -26,7 +26,7 @@ const getInfoByToken = () => {
 
 const getVehicleInfoByVin = (vin) => {
     return axios.get(`/v1/vehicles/${vin}`);
-};
+}
 
 const registerVehicleByVin = (vin) => {
     if (!vin) throw new Error("VIN is required");
@@ -53,6 +53,17 @@ const resendEmailAPIbyToken = (token) => {
 const getBookingHistoryByUserId = (userId) => {
     return axios.get(`/bookings/user/${userId}`);
 }
+const getInvoiceById=(invoiceId)=>{
+    return axios.get(`/invoices/${invoiceId}`);
+}
+const cancelBookingById=(bookingId, userId, cancelReason)=>{
+    const data={
+        bookingId: bookingId,
+        userId: userId,
+        cancelReason: cancelReason
+    }
+    return axios.put(`/bookings/cancel`, data);
+}
 
 const getSwapDefaultPrice = () => {
     return axios.get("/system-price/current");
@@ -77,6 +88,15 @@ const checkVNPayPaymentStatus = (txnRef) => {
 const getInvoicebyUserId = (userId) => {
     return axios.get(`/invoices/user/${userId}`);
 }
+const generateQRBooking=(bookingId)=>{
+    return axios.get(`/bookings/${bookingId}/generateQr`);
+}
+const verifyQrBooking=(qrData)=>{
+    return axios.get(`/bookings/verifyQr?token=${qrData}`);
+}
+const commitSwap=(data)=>{
+    return axios.post("/swaps/commit", data);
+}
 export {
     registerAPI,
     loginAPI,
@@ -90,10 +110,15 @@ export {
     verifyEmailAPI,
     resendEmailAPIbyToken,
     getBookingHistoryByUserId,
+    getInvoiceById,
+    cancelBookingById,
     getSwapDefaultPrice,
     createBookingForVehicles,
     createInvoiceForBookings,
     createVNPayUrl,
     checkVNPayPaymentStatus,
-    getInvoicebyUserId
+    getInvoicebyUserId,
+    generateQRBooking,
+    verifyQrBooking,
+    commitSwap
 };

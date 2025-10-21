@@ -5,6 +5,7 @@ import BatterySwapStation.dto.*;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.service.*;
 import BatterySwapStation.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ public class AuthController {
     private final EmailVerificationService emailVerificationService;
     private final EmailService emailService;
     private final JwtService jwtService;
+    private final GoogleService googleService;
 
     private static final String FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email";
 
@@ -155,4 +157,24 @@ public class AuthController {
             ));
         }
     }
+
+    @PostMapping("/google")
+    @Operation(summary = "Đăng nhập / Đăng ký qua Google")
+    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
+        try {
+            GoogleUserInfo info = googleService.verifyAndExtract(request.getToken());
+            AuthResponse result = authService.handleGoogleLogin(info);
+
+            // ✅ trả thẳng result ra, KHÔNG bọc data
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "success", false,
+                            "message", "Lỗi xác thực Google: " + e.getMessage()
+                    ));
+        }
+    }
+
+
 }

@@ -57,45 +57,28 @@ public class InvoiceService {
     /**
      * Tạo invoice mới và tự động tính toán tổng tiền
      */
+    /**
+     * Tạo invoice mới (ĐÃ SỬA LỖI)
+     * [SỬA] Đã xóa 'calculateTotalAmount()' vì nó gây ra lỗi setTotalAmount = 0
+     * vì các giá trị đã được Controller tính toán trước.
+     */
     @Transactional
     public Invoice createInvoice(Invoice invoice) {
-        invoice.setInvoiceId(null); // Đảm bảo sử dụng sequence tự động
+        invoice.setInvoiceId(null);
 
-        // Đặt giá mặc định nếu chưa có
         if (invoice.getPricePerSwap() == null) {
             invoice.setPricePerSwap(systemPriceService.getCurrentPrice());
         }
-
-        // Đặt ngày tạo
         if (invoice.getCreatedDate() == null) {
             invoice.setCreatedDate(LocalDate.now());
         }
-
-        // Đặt trạng thái mặc định nếu chưa có
         if (invoice.getInvoiceStatus() == null) {
             invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
         }
 
-        // ✅ NẾU CÓ BOOKING, LẤY userId TỪ BOOKING ĐẦU TIÊN
-        if (invoice.getUserId() == null && invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
-            Booking firstBooking = invoice.getBookings().get(0);
-            if (firstBooking.getUser() != null) {
-                invoice.setUserId(firstBooking.getUser().getUserId());
-            }
-        }
-
-        // Tính số lần đổi pin dựa trên bookings
-        if (invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
-            invoice.setNumberOfSwaps(invoice.getBookings().size());
-        } else {
-            invoice.setNumberOfSwaps(0);
-        }
-
-        // Tính tổng tiền tự động
-        invoice.calculateTotalAmount();
-
         return invoiceRepository.save(invoice);
     }
+
 
     /**
      * Tạo invoice cho booking sau khi thanh toán
@@ -207,7 +190,7 @@ public class InvoiceService {
             throw new RuntimeException("Không tìm thấy booking nào để link");
         }
 
-        // 3. THÊM: Nếu invoice chưa có userId, lấy từ booking đầu tiên
+        // 3. Nếu invoice chưa có userId, lấy từ booking đầu tiên
         if (invoice.getUserId() == null && !bookings.isEmpty()) {
             invoice.setUserId(bookings.get(0).getUser().getUserId());
         }
@@ -228,7 +211,7 @@ public class InvoiceService {
         for (Booking booking : bookings) {
             booking.setInvoice(invoice);
 
-            // Đặt giá cho booking nếu nó chưa có (giữ nguyên logic đồng giá của bạn)
+            // Đặt giá cho booking nếu nó chưa có
             if (booking.getAmount() == null) {
                 booking.setAmount(invoice.getPricePerSwap());
             }
@@ -237,20 +220,20 @@ public class InvoiceService {
         // 6. Lưu các booking
         bookingRepository.saveAll(bookings);
 
-        // --- SỬA LỖI LOGIC TẠI ĐÂY ---
+        // 7. ✅ TÍNH TOÁN ĐÚNG LOGIC:
+        // - numberOfSwaps = số booking
+        // - totalAmount = tổng số pin từ tất cả booking × pricePerSwap
 
-        // 7. Lấy số swap hiện có (đảm bảo không bị null)
-        int existingSwaps = (invoice.getNumberOfSwaps() != null) ? invoice.getNumberOfSwaps() : 0;
+        invoice.setNumberOfSwaps(bookings.size());
 
-        // 8. Cập nhật số lần đổi pin = [SỐ CŨ] + [SỐ MỚI]
-        invoice.setNumberOfSwaps(existingSwaps + bookings.size());
+        // Tính tổng số pin từ tất cả các booking
+        int totalBatteries = bookings.stream()
+                .mapToInt(b -> b.getBatteryCount() != null ? b.getBatteryCount() : 0)
+                .sum();
 
-        // 9. Tính lại tổng tiền (Hàm này sẽ tự động lấy numberOfSwaps * pricePerSwap)
-        invoice.calculateTotalAmount();
+        invoice.setTotalAmount(totalBatteries * invoice.getPricePerSwap());
 
-        // --- KẾT THÚC SỬA LỖI ---
-
-        // 10. Lưu lại invoice đã cập nhật
+        // 8. Lưu lại invoice
         return invoiceRepository.save(invoice);
     }
 
@@ -363,14 +346,16 @@ public class InvoiceService {
             .collect(Collectors.toList());
 
         return InvoiceSimpleResponseDTO.builder()
-            .invoiceId(invoice.getInvoiceId())
-            .userId(invoice.getUserId())
-            .createdDate(invoice.getCreatedDate())
-            .totalAmount(invoice.getTotalAmount())
-            .pricePerSwap(invoice.getPricePerSwap())
-            .numberOfSwaps(invoice.getNumberOfSwaps())
-            .bookings(simpleBookings)
-            .build();
+                .invoiceId(invoice.getInvoiceId())
+                .userId(invoice.getUserId())
+                .createdDate(invoice.getCreatedDate())
+                .totalAmount(invoice.getTotalAmount())
+                .pricePerSwap(invoice.getPricePerSwap())
+                .numberOfSwaps(invoice.getNumberOfSwaps())
+                .bookings(simpleBookings)
+                // ✅ THÊM DÒNG NÀY (VÀ THÊM TRƯỜNG NÀY VÀO DTO CỦA BẠN)
+                .invoiceStatus(invoice.getInvoiceStatus().toString())
+                .build();
     }
 
     /**

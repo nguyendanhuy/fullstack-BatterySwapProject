@@ -29,7 +29,7 @@ public class User implements UserDetails {
     @Column(name = "FullName", nullable = false, length = 255)
     private String fullName;
 
-    @Column(name = "Password", nullable = false, length = 255)
+    @Column(name = "Password", nullable = true, length = 255)
     private String password;
 
     @Column(name = "Email", nullable = false, length = 255, unique = true)
@@ -38,7 +38,7 @@ public class User implements UserDetails {
     @Column(name = "Phone", length = 50)
     private String phone;
 
-    @Column(name = "Address", nullable = false, length = 255)
+    @Column(name = "Address", nullable = true, length = 255)
     private String address;
 
     @Column(name = "IsActive", nullable = false)

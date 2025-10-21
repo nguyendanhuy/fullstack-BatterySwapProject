@@ -1,25 +1,33 @@
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { QrCode, ArrowLeft, CheckCircle, User, Zap, Star, Smartphone, Box } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Divider, Space, Upload } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { ReaderException } from "@zxing/library";
 import { BrowserQRCodeReader } from "@zxing/browser";
-
+import { commitSwap, verifyQrBooking } from "../../services/axios.services";
+import dayjs from "dayjs";
+import { SystemContext } from "../../contexts/system.context";
 const QRCheckIn = () => {
   const { toast } = useToast();
+  const { userData } = useContext(SystemContext);
   const [scannedCustomer, setScannedCustomer] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [batterySlotNumber, setBatterySlotNumber] = useState(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [enteredBatteryId, setEnteredBatteryId] = useState("");
+  const [verificationError, setVerificationError] = useState("");
+  const [qrData, setQrData] = useState(null);
 
   // revoke URL khi unmount
   useEffect(() => {
@@ -37,22 +45,92 @@ const QRCheckIn = () => {
     batteryType: "Lithium-ion",
     paymentStatus: "Đã thanh toán",
     reservationTime: "14:30 - 15/12/2024",
-    qrCode: "QR123456789"
+    qrCode: "QR123456789",
+    expectedBatteryId: "BAT001"
+  };
+  //hàm format đầu vào của batteryId
+  const formatBatteryIdInput = (input) => {
+    return (input ?? "").split(/[,\n\r\t ]+/).map(id => id.trim()).filter(Boolean).map(id => id.toUpperCase());
+  }
+  //Tìm mã ko hợp lệ
+  const validateBatteryIds = (ids) => {
+    if (ids.length === 0) return "Vui lòng nhập ít nhất 1 mã pin.";
+    const invalid = ids.find(id => !/^[A-Z0-9]{1,50}$/.test(id));
+    return invalid ? `Mã pin không hợp lệ: ${invalid}` : "";
   };
 
-  const handleScan = () => {
-    setIsScanning(true);
-    setTimeout(() => {
-      setScannedCustomer(mockCustomer);
-      setIsScanning(false);
+  const handleVerifyAndStartService = async () => {
+    if (!enteredBatteryId.trim()) {
+      setVerificationError("Vui lòng nhập ID pin");
+      return;
+    }
+    const ids = formatBatteryIdInput(enteredBatteryId);
+    const validationError = validateBatteryIds(ids);
+    if (validationError) {
+      setVerificationError(validationError);
+      return;
+    }
+    setVerificationError("");
+    const data = {
+      bookingId: scannedCustomer.bookingId,
+      batteryIds: ids,
+      staffUserId: userData.userId
+    }
+    //gọi api commitSwap
+    try {
+      const res = await commitSwap(data);
+    } catch (err) {
       toast({
-        title: "Check-in thành công",
-        description: `Đã xác nhận đặt lịch cho khách hàng ${mockCustomer.name}`,
+        title: "Lỗi mạng khi tải QR Code",
+        description: "Lỗi mạng",
+        variant: "destructive",
       });
-    }, 2000);
+    } finally {
+      // Verification successful
+      setVerificationError("");
+      const randomSlot = Math.floor(Math.random() * 20) + 1;
+      setBatterySlotNumber(randomSlot);
+      setIsDialogOpen(true);
+      toast({
+        title: "Dịch vụ đã bắt đầu",
+        description: `Pin đang được mở ở ô số ${randomSlot}`,
+      });
+    }
   };
-  //hàm xử lý quét QR 
 
+  const handleScan = async () => {
+    setIsScanning(true);
+    try {
+      console.log("Scanning QR with data:", qrData);
+      const res = await verifyQrBooking(qrData);
+      if (res) {
+        console.log("QR verify response:", res);
+        setScannedCustomer(res.data);
+        toast({
+          title: "Đọc QR thành công",
+          description: res.message,
+          duration: 5000,
+        });
+      } else if (res?.error) {
+        toast({
+          title: "Lỗi đọc QR Code",
+          description: JSON.stringify(res.message),
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi mạng khi đọc QR Code",
+        description: err?.message || "Lỗi mạng",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  //hàm xử lý quét QR 
   const onPickFile = async (file) => {
     setError("");
     if (!file) return;
@@ -68,7 +146,8 @@ const QRCheckIn = () => {
     setPreviewUrl(url);
     try {
       const res = await reader.decodeFromImageUrl(url);
-      console.log("QR Code detected:", res);
+      console.log("QR scan result:", res);
+      setQrData(res.getText());
     } catch (err) {
       console.error(err);
       setError("Không phát hiện QR trong ảnh. Hãy chọn ảnh rõ/crop sát QR.");
@@ -167,7 +246,6 @@ const QRCheckIn = () => {
                     </div>
                   )}
                 </div>
-                {/* Hai nút dọc như code cũ */}
                 <Space direction="vertical" className="w-full items-center">
                   <Upload
                     disabled={isScanning}
@@ -269,10 +347,12 @@ const QRCheckIn = () => {
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 gap-6">
                     {[
-                      { icon: User, label: "Tên khách hàng", value: mockCustomer.name, color: "from-blue-500 to-indigo-500" },
-                      { icon: Smartphone, label: "Số điện thoại", value: mockCustomer.phone, color: "from-green-500 to-emerald-500" },
-                      { icon: QrCode, label: "Loại xe", value: mockCustomer.vehicle, color: "from-purple-500 to-pink-500" },
-                      { icon: Zap, label: "Loại pin", value: mockCustomer.batteryType, color: "from-orange-500 to-yellow-500" }
+                      { icon: User, label: "Tên khách hàng", value: scannedCustomer.fullName, color: "from-blue-500 to-indigo-500" },
+                      { icon: Smartphone, label: "Số điện thoại", value: scannedCustomer.phone, color: "from-green-500 to-emerald-500" },
+                      { icon: QrCode, label: "Loại xe", value: scannedCustomer.vehicleType, color: "from-purple-500 to-pink-500" },
+                      { icon: Zap, label: "Loại pin", value: scannedCustomer.batteryType, color: "from-orange-500 to-yellow-500" },
+                      { icon: Bike, label: "Mã vin", value: scannedCustomer.vehicleVin, color: "from-red-500 to-yellow-500" },
+                      { icon: Battery, label: "Số lượng pin", value: scannedCustomer.batteryCount, color: "from-blue-500 to-green-500" }
                     ].map((item, index) => (
                       <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
                         <div className={`p-3 bg-gradient-to-r ${item.color} rounded-xl`}>
@@ -289,31 +369,55 @@ const QRCheckIn = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
                       <label className="text-sm font-semibold text-blue-700 block mb-1">Thời gian hẹn</label>
-                      <p className="font-semibold text-blue-800">{mockCustomer.reservationTime}</p>
+                      <p className="font-semibold text-blue-800">
+                        {dayjs(`${scannedCustomer.bookingDate} ${scannedCustomer.timeSlot}`).format("HH:mm, DD/MM/YYYY")}
+                      </p>
                     </div>
                     <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 flex items-center">
                       <div>
                         <label className="text-sm font-semibold text-green-700 block mb-1">Trạng thái thanh toán</label>
                         <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                           <CheckCircle className="h-4 w-4 mr-1" />
-                          {mockCustomer.paymentStatus}
+                          {scannedCustomer.invoiceStatus}
                         </Badge>
                       </div>
                     </div>
                   </div>
 
+                  {/* Battery ID Verification Section */}
                   <div className="pt-6 border-t border-gray-200">
+
+                    <div className="space-y-2 mb-6">
+                      <Label htmlFor="battery-id" className="text-sm font-semibold text-gray-700">
+                        Nhập ID pin để xác thực
+                      </Label>
+                      <Input
+                        id="battery-id"
+                        type="text"
+                        placeholder="Nhập ID pin (VD: BAT001)"
+                        value={enteredBatteryId}
+                        onChange={(e) => {
+                          setEnteredBatteryId(e.target.value);
+                          setVerificationError("");
+                        }}
+                        className={`text-lg font-semibold ${verificationError
+                          ? "border-destructive focus-visible:ring-destructive"
+                          :
+                          ""
+                          }`}
+                      />
+                      {verificationError && (
+                        <div className="flex items-center gap-2 text-destructive text-sm animate-fade-in">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{verificationError}</span>
+                        </div>
+                      )}
+                    </div>
+
                     <Button
-                      onClick={() => {
-                        const randomSlot = Math.floor(Math.random() * 20) + 1;
-                        setBatterySlotNumber(randomSlot);
-                        setIsDialogOpen(true);
-                        toast({
-                          title: "Dịch vụ đã bắt đầu",
-                          description: `Pin đang được mở ở ô số ${randomSlot}`,
-                        });
-                      }}
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
+                      onClick={handleVerifyAndStartService}
+                      disabled={!enteredBatteryId.trim()}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Star className="h-5 w-5 mr-2" />
                       Bắt đầu dịch vụ đổi pin

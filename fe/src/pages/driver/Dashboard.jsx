@@ -41,16 +41,10 @@ const DriverDashboard = () => {
 
     try {
       const response = await getInvoicebyUserId(userData.userId);
-
+      console.log("✅ Invoices fetched:", response);
       // Handle response structure
-      let invoices = [];
-      if (Array.isArray(response)) {
-        invoices = response;
-      } else if (response?.data && Array.isArray(response.data)) {
-        invoices = response.data;
-      } else if (response?.invoices && Array.isArray(response.invoices)) {
-        invoices = response.invoices;
-      }
+      let invoices = response.invoices;
+
 
       const pending = invoices.filter(inv => inv.invoiceStatus === "PENDING");
       setPendingInvoices(pending);
@@ -129,7 +123,7 @@ const DriverDashboard = () => {
                     <div className="space-y-1 text-xs text-gray-600">
                       {invoice.bookings.slice(0, 2).map((booking, bookingIdx) => (
                         <div key={bookingIdx} className="flex justify-between">
-                          <span>• {booking.vehicleType} - {format(new Date(booking.bookingDate), "dd/MM", { locale: vi })}</span>
+                          <span>{format(new Date(booking.bookingDate), "dd/MM", { locale: vi })} - {booking.timeSlot} | {booking.vehicleType} {String(booking.vehicleId).padStart(2, "0")} </span>
                           <span className="font-semibold">{booking.amount?.toLocaleString("vi-VN")} VNĐ</span>
                         </div>
                       ))}

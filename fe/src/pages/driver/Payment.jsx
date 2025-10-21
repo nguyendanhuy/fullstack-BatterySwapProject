@@ -41,6 +41,7 @@ const Payment = () => {
   const handleVNPayReturn = async (txnRef) => {
     try {
       const paymentStatus = await checkVNPayPaymentStatus(txnRef);
+      console.log("✅ VNPay payment status:", paymentStatus);
 
       if (paymentStatus.paymentStatus === "SUCCESS" || paymentStatus.vnpResponseCode === "00") {
         sessionStorage.removeItem('battery-booking-selection');
@@ -96,6 +97,7 @@ const Payment = () => {
   const redirectToVNPay = async (invoiceId) => {
     setLoadingStep("Đang tạo liên kết thanh toán...");
     const vnpayResponse = await createVNPayUrl({ invoiceId, bankCode: "VNPAY", orderType: "other" });
+    console.log("✅ VNPay response:", vnpayResponse);
 
     if (vnpayResponse.error || vnpayResponse.status === 400 || !vnpayResponse.paymentUrl) {
       throw new Error(vnpayResponse.messages?.business || vnpayResponse.error || "Lỗi tạo thanh toán");
@@ -128,6 +130,7 @@ const Payment = () => {
 
       const bookingData = formatBookingData();
       const response = await createBookingForVehicles(bookingData);
+      console.log("✅ Booking response:", response);
 
       // Check lỗi từ booking API
       if (!response.success || !response.data) {
@@ -243,7 +246,7 @@ const Payment = () => {
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
                               <div className="font-semibold text-sm text-gray-800">
-                                {booking.vehicleType} - {booking.licensePlate}
+                                ID: {booking.vehicleId} - {booking.vehicleType}
                               </div>
                               <div className="text-xs text-gray-600 mt-1">
                                 🏪 {booking.stationName}

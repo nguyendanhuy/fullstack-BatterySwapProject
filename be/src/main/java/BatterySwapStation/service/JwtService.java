@@ -114,5 +114,14 @@ public class JwtService {
             throw new IllegalArgumentException("Token không hợp lệ hoặc bị thay đổi!");
         }
     }
+    //GG
+    public String generateToken(BatterySwapStation.entity.User user) {
+        return generateToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getRole() != null ? user.getRole().getRoleName() : "USER"
+        );
+    }
 
 }

@@ -20,5 +20,12 @@ public interface DockSlotRepository extends JpaRepository<DockSlot, Integer> {
             DockSlot.SlotStatus slotStatus,
             Battery.BatteryStatus batteryStatus
     );
+    long countByDock_Station_StationIdAndBattery_BatteryStatus(Integer stationId, Battery.BatteryStatus status);
+    Optional<DockSlot> findFirstByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
+            Integer stationId,
+            Battery.BatteryType batteryType,
+            Battery.BatteryStatus batteryStatus,
+            DockSlot.SlotStatus slotStatus
+    );
 
 }

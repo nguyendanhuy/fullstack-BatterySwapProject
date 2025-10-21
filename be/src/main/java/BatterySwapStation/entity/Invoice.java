@@ -50,6 +50,7 @@ public class Invoice {
     public enum InvoiceStatus {
         PENDING,    // Chờ xử lý
         PAID,       // Đã thanh toán
+        PAYMENTFAILED, // Thanh toán thất bại
     }
 
     @Enumerated(EnumType.STRING)

@@ -220,9 +220,18 @@ public class InvoiceService {
         // 6. Lưu các booking
         bookingRepository.saveAll(bookings);
 
-        // 7. Tính toán trực tiếp (KHÔNG CẦN reload)
+        // 7. ✅ TÍNH TOÁN ĐÚNG LOGIC:
+        // - numberOfSwaps = số booking
+        // - totalAmount = tổng số pin từ tất cả booking × pricePerSwap
+
         invoice.setNumberOfSwaps(bookings.size());
-        invoice.setTotalAmount(bookings.size() * invoice.getPricePerSwap());
+
+        // Tính tổng số pin từ tất cả các booking
+        int totalBatteries = bookings.stream()
+                .mapToInt(b -> b.getBatteryCount() != null ? b.getBatteryCount() : 0)
+                .sum();
+
+        invoice.setTotalAmount(totalBatteries * invoice.getPricePerSwap());
 
         // 8. Lưu lại invoice
         return invoiceRepository.save(invoice);

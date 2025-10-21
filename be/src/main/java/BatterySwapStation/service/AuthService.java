@@ -1,6 +1,7 @@
 package BatterySwapStation.service;
 
 import BatterySwapStation.dto.RoleDTO;
+import BatterySwapStation.utils.UserIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -10,21 +11,19 @@ import BatterySwapStation.entity.Role;
 import BatterySwapStation.entity.User;
 import BatterySwapStation.repository.RoleRepository;
 import BatterySwapStation.repository.UserRepository;
-
+import BatterySwapStation.dto.GoogleUserInfo;
+import java.util.Map;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 
 public class AuthService {
-
-    private UserRepository userRepository;
+    private final UserIdGenerator userIdGenerator;
+    private final UserRepository userRepository;
     private final UserService userService;
-    private RoleRepository roleRepository;
-
-    //    @Autowired
-
+    private final RoleRepository roleRepository;
     private final JwtService jwtService;
-
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 
@@ -83,4 +82,57 @@ public class AuthService {
         userRepository.save(user);
         return true;
     }
+
+
+    @Transactional
+    public AuthResponse handleGoogleLogin(GoogleUserInfo info) {
+        User user = userRepository.findByEmail(info.getEmail());
+        boolean isNew = false;
+
+        if (user == null) {
+            Role defaultRole = roleRepository.findByRoleName("DRIVER");
+            if (defaultRole == null) {
+                throw new IllegalStateException("Role DRIVER chưa tồn tại trong hệ thống");
+            }
+
+            user = new User();
+            user.setUserId(userIdGenerator.generateUserId(defaultRole));
+            user.setFullName(info.getName());
+            user.setEmail(info.getEmail());
+            user.setPassword("");
+            user.setAddress("");
+            user.setPhone("");
+            user.setActive(true);
+            user.setVerified(info.isEmailVerified());
+            user.setRole(defaultRole);
+
+            userRepository.save(user);
+            isNew = true;
+        }
+
+        String token = jwtService.generateToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getRole().getRoleName()
+        );
+
+        String message = isNew ? "Đăng ký mới thành công, vui lòng bổ sung SĐT và địa chỉ sau nhé" : "Đăng nhập thành công";
+
+        return new AuthResponse(
+                message,
+                user.getUserId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPhone(),
+                user.getRole().getRoleName(),
+                token
+        );
+    }
+
+
+
+
+
+
 }

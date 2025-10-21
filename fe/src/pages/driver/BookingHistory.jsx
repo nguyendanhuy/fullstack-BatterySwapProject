@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,13 +20,12 @@ import { SystemContext } from "../../contexts/system.context";
 import { cancelBookingById, generateQRBooking, getBookingHistoryByUserId } from "../../services/axios.services";
 import { Spin } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
-import InvoiceDialog from "../../components/InvoiceDialog";
 dayjs.extend(customParseFormat);
 const BookingHistory = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [startDate, setStartDate] = useState();
@@ -487,8 +487,9 @@ const BookingHistory = () => {
                                       variant="default"
                                       size="sm"
                                       onClick={() => {
-                                        setSelectedBooking(booking);
-                                        setInvoiceDialogOpen(true);
+                                        navigate('/driver/invoices', {
+                                          state: { bookingId: booking.bookingId }
+                                        });
                                       }}
                                       className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
                                     >
@@ -636,20 +637,6 @@ const BookingHistory = () => {
                 )}
               </Spin>
             </div>
-            <InvoiceDialog
-              open={invoiceDialogOpen}
-              onOpenChange={(v) => {
-                setInvoiceDialogOpen(v);
-                if (!v) setSelectedBooking(null);
-              }}
-              booking={selectedBooking}
-              onDownload={() =>
-                toast({
-                  title: "Tải hóa đơn thành công",
-                  description: "Hóa đơn đã được tải xuống",
-                })
-              }
-            />
           </div>
         </div>
       </div>

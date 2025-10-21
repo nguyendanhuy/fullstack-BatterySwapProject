@@ -175,17 +175,19 @@ const Login = () => {
             >
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
-            <GoogleLogin
-              onSuccess={handleGoogleLogin}
-              onError={() => {
-                toast({
-                  title: 'Đăng nhập thất bại',
-                  description: 'Không thể đăng nhập với Google',
-                  variant: 'destructive',
-                });
-              }}
-              useOneTap
-            />
+            <div className="flex justify-center items-center">
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => {
+                  toast({
+                    title: 'Đăng nhập thất bại',
+                    description: 'Không thể đăng nhập với Google',
+                    variant: 'destructive',
+                  });
+                }}
+                useOneTap
+              />
+            </div>
           </form>
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-muted-foreground">

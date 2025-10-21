@@ -1,6 +1,7 @@
 import {
     Home, Car, MapPin, History, Battery, CreditCard,
-    Settings, LogOut, PanelLeftClose, PanelLeft
+    Settings, LogOut, PanelLeftClose, PanelLeft,
+    FileText
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -27,6 +28,7 @@ const mainItems = [
     { title: "Tìm trạm", url: "/driver/find-stations", icon: MapPin },
     { title: "Lịch sử", url: "/driver/booking-history", icon: History },
     { title: "Gói thuê pin", url: "/driver/subscriptions", icon: Battery },
+    { title: "Hóa đơn", url: "/driver/invoices", icon: FileText },
 ];
 
 export function DriverSidebar() {

@@ -34,6 +34,7 @@ import StaffPrivateRoute from "./pages/StaffPrivateRouter";
 import AdminPrivateRoute from "./pages/AdminPrivateRouter";
 import AuthProvider from "./components/AuthProvider";
 import { StaffLayout } from "./components/StaffLayout";
+import Invoices from "./pages/driver/Invoice";
 const queryClient = new QueryClient();
 const App = () => (<QueryClientProvider client={queryClient}>
   <SystemProvider>
@@ -57,6 +58,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
               }
             >
               <Route index element={<DriverDashboard />} />
+              <Route path="invoices" element={<Invoices />} />
               <Route path="register-vehicle" element={<VehicleRegistration />} />
               <Route path="find-stations" element={<StationFinder />} />
               <Route path="reservation" element={<Reservation />} />

@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Car, MapPin, Calendar, CreditCard, Battery, Home, Settings, Zap, Star, TrendingUp, AlertCircle, Clock, X } from "lucide-react";
+import { Car, MapPin, Calendar, CreditCard, Battery, Home, Settings, Zap, Star, TrendingUp, AlertCircle, Clock, X, FileText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -225,7 +225,8 @@ const DriverDashboard = () => {
             { icon: Car, title: "Đăng ký & Liên kết xe", desc: "Đăng ký thông tin xe VINFAST và loại pin", link: "/driver/register-vehicle", color: "from-blue-500 to-indigo-500" },
             { icon: MapPin, title: "Tìm trạm & Tồn kho pin", desc: "Tìm trạm gần nhất và kiểm tra tình trạng pin", link: "/driver/find-stations", color: "from-green-500 to-emerald-500" },
             { icon: Calendar, title: "Lịch sử đặt chỗ", desc: "Xem lại thông tin booking đã đăng ký", link: "/driver/booking-history", color: "from-orange-500 to-yellow-500" },
-            { icon: Battery, title: "Gói thuê pin", desc: "Đăng ký gói thuê bao pin hàng tháng", link: "/driver/subscriptions", color: "from-purple-500 to-pink-500" }
+            { icon: Battery, title: "Gói thuê pin", desc: "Đăng ký gói thuê bao pin hàng tháng", link: "/driver/subscriptions", color: "from-purple-500 to-pink-500" },
+            { icon: FileText, title: "Xem hóa đơn", desc: "Xem chi tiết hóa đơn đã thanh toán", link: "/driver/invoices", color: "from-purple-500 to-pink-500" }
           ].map((feature, index) => (<Card key={index} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-500 hover:-translate-y-2 group overflow-hidden" style={{ animationDelay: `${index * 0.1}s` }}>
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">

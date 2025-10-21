@@ -73,12 +73,16 @@ const QRCheckIn = () => {
     setVerificationError("");
     const data = {
       bookingId: scannedCustomer.bookingId,
-      batteryIds: ids,
+      batteryInIds: ids,
       staffUserId: userData.userId
     }
+    console.log("Starting service with data:", data);
     //gọi api commitSwap
     try {
       const res = await commitSwap(data);
+      if (res) {
+        console.log("Commit swap response:", res);
+      }
     } catch (err) {
       toast({
         title: "Lỗi mạng khi tải QR Code",
@@ -101,10 +105,8 @@ const QRCheckIn = () => {
   const handleScan = async () => {
     setIsScanning(true);
     try {
-      console.log("Scanning QR with data:", qrData);
       const res = await verifyQrBooking(qrData);
       if (res) {
-        console.log("QR verify response:", res);
         setScannedCustomer(res.data);
         toast({
           title: "Đọc QR thành công",
@@ -146,7 +148,6 @@ const QRCheckIn = () => {
     setPreviewUrl(url);
     try {
       const res = await reader.decodeFromImageUrl(url);
-      console.log("QR scan result:", res);
       setQrData(res.getText());
     } catch (err) {
       console.error(err);

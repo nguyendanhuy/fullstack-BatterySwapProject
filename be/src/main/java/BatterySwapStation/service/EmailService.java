@@ -22,7 +22,7 @@ public class EmailService {
 
 
 
-    // 📩 Gửi email xác minh tài khoản
+    //
     public void sendVerificationEmail(String fullName, String email, String verifyUrl) {
         String htmlContent = getHtmlTemplate(fullName, verifyUrl);
 
@@ -34,7 +34,7 @@ public class EmailService {
         sendMail(mail);
     }
 
-    // ✅ Hàm thực thi gửi email qua SendGrid
+    // email qua SendGrid
     private void sendMail(Mail mail) {
         SendGrid sg = new SendGrid(sendGridApiKey);
         Request request = new Request();
@@ -55,7 +55,7 @@ public class EmailService {
     }
 
 
-    // 🎨 HTML Template
+    // HTML Template
     private String getHtmlTemplate(String fullName, String verifyUrl) {
         return """
                 <div style="font-family:Arial,sans-serif;line-height:1.6">

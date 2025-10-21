@@ -141,7 +141,7 @@ public class PaymentService {
             payment.setPaymentStatus(success ? Payment.PaymentStatus.SUCCESS : Payment.PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
-            // 🧾 Cập nhật Invoice + Booking
+            // Cập nhật Invoice + Booking
             Invoice invoice = payment.getInvoice();
             if (invoice != null && invoice.getBookings() != null) {
                 if (success) {
@@ -152,6 +152,8 @@ public class PaymentService {
                         bookingRepository.save(booking);
                     }
                 } else {
+                    invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
+                    invoiceRepository.save(invoice);
                     for (Booking booking : invoice.getBookings()) {
                         booking.setBookingStatus(Booking.BookingStatus.FAILED);
                         bookingRepository.save(booking);

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+@Data
 @Entity
 @Table(name = "Swap")
 @Getter @Setter
@@ -50,10 +51,12 @@ public class Swap {
     @Column(name = "Description", length = 255)
     private String description;
 
+
     public enum SwapStatus {
         SUCCESS,              // Đổi thành công
         WAITING_USER_RETRY,   // Khác model
         FAULT,                // SoH thấp (đổi bình thường nhưng không đút pin vào dock)
-        CANCELLED             // Hủy
+        CANCELLED,
+        CANCELLED_TEMP// Hủy
     }
 }

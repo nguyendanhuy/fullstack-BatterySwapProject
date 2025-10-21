@@ -97,7 +97,7 @@ public class PaymentController {
         String message = (String) result.getOrDefault("message", "");
         String txnRef = (String) result.getOrDefault("vnp_TxnRef", "");
 
-        // 👇 FE (localhost)
+        // FE
         String redirectUrl = String.format(
                 "http://localhost:5173/driver/payment?status=%s&amount=%s&message=%s&vnp_TxnRef=%s",
                 status,

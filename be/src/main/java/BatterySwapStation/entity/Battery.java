@@ -122,4 +122,12 @@ public class Battery {
                         this.batteryStatus == BatteryStatus.CHARGING) &&
                 this.stateOfHealth != null && this.stateOfHealth > 70.0; // SoH > 70%
     }
+
+
+    public void assignStationFromDockSlot() {
+        if (dockSlot != null && dockSlot.getDock() != null && dockSlot.getDock().getStation() != null) {
+            this.stationId = dockSlot.getDock().getStation().getStationId();
+        }
+    }
+
 }

@@ -18,5 +18,6 @@ public class OpenApiConfig {
                         new Server().url("https://batteryswap-be-production.up.railway.app").description("Railway")
                 ));
     }
+
 }
 

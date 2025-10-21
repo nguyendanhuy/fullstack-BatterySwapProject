@@ -21,6 +21,8 @@ public class InvoiceSimpleResponseDTO {
     private Double pricePerSwap;
     private Integer numberOfSwaps;
     private List<SimpleBookingInfo> bookings;
+    private String invoiceStatus;
+
 
     @Data
     @NoArgsConstructor

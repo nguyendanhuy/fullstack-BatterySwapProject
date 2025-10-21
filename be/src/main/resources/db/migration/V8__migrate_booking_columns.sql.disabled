@@ -1,6 +1,0 @@
--- MIGRATION NÀY ĐÃ BỊ HỦY - KHÔNG SỬ DỤNG
--- Lý do: Xóa nhầm các cột cần giữ lại (bookingdate, timeslot, bookingstatus)
--- Thay thế bởi: V8_FIXED__keep_fixed_time_columns.sql
-
--- Migration gốc đã bị disable
-

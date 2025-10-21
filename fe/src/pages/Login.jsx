@@ -8,7 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useContext } from "react";
 import { SystemContext } from "../contexts/system.context";
-import { loginAPI, getInfoByToken } from "../services/axios.services";
+import { loginAPI, loginByGoogleAPI } from "../services/axios.services";
 import { MouseSparkles } from "@/components/MouseSparkles";
 import authBackground from "@/assets/auth-background.jpg";
 import { GoogleLogin } from '@react-oauth/google';
@@ -85,7 +85,7 @@ const Login = () => {
 
       toast({
         title: 'Đăng nhập thành công!',
-        description: `Chào mừng, ${res.email || formData.email}`,
+        description: `Chào mừng, ${res.fullName || res.email || formData.email}`,
         className: 'bg-green-500 text-white',
       });
 
@@ -107,19 +107,47 @@ const Login = () => {
 
   const handleGoogleLogin = async (credentialResponse) => {
     try {
-      setLoading(true);
       console.log('Google credential:', credentialResponse);
 
-      // TODO: Gửi credential.token lên backend để verify
-      // const res = await axios.post('/api/auth/google', {
-      //   token: credentialResponse.credential
-      // });
+      setLoading(true);
+      const res = await loginByGoogleAPI({
+        token: credentialResponse.credential
+      });
+      console.log("Google login response:", res);
+      const pickApiMessage = (p) =>
+        p?.messages?.auth ||
+        p?.messages?.business ||
+        p?.error ||
+        'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
+
+      const httpStatus = typeof res?.status === 'number' ? res.status : undefined;
+      const isError =
+        !res?.token ||
+        (typeof httpStatus === 'number' && httpStatus >= 400) ||
+        !!res?.error ||
+        !!res?.messages?.auth ||
+        !!res?.messages?.business
+
+      if (isError) {
+        toast({
+          title: 'Đăng nhập thất bại!',
+          description: pickApiMessage(res),
+          variant: 'destructive',
+        });
+        return;
+      }
 
       toast({
-        title: 'Đăng nhập Google thành công!',
-        description: 'Tính năng đang được phát triển',
+        title: 'Đăng nhập thành công!',
+        description: `Chào mừng, ${res.fullName || formData.email}`,
         className: 'bg-green-500 text-white',
       });
+
+      localStorage.setItem('token', res.token);
+      setUserData(res);
+
+      const roleRoute = { DRIVER: '/driver', STAFF: '/staff', ADMIN: '/admin' }[res.role] || '/';
+      navigate(roleRoute);
     } catch (err) {
       toast({
         title: 'Đăng nhập Google thất bại!',
@@ -175,7 +203,11 @@ const Login = () => {
             >
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
+<<<<<<< HEAD
             <div className="flex justify-center items-center">
+=======
+            <div className="flex justify-center">
+>>>>>>> 969d3caa9187fce48e407b1dc9a270ea6d2243f1
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
                 onError={() => {
@@ -188,6 +220,10 @@ const Login = () => {
                 useOneTap
               />
             </div>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 969d3caa9187fce48e407b1dc9a270ea6d2243f1
           </form>
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-muted-foreground">

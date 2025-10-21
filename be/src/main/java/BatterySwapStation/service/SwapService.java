@@ -42,7 +42,7 @@ public class SwapService {
             throw new IllegalStateException("Không xác định được booking của swap này.");
         }
 
-        // 🔹 TEMP = hủy tạm thời (user có thể quay lại retry)
+        //  TEMP = hủy tạm thời (user có thể quay lại retry)
         if ("TEMP".equalsIgnoreCase(cancelType)) {
             swap.setStatus(Swap.SwapStatus.CANCELLED_TEMP);
             swap.setDescription("Swap bị hủy tạm thời. Chờ người dùng quay lại xác nhận.");
@@ -54,7 +54,7 @@ public class SwapService {
             );
         }
 
-        // 🔹 PERMANENT = hủy hoàn toàn, rollback dữ liệu
+        //  PERMANENT = hủy hoàn toàn, rollback dữ liệu
         if ("PERMANENT".equalsIgnoreCase(cancelType)) {
             String batteryOutId = swap.getBatteryOutId();
             String batteryInId = swap.getBatteryInId();
@@ -219,7 +219,7 @@ public class SwapService {
         if (bookedType != null && !batteryIn.getBatteryType().name().equalsIgnoreCase(bookedType))
             throw new IllegalStateException("Pin " + batteryInId + " không cùng loại với pin đã booking.");
 
-        // ✅ Chọn pinOut cùng model với booking hoặc pinIn
+        // Chọn pinOut cùng model với booking hoặc pinIn
         DockSlot dockOutSlot = dockSlotRepository
                 .findFirstByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
                         stationId,
@@ -267,11 +267,18 @@ public class SwapService {
             dockInSlot.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
         }
 
-        batteryOut.setBatteryStatus(Battery.BatteryStatus.IN_USE);
-        dockOutSlot.setBattery(null);
-        dockOutSlot.setSlotStatus(DockSlot.SlotStatus.EMPTY);
-        batteryOut.setStationId(null);
-        batteryOut.setDockSlot(null);
+        if(swapStatus == Swap.SwapStatus.SUCCESS) {
+            batteryOut.setBatteryStatus(Battery.BatteryStatus.IN_USE);
+            dockOutSlot.setBattery(null);
+            dockOutSlot.setSlotStatus(DockSlot.SlotStatus.EMPTY);
+            batteryOut.setStationId(null);
+            batteryOut.setDockSlot(null);
+
+        } else {
+            batteryOut.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
+            dockOutSlot.setBattery(batteryOut);
+            dockOutSlot.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
+        }
 
         batteryRepository.save(batteryIn);
         batteryRepository.save(batteryOut);

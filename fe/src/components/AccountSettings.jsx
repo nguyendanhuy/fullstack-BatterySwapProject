@@ -103,7 +103,7 @@ const AccountSettings = ({ userRole }) => {
           </div>
           <div>
             <Label className="text-sm font-medium text-muted-foreground">Số điện thoại</Label>
-            <p className="text-foreground font-medium">{userData.phone}</p>
+            <p className="text-foreground font-medium">{userData?.phone || "Chưa có số điện thoại"}</p>
           </div>
           {userData.role === "staff" && "station" in userData && (<div>
             <Label className="text-sm font-medium text-muted-foreground">Trạm được gán</Label>
@@ -197,7 +197,7 @@ const AccountSettings = ({ userRole }) => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Số điện thoại mới</Label>
-                  <Input id="phone" type="tel" placeholder={"Cũ: " + userData.phone} onChange={(e) => setPhoneNumber(e.target.value)} />
+                  <Input id="phone" type="tel" placeholder={"Cũ: " + (userData?.phone || "Chưa có số điện thoại")} onChange={(e) => setPhoneNumber(e.target.value)} />
                 </div>
               </div>
               <DialogFooter>

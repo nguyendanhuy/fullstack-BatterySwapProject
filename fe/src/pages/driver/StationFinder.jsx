@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star } from "lucide-react";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
-import { getAllStations, getStationNearbyLocation, viewUserVehicles } from "../../services/axios.services";
+import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
 import { toast } from "sonner";
 import { SystemContext } from "../../contexts/system.context";
 import ProvinceDistrictWardSelect from "../../components/ProvinceDistrictWardSelect";
@@ -216,27 +216,6 @@ export default function StationFinder() {
 
     console.log(">>> check selectBattery after update: ", selectBattery);
   };
-
-  // --- Load danh sách xe (nếu null khi reload) ---
-  const loadUserVehicles = async () => {
-    try {
-      const res = await viewUserVehicles();
-      if (Array.isArray(res)) {
-        setUserVehicles(res);
-      } else if (res?.error) {
-        toast.error("Lỗi gọi hiển thị xe", { description: JSON.stringify(res.error) });
-      }
-    } catch (err) {
-      toast.error("Lỗi mạng khi tải xe", { description: String(err?.message ?? err) });
-    }
-  };
-
-  const vehiclesEmpty = !Array.isArray(userVehicles) || userVehicles.length === 0;
-  useEffect(() => {
-    if (vehiclesEmpty && userData?.userId) {
-      loadUserVehicles();
-    }
-  }, [vehiclesEmpty, userData?.userId]); // eslint-disable-line
 
   // --- Lấy danh sách loại xe (unique theo vehicleType) để filter nhanh ---
   useEffect(() => {

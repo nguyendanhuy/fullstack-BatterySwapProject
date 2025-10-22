@@ -7,12 +7,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import AccountSettings from "@/components/AccountSettings";
-import { viewUserVehicles, getInvoicebyUserId } from "../../services/axios.services";
+import { getUserAllVehicles, getInvoicebyUserId } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 import { useToast } from "@/hooks/use-toast";
 const DriverDashboard = () => {
-  const { userVehicles, setUserVehicles, userData } = useContext(SystemContext);
+  const { setUserVehicles, userData } = useContext(SystemContext);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [pendingInvoices, setPendingInvoices] = useState([]);
@@ -24,7 +23,7 @@ const DriverDashboard = () => {
   }, []);
 
   const loadUserVehicles = async () => {
-    const res = await viewUserVehicles();
+    const res = await getUserAllVehicles();
     if (res) {
       setUserVehicles(res);
     } else if (res.error) {

@@ -13,6 +13,9 @@ import { MouseSparkles } from "@/components/MouseSparkles";
 import authBackground from "@/assets/auth-background.jpg";
 import { GoogleLogin } from '@react-oauth/google';
 
+
+
+
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,6 +38,21 @@ const Login = () => {
       [field]: value
     }));
   };
+
+
+  const pickApiMessage = (res) =>
+    res?.messages?.auth ||
+    res?.messages?.business ||
+    res?.error ||
+    'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
+
+  const isErrorResponse = (res) =>
+    !res?.token ||
+    (typeof res?.status === 'number' && res?.status >= 400) ||
+    !!res?.error ||
+    !!res?.messages?.auth ||
+    !!res?.messages?.business;
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (loading) return;
@@ -60,21 +78,8 @@ const Login = () => {
       const res = await loginAPI(formData.email.trim(), formData.password);
 
       console.log("Login response:", res);
-      const pickApiMessage = (p) =>
-        p?.messages?.auth ||
-        p?.messages?.business ||
-        p?.error ||
-        'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
 
-      const httpStatus = typeof res?.status === 'number' ? res.status : undefined;
-      const isError =
-        !res?.token ||
-        (typeof httpStatus === 'number' && httpStatus >= 400) ||
-        !!res?.error ||
-        !!res?.messages?.auth ||
-        !!res?.messages?.business
-
-      if (isError) {
+      if (isErrorResponse(res)) {
         toast({
           title: 'Đăng nhập thất bại!',
           description: pickApiMessage(res),
@@ -114,21 +119,8 @@ const Login = () => {
         token: credentialResponse.credential
       });
       console.log("Google login response:", res);
-      const pickApiMessage = (p) =>
-        p?.messages?.auth ||
-        p?.messages?.business ||
-        p?.error ||
-        'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
 
-      const httpStatus = typeof res?.status === 'number' ? res.status : undefined;
-      const isError =
-        !res?.token ||
-        (typeof httpStatus === 'number' && httpStatus >= 400) ||
-        !!res?.error ||
-        !!res?.messages?.auth ||
-        !!res?.messages?.business
-
-      if (isError) {
+      if (isErrorResponse(res)) {
         toast({
           title: 'Đăng nhập thất bại!',
           description: pickApiMessage(res),
@@ -203,11 +195,7 @@ const Login = () => {
             >
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
-<<<<<<< HEAD
-            <div className="flex justify-center items-center">
-=======
             <div className="flex justify-center">
->>>>>>> 969d3caa9187fce48e407b1dc9a270ea6d2243f1
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
                 onError={() => {
@@ -220,10 +208,6 @@ const Login = () => {
                 useOneTap
               />
             </div>
-<<<<<<< HEAD
-=======
-
->>>>>>> 969d3caa9187fce48e407b1dc9a270ea6d2243f1
           </form>
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-muted-foreground">

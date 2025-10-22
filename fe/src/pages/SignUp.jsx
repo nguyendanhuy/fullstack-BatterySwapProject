@@ -7,17 +7,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Battery, Eye, EyeOff, User, Mail, Phone, MapPin, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { registerAPI, loginByGoogleAPI } from "../services/axios.services";
+import { registerAPI } from "../services/axios.services";
 import { MouseSparkles } from "@/components/MouseSparkles";
 import authBackground from "@/assets/auth-background.jpg";
 import { useEffect } from "react";
-import { GoogleLogin } from '@react-oauth/google';
-import { SystemContext } from "../contexts/system.context";
-import { useContext } from "react";
+
 
 
 const SignUp = () => {
-  const { setUserData } = useContext(SystemContext);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -113,7 +110,19 @@ const SignUp = () => {
         formData.confirmPassword);
 
       console.log("Register response:", res);
-      if (!res.error) {
+      const pickApiMessage =
+        res?.messages?.auth ||
+        res?.messages?.business ||
+        res?.error ||
+        'Đăng ký thất bại. Vui lòng kiểm tra lại.';
+
+      const isError =
+        (typeof res?.status === 'number' && res?.status >= 400) ||
+        !!res?.error ||
+        !!res?.messages?.auth ||
+        !!res?.messages?.business;
+
+      if (!isError) {
         toast({
           title: "Đăng ký thành công!",
           description: (
@@ -149,7 +158,7 @@ const SignUp = () => {
       } else {
         toast({
           title: "Đăng ký thất bại!",
-          description: res?.messages?.business || "Có lỗi xảy ra, vui lòng thử lại",
+          description: pickApiMessage,
           variant: "destructive"
         });
       }
@@ -157,7 +166,7 @@ const SignUp = () => {
       console.error("Register error:", error);
       toast({
         title: "Đăng ký thất bại!",
-        description: "Có lỗi xảy ra, vui lòng thử lại",
+        description: error?.message || "Có lỗi xảy ra, vui lòng thử lại",
         variant: "destructive"
       });
     } finally {
@@ -165,59 +174,6 @@ const SignUp = () => {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse) => {
-    try {
-      setIsLoading(true);
-      console.log('Google credential:', credentialResponse);
-
-      const res = await loginByGoogleAPI({
-        token: credentialResponse.credential
-      });
-      console.log("Google login response:", res);
-      const pickApiMessage = (p) =>
-        p?.messages?.auth ||
-        p?.messages?.business ||
-        p?.error ||
-        'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
-
-      const httpStatus = typeof res?.status === 'number' ? res.status : undefined;
-      const isError =
-        !res?.token ||
-        (typeof httpStatus === 'number' && httpStatus >= 400) ||
-        !!res?.error ||
-        !!res?.messages?.auth ||
-        !!res?.messages?.business
-
-      if (isError) {
-        toast({
-          title: 'Đăng nhập thất bại!',
-          description: pickApiMessage(res),
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Đăng nhập thành công!',
-        description: `Chào mừng, ${res.fullName || formData.email}`,
-        className: 'bg-green-500 text-white',
-      });
-
-      localStorage.setItem('token', res.token);
-      setUserData(res);
-
-      const roleRoute = { DRIVER: '/driver', STAFF: '/staff', ADMIN: '/admin' }[res.role] || '/';
-      navigate(roleRoute);
-    } catch (err) {
-      toast({
-        title: 'Đăng nhập Google thất bại!',
-        description: err?.message || 'Không thể xác thực với Google',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
@@ -272,19 +228,6 @@ const SignUp = () => {
               </div>
             </div>
 
-            {/* <div className="space-y-2">
-            <Label htmlFor="userType">Loại tài khoản</Label>
-            <Select value={formData.userType} onValueChange={(value) => handleInputChange("userType", value)} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn loại tài khoản" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="driver">Tài xế</SelectItem>
-                <SelectItem value="staff">Nhân viên</SelectItem>
-                <SelectItem value="admin">Quản trị viên</SelectItem>
-              </SelectContent>
-            </Select>
-          </div> */}
 
             <div className="space-y-2">
               <Label htmlFor="password">Mật khẩu</Label>
@@ -335,20 +278,6 @@ const SignUp = () => {
             </Button>
           </form>
           <br />
-
-          <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleLogin}
-              onError={() => {
-                toast({
-                  title: 'Đăng nhập thất bại',
-                  description: 'Không thể đăng nhập với Google',
-                  variant: 'destructive',
-                });
-              }}
-              useOneTap
-            />
-          </div>
 
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-muted-foreground">

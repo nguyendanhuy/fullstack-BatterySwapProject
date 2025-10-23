@@ -1,4 +1,3 @@
-import { data } from "autoprefixer";
 import axios from "./axios.config";
 
 const registerAPI = (fullName, email, phone, address, password, confirmPassword) => {
@@ -71,9 +70,11 @@ const cancelBookingById = (bookingId, userId, cancelReason) => {
     return axios.put(`/bookings/cancel`, data);
 }
 
+
 const getSwapDefaultPrice = () => {
-    return axios.get("/system-price/current");
+    return axios.get("/system-price/BATTERY_SWAP");
 }
+
 
 const createBookingForVehicles = (data) => {
     return axios.post("/bookings/batch", data)
@@ -107,11 +108,14 @@ const verifyQrBooking = (qrData) => {
 const commitSwap = (data) => {
     return axios.post("/swaps/commit", data);
 }
-const checkBatteryModule=(data)=>{
-    return axios.post("/swaps/checkBatteryModel",data);
+const checkBatteryModule = (data) => {
+    return axios.post("/swaps/checkBatteryModel", data);
 }
-const cancelBooking=(data)=>{
-    return axios.post("/swaps/cancel",data);
+const cancelBooking = (data) => {
+    return axios.post("/swaps/cancel", data);
+}
+const getSwapsByStation = (stationId) => {
+    return axios.get(`/swaps?stationId=${stationId}`);
 }
 export {
     registerAPI,
@@ -138,10 +142,8 @@ export {
     generateQRBooking,
     verifyQrBooking,
     commitSwap,
-<<<<<<< HEAD
+    getSwapsByStation,
+    cancelPendingInvoiceById,
     checkBatteryModule,
     cancelBooking
-=======
-    cancelPendingInvoiceById
->>>>>>> ff9f341f3b96f45fa531e46fd44718e1fe36cb79
 };

@@ -21,6 +21,7 @@ import BookingHistory from "./pages/driver/BookingHistory";
 import StaffDashboard from "./pages/staff/Dashboard";
 import QRCheckIn from "./pages/staff/QRCheckIn";
 import TransactionHistory from "./pages/staff/TransactionHistory";
+import SwapHistory from "./pages/staff/SwapHistory";
 import BatteryInventory from "./pages/staff/BatteryInventory";
 import BatteryInspection from "./pages/staff/BatteryInspection";
 // Admin pages
@@ -79,6 +80,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
               <Route index element={<StaffDashboard />} />
               <Route path="qr-checkin" element={<QRCheckIn />} />
               <Route path="transaction-history" element={<TransactionHistory />} />
+              <Route path="swap-history" element={<SwapHistory />} />
               <Route path="battery-inventory" element={<BatteryInventory />} />
               <Route path="battery-inspection" element={<BatteryInspection />} />
             </Route>

@@ -6,14 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike } from "lucide-react";
+import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Divider, Space, Upload } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { ReaderException } from "@zxing/library";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { commitSwap, verifyQrBooking } from "../../services/axios.services";
+import { checkBatteryModule, commitSwap, verifyQrBooking } from "../../services/axios.services";
 import dayjs from "dayjs";
 import { SystemContext } from "../../contexts/system.context";
 const QRCheckIn = () => {
@@ -28,7 +28,8 @@ const QRCheckIn = () => {
   const [enteredBatteryId, setEnteredBatteryId] = useState("");
   const [verificationError, setVerificationError] = useState("");
   const [qrData, setQrData] = useState(null);
-
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isService, setIsService] = useState(false);
   // revoke URL khi unmount
   useEffect(() => {
     return () => {
@@ -59,7 +60,46 @@ const QRCheckIn = () => {
     return invalid ? `Mã pin không hợp lệ: ${invalid}` : "";
   };
 
-  const handleVerifyAndStartService = async () => {
+  const handleBatteryVerify = async () => {
+    if (!enteredBatteryId.trim()) {
+      setVerificationError("Vui lòng nhập ID pin");
+      return;
+    }
+    const ids = formatBatteryIdInput(enteredBatteryId);
+    const validationError = validateBatteryIds(ids);
+    if (validationError) {
+      setVerificationError(validationError);
+      return;
+    }
+    setVerificationError("");
+    const data = {
+      bookingId: scannedCustomer.bookingId,
+      batteryIds: ids,
+    }
+    setIsVerifying(true);
+    try {
+      const res = await checkBatteryModule(data);
+      if (res.success) {
+        toast({
+          title: "Xác thực pin thành công",
+          description: res.message,
+          duration: 5000,
+        });
+      } else {
+        setVerificationError(res.message || "Xác thực pin thất bại");
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi mạng khi xác thực pin",
+        description: "Lỗi xác thực pin. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  }
+
+  const startService = async () => {
     if (!enteredBatteryId.trim()) {
       setVerificationError("Vui lòng nhập ID pin");
       return;
@@ -74,14 +114,24 @@ const QRCheckIn = () => {
     const data = {
       bookingId: scannedCustomer.bookingId,
       batteryInIds: ids,
-      staffUserId: userData.userId
+      // staffUserId: userData.userId
+      staffUserId: "ST009"
     }
+
     console.log("Starting service with data:", data);
     //gọi api commitSwap
+    setIsService(true)
     try {
       const res = await commitSwap(data);
-      if (res) {
-        console.log("Commit swap response:", res);
+      if (res.success) {
+        toast({
+          title: "Hoàn thành đổi pin",
+          description: res.message,
+          duration: 5000,
+        });
+        console.log("Swap committed:", res);
+      } else {
+        setVerificationError(res.message || "Xác thực pin thất bại");
       }
     } catch (err) {
       toast({
@@ -90,15 +140,15 @@ const QRCheckIn = () => {
         variant: "destructive",
       });
     } finally {
-      // Verification successful
-      setVerificationError("");
-      const randomSlot = Math.floor(Math.random() * 20) + 1;
-      setBatterySlotNumber(randomSlot);
-      setIsDialogOpen(true);
-      toast({
-        title: "Dịch vụ đã bắt đầu",
-        description: `Pin đang được mở ở ô số ${randomSlot}`,
-      });
+      setIsService(false);
+      // setVerificationError("");
+      // const randomSlot = Math.floor(Math.random() * 20) + 1;
+      // setBatterySlotNumber(randomSlot);
+      // setIsDialogOpen(true);
+      // toast({
+      //   title: "Dịch vụ đã bắt đầu",
+      //   description: `Pin đang được mở ở ô số ${randomSlot}`,
+      // });
     }
   };
 
@@ -392,21 +442,40 @@ const QRCheckIn = () => {
                       <Label htmlFor="battery-id" className="text-sm font-semibold text-gray-700">
                         Nhập ID pin để xác thực
                       </Label>
-                      <Input
-                        id="battery-id"
-                        type="text"
-                        placeholder="Nhập ID pin (VD: BAT001)"
-                        value={enteredBatteryId}
-                        onChange={(e) => {
-                          setEnteredBatteryId(e.target.value);
-                          setVerificationError("");
-                        }}
-                        className={`text-lg font-semibold ${verificationError
-                          ? "border-destructive focus-visible:ring-destructive"
-                          :
-                          ""
-                          }`}
-                      />
+                      <div className="flex gap-3">
+                        <Input
+                          id="battery-id"
+                          type="text"
+                          placeholder="Nhập ID pin (VD: BAT001)"
+                          value={enteredBatteryId}
+                          onChange={(e) => {
+                            setEnteredBatteryId(e.target.value);
+                            setVerificationError("");
+                          }}
+                          className={`text-lg font-semibold flex-1 ${verificationError
+                            ? "border-destructive focus-visible:ring-destructive"
+                            : ""
+                            }`}
+                        />
+
+                        <Button
+                          onClick={handleBatteryVerify}
+                          variant="outline"
+                          disabled={isVerifying || !enteredBatteryId.trim()}
+                          className="relative rounded-xl px-6 font-semibold text-blue-700 border-blue-500 hover:bg-blue-50 disabled:opacity-60"
+                        >
+                          <span className={isVerifying ? "opacity-0" : "opacity-100 flex items-center"}>
+                            <CheckCircle className="h-5 w-5 mr-2 text-blue-600" />
+                            Xác nhận
+                          </span>
+                          {isVerifying && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            </div>
+                          )}
+                        </Button>
+                      </div>
+
                       {verificationError && (
                         <div className="flex items-center gap-2 text-destructive text-sm animate-fade-in">
                           <AlertCircle className="h-4 w-4" />
@@ -416,12 +485,21 @@ const QRCheckIn = () => {
                     </div>
 
                     <Button
-                      onClick={handleVerifyAndStartService}
-                      disabled={!enteredBatteryId.trim()}
+                      onClick={startService}
+                      disabled={!enteredBatteryId.trim() || isVerifying || isService}
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Star className="h-5 w-5 mr-2" />
-                      Bắt đầu dịch vụ đổi pin
+                      {/* Nội dung nút ẩn khi loading */}
+                      <span className={isService ? "opacity-0" : "opacity-100 flex items-center"}>
+                        <Star className="h-5 w-5 mr-2" />
+                        Bắt đầu dịch vụ đổi pin
+                      </span>
+
+                      {isService && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        </div>
+                      )}
                     </Button>
                   </div>
                 </CardContent>

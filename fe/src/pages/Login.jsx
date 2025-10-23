@@ -203,11 +203,7 @@ const Login = () => {
             >
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
-<<<<<<< HEAD
             <div className="flex justify-center items-center">
-=======
-            <div className="flex justify-center">
->>>>>>> 969d3caa9187fce48e407b1dc9a270ea6d2243f1
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
                 onError={() => {
@@ -220,10 +216,6 @@ const Login = () => {
                 useOneTap
               />
             </div>
-<<<<<<< HEAD
-=======
-
->>>>>>> 969d3caa9187fce48e407b1dc9a270ea6d2243f1
           </form>
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-muted-foreground">

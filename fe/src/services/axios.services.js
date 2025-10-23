@@ -1,3 +1,4 @@
+import { data } from "autoprefixer";
 import axios from "./axios.config";
 
 const registerAPI = (fullName, email, phone, address, password, confirmPassword) => {
@@ -102,6 +103,9 @@ const verifyQrBooking = (qrData) => {
 const commitSwap = (data) => {
     return axios.post("/swaps/commit", data);
 }
+const checkBatteryModule=(data)=>{
+    return axios.post("/swaps/checkBatteryModel",data);
+}
 export {
     registerAPI,
     loginAPI,
@@ -126,5 +130,6 @@ export {
     getInvoicebyUserId,
     generateQRBooking,
     verifyQrBooking,
-    commitSwap
+    commitSwap,
+    checkBatteryModule
 };

@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Divider, Space, Upload } from "antd";
+import { Divider, Space, Upload, Popconfirm } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { ReaderException } from "@zxing/library";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { checkBatteryModule, commitSwap, verifyQrBooking } from "../../services/axios.services";
+import { checkBatteryModule, commitSwap, verifyQrBooking, cancelBooking } from "../../services/axios.services";
 import dayjs from "dayjs";
 import { SystemContext } from "../../contexts/system.context";
 const QRCheckIn = () => {
@@ -21,7 +21,7 @@ const QRCheckIn = () => {
   const { userData } = useContext(SystemContext);
   const [scannedCustomer, setScannedCustomer] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [batterySlotNumber, setBatterySlotNumber] = useState(null)
+  const [batterySlotNumber, setBatterySlotNumber] = useState([])
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -30,6 +30,7 @@ const QRCheckIn = () => {
   const [qrData, setQrData] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isService, setIsService] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   // revoke URL khi unmount
   useEffect(() => {
     return () => {
@@ -60,6 +61,7 @@ const QRCheckIn = () => {
     return invalid ? `Mã pin không hợp lệ: ${invalid}` : "";
   };
 
+  //hàm xác thực pin
   const handleBatteryVerify = async () => {
     if (!enteredBatteryId.trim()) {
       setVerificationError("Vui lòng nhập ID pin");
@@ -114,8 +116,7 @@ const QRCheckIn = () => {
     const data = {
       bookingId: scannedCustomer.bookingId,
       batteryInIds: ids,
-      // staffUserId: userData.userId
-      staffUserId: "ST009"
+      staffUserId: userData.userId
     }
 
     console.log("Starting service with data:", data);
@@ -129,6 +130,8 @@ const QRCheckIn = () => {
           description: res.message,
           duration: 5000,
         });
+        const slotNumber = res.data.map(item => item.dockOutSlot);
+        setBatterySlotNumber(slotNumber);
         console.log("Swap committed:", res);
       } else {
         setVerificationError(res.message || "Xác thực pin thất bại");
@@ -141,14 +144,61 @@ const QRCheckIn = () => {
       });
     } finally {
       setIsService(false);
-      // setVerificationError("");
-      // const randomSlot = Math.floor(Math.random() * 20) + 1;
-      // setBatterySlotNumber(randomSlot);
-      // setIsDialogOpen(true);
-      // toast({
-      //   title: "Dịch vụ đã bắt đầu",
-      //   description: `Pin đang được mở ở ô số ${randomSlot}`,
-      // });
+      setVerificationError("");
+      setIsDialogOpen(true);
+      toast({
+        title: "Dịch vụ đã bắt đầu",
+        description: `Ô pin đang mở....`,
+      });
+    }
+  };
+
+  //hàm hủy booking
+
+  const handleCancelBooking = async () => {
+    if (!scannedCustomer?.bookingId) {
+      toast({
+        title: "Không tìm thấy booking",
+        description: "Vui lòng quét QR hợp lệ trước khi hủy.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      // payload có thể thay đổi tùy API của bạn
+      const res = await cancelBooking({
+        bookingId: scannedCustomer.bookingId,
+        cancelType: "PERMANENT"
+      });
+
+      if (res?.success) {
+        toast({
+          title: "Đã hủy đặt lịch",
+          description: res.message || "Hủy booking thành công.",
+          duration: 5000,
+        });
+        // Tuỳ UX: có thể clear khách hàng đã quét
+        setScannedCustomer(null);
+        setEnteredBatteryId("");
+        setVerificationError("");
+      } else {
+        toast({
+          title: "Hủy thất bại",
+          description: res?.message || "Không thể hủy booking.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi mạng khi hủy booking",
+        description: err?.message || "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -501,6 +551,34 @@ const QRCheckIn = () => {
                         </div>
                       )}
                     </Button>
+
+                    {/* Nút hủy booking */}
+                    <div className="mt-3">
+                      <Popconfirm
+                        title="Hủy đặt lịch?"
+                        description="Bạn có chắc muốn hủy booking này?"
+                        okText="Hủy lịch"
+                        cancelText="Không"
+                        onConfirm={handleCancelBooking}
+                        okButtonProps={{ loading: isCancelling }}
+                        disabled={!scannedCustomer}
+                      >
+                        <Button
+                          variant="destructive"
+                          disabled={!scannedCustomer || isCancelling || isService || isVerifying}
+                          className="w-full rounded-xl py-3 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isCancelling ? (
+                            <span className="flex items-center justify-center">
+                              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                              Đang hủy đặt lịch...
+                            </span>
+                          ) : (
+                            "Hủy booking"
+                          )}
+                        </Button>
+                      </Popconfirm>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -528,13 +606,15 @@ const QRCheckIn = () => {
             </div>
             <DialogTitle className="text-center text-2xl">Ô pin đang mở</DialogTitle>
             <DialogDescription className="text-center text-lg pt-4">
-              Pin đang được mở ở ô số
+              Pin đang được mở ở {batterySlotNumber.length} ô số
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center py-6">
-            <div className="w-32 h-32 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl animate-bounce">
-              <span className="text-6xl font-bold text-white">{batterySlotNumber}</span>
-            </div>
+            {batterySlotNumber.map((number, index) => (
+              <div key={index} className="w-32 h-32 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl animate-bounce mx-2">
+                <span className="text-6xl font-bold text-white">{number}</span>
+              </div>
+            ))}
           </div>
           <div className="flex justify-center">
             <Button

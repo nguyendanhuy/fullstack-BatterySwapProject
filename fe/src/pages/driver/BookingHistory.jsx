@@ -194,7 +194,7 @@ const BookingHistory = () => {
     const canvas = document.getElementById('qr-container')?.querySelector('canvas');
     if (canvas) {
       const url = canvas.toDataURL('image/png');
-      doDownload(url, `QRCode-BK${selectedBooking?.bookingId || 'unknown'}.png`);
+      doDownload(url, `QRCode-BK.png`);
     } else {
       toast({
         title: "Lỗi tải QR Code",

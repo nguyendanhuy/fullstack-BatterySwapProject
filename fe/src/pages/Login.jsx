@@ -195,11 +195,7 @@ const Login = () => {
             >
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
-<<<<<<< HEAD
-            <div className="flex justify-center items-center">
-=======
             <div className="flex justify-center">
->>>>>>> 4e439c3c68cb87f0dd526bd0fffe6c65a035968d
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
                 onError={() => {

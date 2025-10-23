@@ -106,6 +106,9 @@ const commitSwap = (data) => {
 const checkBatteryModule=(data)=>{
     return axios.post("/swaps/checkBatteryModel",data);
 }
+const cancelBooking=(data)=>{
+    return axios.post("/swaps/cancel",data);
+}
 export {
     registerAPI,
     loginAPI,
@@ -131,5 +134,6 @@ export {
     generateQRBooking,
     verifyQrBooking,
     commitSwap,
-    checkBatteryModule
+    checkBatteryModule,
+    cancelBooking
 };

@@ -213,8 +213,6 @@ export default function StationFinder() {
         qty: next,
       }
     }));
-
-    console.log(">>> check selectBattery after update: ", selectBattery);
   };
 
   // --- Lấy danh sách loại xe (unique theo vehicleType) để filter nhanh ---

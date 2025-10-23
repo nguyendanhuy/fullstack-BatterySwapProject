@@ -43,12 +43,20 @@ const Payment = () => {
       const paymentStatus = await checkVNPayPaymentStatus(txnRef);
       console.log("✅ VNPay payment status:", paymentStatus);
 
+      const ResponseCode = () => {
+        if (paymentStatus?.vnpResponseCode) {
+          if (paymentStatus.vnpResponseCode === "00") return `Giao dịch đã được xác nhận. Số tiền: ${paymentStatus.amount?.toLocaleString("vi-VN")} VNĐ`;
+          else if (paymentStatus.vnpResponseCode === "24") return "Bạn đã hủy giao dịch tại cổng thanh toán.";
+          else return paymentStatus?.message || "Vui lòng kiểm tra lại thông tin.";
+        } else return "Vui lòng kiểm tra lại thông tin.";
+      }
+
       if (paymentStatus.paymentStatus === "SUCCESS" || paymentStatus.vnpResponseCode === "00") {
         sessionStorage.removeItem('battery-booking-selection');
 
         toast({
           title: "Thanh toán thành công!",
-          description: `Giao dịch đã được xác nhận. Số tiền: ${paymentStatus.amount?.toLocaleString("vi-VN")} VNĐ`,
+          description: ResponseCode(),
           className: "bg-green-500 text-white",
           duration: 5000,
         });
@@ -57,7 +65,7 @@ const Payment = () => {
       } else {
         toast({
           title: "Thanh toán thất bại!",
-          description: paymentStatus.message || `Mã lỗi: ${paymentStatus.vnpResponseCode}`,
+          description: paymentStatus.message || ResponseCode(),
           variant: "destructive",
           duration: 5000,
         });

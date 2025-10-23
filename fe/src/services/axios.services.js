@@ -93,6 +93,10 @@ const checkVNPayPaymentStatus = (txnRef) => {
 const getInvoicebyUserId = (userId) => {
     return axios.get(`/invoices/user/${userId}`);
 }
+
+const cancelPendingInvoiceById = (invoiceId) => {
+    return axios.post(`/invoices/${invoiceId}/cancel`);
+}
 const generateQRBooking = (bookingId) => {
     return axios.get(`/bookings/${bookingId}/generateQr`);
 }
@@ -126,5 +130,6 @@ export {
     getInvoicebyUserId,
     generateQRBooking,
     verifyQrBooking,
-    commitSwap
+    commitSwap,
+    cancelPendingInvoiceById
 };

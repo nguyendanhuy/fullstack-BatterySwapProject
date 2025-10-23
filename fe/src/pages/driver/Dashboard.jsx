@@ -1,13 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Car, MapPin, Calendar, CreditCard, Battery, Home, Settings, Zap, Star, TrendingUp, AlertCircle, Clock, X, FileText } from "lucide-react";
+import { Car, MapPin, Calendar, CreditCard, Battery, Zap, Star, TrendingUp, AlertCircle, Clock, X, FileText } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { getUserAllVehicles, getInvoicebyUserId } from "../../services/axios.services";
+import { getUserAllVehicles, getInvoicebyUserId, cancelPendingInvoiceById } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 import { useToast } from "@/hooks/use-toast";
 const DriverDashboard = () => {
@@ -56,6 +57,38 @@ const DriverDashboard = () => {
       console.error("Error loading pending invoices:", error);
     }
   };
+
+
+  const handleCancelInvoice = async (invoiceId) => {
+    try {
+      const response = await cancelPendingInvoiceById(invoiceId);
+      console.log("Cancel invoice response:", response);
+
+      if (response.success) {
+        toast({
+          title: "Hủy hóa đơn thành công",
+          description: `Hóa đơn #${invoiceId} đã được hủy.`,
+          className: 'bg-green-500 text-white',
+        });
+
+        // Reload lại danh sách pending invoices
+        await loadPendingInvoices();
+
+        // Đóng modal nếu không còn pending invoice
+        if (pendingInvoices.length <= 1) {
+          setShowPendingModal(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error canceling invoice:", error);
+      toast({
+        title: "Hủy hóa đơn thất bại",
+        description: error.message || "Đã xảy ra lỗi khi hủy hóa đơn.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen">
       {/* Page Header */}
@@ -80,13 +113,14 @@ const DriverDashboard = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center text-2xl font-bold text-orange-800">
               <AlertCircle className="h-6 w-6 mr-3 text-orange-500" />
-              Hóa đơn chưa thanh toán
+              Hóa đơn chưa thanh toán (Tự động hủy sau 15 phút)
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <p className="text-orange-700">
               Bạn có <strong>{pendingInvoices.length}</strong> hóa đơn đang chờ thanh toán. Vui lòng hoàn tất thanh toán để tiếp tục sử dụng dịch vụ.
             </p>
+
 
             {pendingInvoices.map((invoice, idx) => (
               <div key={idx} className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
@@ -152,13 +186,36 @@ const DriverDashboard = () => {
                 <Zap className="h-5 w-5 mr-2" />
                 Thanh toán ngay
               </Button>
-              <Button
-                onClick={() => setShowPendingModal(false)}
-                variant="outline"
-                className="border-2 border-gray-300 hover:bg-gray-100 rounded-xl py-3"
-              >
-                Để sau
-              </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="border-2 border-red-500 text-red-600 hover:bg-red-500 hover:text-white rounded-xl py-3 font-semibold transition-all duration-300"
+                  >
+                    Hủy hóa đơn
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Xác nhận hủy hóa đơn</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Bạn có chắc chắn muốn hủy hóa đơn <b>#{pendingInvoices[0]?.invoiceId}</b> không?
+                      <br />
+                      <span className="text-red-600 font-semibold">Hành động này không thể hoàn tác.</span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Không, giữ lại</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleCancelInvoice(pendingInvoices[0]?.invoiceId)}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      Có, hủy hóa đơn
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </DialogContent>

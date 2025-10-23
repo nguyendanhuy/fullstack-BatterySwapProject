@@ -64,6 +64,7 @@
             <version>42.7.3</version>
         </dependency>
 
+
         <!-- 📧 Mail -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -48,15 +48,13 @@ public class Swap {
     @Column(name = "CompletedTime")
     private LocalDateTime completedTime = LocalDateTime.now();
 
-    @Column(name = "Description", length = 255)
+    @Column(name = "Description", length = 1000)
     private String description;
 
 
     public enum SwapStatus {
-        SUCCESS,              // Đổi thành công
-        WAITING_USER_RETRY,   // Khác model
-        FAULT,                // SoH thấp (đổi bình thường nhưng không đút pin vào dock)
-        CANCELLED,
-        CANCELLED_TEMP// Hủy
+        SUCCESS,
+        CANCELLED
+
     }
 }

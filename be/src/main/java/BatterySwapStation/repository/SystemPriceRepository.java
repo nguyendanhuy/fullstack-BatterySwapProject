@@ -3,6 +3,7 @@ package BatterySwapStation.repository;
 import BatterySwapStation.entity.SystemPrice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -11,18 +12,19 @@ import java.util.Optional;
 public interface SystemPriceRepository extends JpaRepository<SystemPrice, Long> {
 
     /**
-     * Lấy giá hiện tại của hệ thống (chỉ có 1 record duy nhất)
+     * [THAY THẾ] Tìm một mức giá bằng Enum PriceType
+     * (Thay thế cho logic 'findCurrentSystemPrice' cũ)
      */
-    @Query("SELECT sp FROM SystemPrice sp ORDER BY sp.id DESC")
-    Optional<SystemPrice> findCurrentSystemPrice();
+    Optional<SystemPrice> findByPriceType(SystemPrice.PriceType priceType);
 
     /**
-     * Kiểm tra có tồn tại SystemPrice nào chưa
+     * [MỚI] Lấy giá trị (kiểu Double) trực tiếp bằng Enum PriceType
+     * Đây là hàm mà Service của bạn sẽ sử dụng.
      */
-    boolean existsBy();
+    @Query("SELECT sp.price FROM SystemPrice sp WHERE sp.priceType = :priceType")
+    Optional<Double> findPriceByPriceType(@Param("priceType") SystemPrice.PriceType priceType);
 
-    /**
-     * Lấy SystemPrice đầu tiên (fallback)
-     */
-    Optional<SystemPrice> findFirstByOrderByIdAsc();
+    // [ĐÃ XÓA] Các hàm cũ như 'findCurrentSystemPrice', 'existsBy',
+    // và 'findFirstByOrderByIdAsc' đã bị xóa vì chúng không còn
+    // phù hợp với logic nhiều loại giá nữa.
 }

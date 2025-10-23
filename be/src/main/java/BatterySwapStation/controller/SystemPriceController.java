@@ -4,264 +4,214 @@ import BatterySwapStation.entity.SystemPrice;
 import BatterySwapStation.service.SystemPriceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Data; // <-- Thêm import
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List; // <-- Thêm import
 import java.util.Map;
+import java.util.stream.Collectors; // <-- Thêm import
 
 @RestController
 @RequestMapping("/api/system-price")
 @RequiredArgsConstructor
-@Tag(name = "System Price Management", description = "APIs quản lý giá hệ thống - quy luật chung cho toàn dự án")
+@Tag(name = "System Price Management", description = "[ĐÃ NÂNG CẤP] APIs quản lý các loại giá linh hoạt")
 public class SystemPriceController {
 
     private final SystemPriceService systemPriceService;
 
-    @GetMapping("/current")
-    @Operation(summary = "Lấy giá hiện tại", description = "Lấy giá hiện tại của hệ thống (áp dụng cho tất cả loại pin)")
-    public ResponseEntity<Map<String, Object>> getCurrentPrice() {
+    // --- CÁC API MỚI ---
+
+    /**
+     * [THAY THẾ /current và /info]
+     * Lấy TẤT CẢ các loại giá trong hệ thống.
+     */
+    @GetMapping("/all")
+    @Operation(summary = "Lấy TẤT CẢ loại giá", description = "Lấy danh sách tất cả các loại giá trong hệ thống (BATTERY_SWAP, MONTHLY_SUBSCRIPTION...)")
+    public ResponseEntity<Map<String, Object>> getAllPrices() {
         try {
-            Double currentPrice = systemPriceService.getCurrentPrice();
-            String priceInfo = systemPriceService.getCurrentPriceInfo();
-            boolean isDefault = systemPriceService.isUsingDefaultPrice();
+            List<SystemPrice> prices = systemPriceService.getAllPrices();
+
+            // ✅ [ĐÃ SỬA] Thay thế Map.of() bằng new HashMap<>()
+            List<Map<String, Object>> priceMaps = prices.stream().map(price -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("priceType", price.getPriceType().name());
+                map.put("price", price.getPrice());
+                map.put("description", price.getDescription());
+                map.put("displayName", price.getPriceType().getDisplayName());
+                return map; // Trả về Map<String, Object>
+            }).collect(Collectors.toList()); // Bây giờ sẽ hoạt động
 
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "price", currentPrice,
-                "description", priceInfo,
-                "isDefault", isDefault,
-                "message", "Giá áp dụng cho tất cả loại pin và lượt đổi pin"
+                    "success", true,
+                    "prices", priceMaps,
+                    "total", priceMaps.size()
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi khi lấy giá hiện tại",
-                "message", e.getMessage()
-            ));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 
-    @PostMapping("/update")
-    @Operation(summary = "Cập nhật giá hệ thống", description = "Cập nhật giá mới cho toàn hệ thống")
-    public ResponseEntity<Map<String, Object>> updateSystemPrice(@RequestBody UpdatePriceRequest request) {
+    /**
+     * [MỚI] Lấy một loại giá cụ thể bằng mã Enum
+     */
+    @GetMapping("/{priceType}")
+    @Operation(summary = "Lấy một loại giá cụ thể", description = "Lấy giá theo mã, ví dụ: BATTERY_SWAP hoặc MONTHLY_SUBSCRIPTION")
+    public ResponseEntity<Map<String, Object>> getPriceByType(@PathVariable String priceType) {
         try {
-            SystemPrice updatedPrice = systemPriceService.updateSystemPrice(
-                request.getPrice(),
-                request.getDescription()
+            // Chuyển đổi String (ví dụ: "BATTERY_SWAP") sang Enum
+            SystemPrice.PriceType type = SystemPrice.PriceType.valueOf(priceType.toUpperCase());
+            SystemPrice price = systemPriceService.getSystemPriceByType(type);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "priceType", price.getPriceType().name(),
+                    "price", price.getPrice(),
+                    "description", price.getDescription(),
+                    "displayName", price.getPriceType().getDisplayName()
+            ));
+        } catch (IllegalArgumentException e) {
+            // Lỗi nếu user gõ sai tên PriceType
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Loại giá không hợp lệ: " + priceType));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * [THAY THẾ /initialize]
+     * Tạo một loại giá mới (ví dụ: cho Subscription)
+     */
+    @PostMapping("/create")
+    @Operation(summary = "Tạo một loại giá mới", description = "Tạo một loại giá mới (ví dụ: MONTHLY_SUBSCRIPTION)")
+    public ResponseEntity<Map<String, Object>> createPrice(@RequestBody PriceRequest request) {
+        try {
+            // Xây dựng đối tượng Entity từ Request
+            SystemPrice newPrice = SystemPrice.builder()
+                    .priceType(request.getPriceType())
+                    .price(request.getPrice())
+                    .description(request.getDescription())
+                    .build();
+
+            SystemPrice savedPrice = systemPriceService.createPrice(newPrice);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Tạo giá thành công",
+                    "data", savedPrice
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * [THAY THẾ /update và /reset]
+     * Cập nhật giá của một loại giá đã có
+     */
+    @PutMapping("/update")
+    @Operation(summary = "Cập nhật một loại giá", description = "Cập nhật giá hoặc mô tả của một loại giá đã có")
+    public ResponseEntity<Map<String, Object>> updatePrice(@RequestBody PriceRequest request) {
+        try {
+            SystemPrice updatedPrice = systemPriceService.updatePrice(
+                    request.getPriceType(),
+                    request.getPrice(),
+                    request.getDescription()
             );
-
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Cập nhật giá hệ thống thành công",
-                "systemPrice", Map.of(
-                    "id", updatedPrice.getId(),
-                    "price", updatedPrice.getSafePrice(),
-                    "description", updatedPrice.getDescription(),
-                    "createdDate", updatedPrice.getCreatedDate()
-                )
+                    "success", true,
+                    "message", "Cập nhật giá thành công",
+                    "data", updatedPrice
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi khi cập nhật giá hệ thống",
-                "message", e.getMessage()
-            ));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 
-    @PostMapping("/initialize")
-    @Operation(summary = "Khởi tạo giá mặc định", description = "Khởi tạo giá mặc định 15,000 VND cho hệ thống")
-    public ResponseEntity<Map<String, Object>> initializeDefaultPrice() {
-        try {
-            SystemPrice defaultPrice = systemPriceService.initializeDefaultPrice();
-
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Khởi tạo giá mặc định thành công",
-                "systemPrice", defaultPrice != null ? Map.of(
-                    "id", defaultPrice.getId(),
-                    "price", defaultPrice.getSafePrice(),
-                    "description", defaultPrice.getDescription(),
-                    "createdDate", defaultPrice.getCreatedDate()
-                ) : null
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi khi khởi tạo giá mặc định",
-                "message", e.getMessage()
-            ));
-        }
-    }
-
-    @PostMapping("/reset")
-    @Operation(summary = "Reset về giá mặc định", description = "Reset giá hệ thống về 15,000 VND")
-    public ResponseEntity<Map<String, Object>> resetToDefaultPrice() {
-        try {
-            SystemPrice resetPrice = systemPriceService.resetToDefaultPrice();
-
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Reset giá về mặc định thành công",
-                "systemPrice", Map.of(
-                    "id", resetPrice.getId(),
-                    "price", resetPrice.getSafePrice(),
-                    "description", resetPrice.getDescription(),
-                    "createdDate", resetPrice.getCreatedDate()
-                )
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi khi reset giá",
-                "message", e.getMessage()
-            ));
-        }
-    }
-
-    @GetMapping("/info")
-    @Operation(summary = "Lấy thông tin chi tiết", description = "Lấy thông tin chi tiết về giá hệ thống")
-    public ResponseEntity<Map<String, Object>> getSystemPriceInfo() {
-        try {
-            String priceInfo = systemPriceService.getCurrentPriceInfo();
-            Double currentPrice = systemPriceService.getCurrentPrice();
-            boolean isDefault = systemPriceService.isUsingDefaultPrice();
-
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "currentPrice", currentPrice,
-                "priceInfo", priceInfo,
-                "isUsingDefaultPrice", isDefault,
-                "defaultPrice", 15000.0,
-                "applicableFor", "Tất cả loại pin và lượt đổi pin",
-                "systemRule", "Giá thống nhất cho toàn dự án"
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi khi lấy thông tin giá",
-                "message", e.getMessage()
-            ));
-        }
-    }
+    // --- CÁC API TÍNH TOÁN (ĐÃ SỬA) ---
 
     @GetMapping("/calculate")
-    @Operation(summary = "Tính tổng tiền", description = "Tính tổng tiền dựa trên số lượng lượt đổi pin")
+    @Operation(summary = "Tính tổng tiền (cho ĐỔI PIN)", description = "Tính tổng tiền dựa trên số lượng lượt đổi pin (dùng giá BATTERY_SWAP)")
     public ResponseEntity<Map<String, Object>> calculateTotalAmount(
             @RequestParam Integer quantity) {
         try {
             if (quantity == null || quantity <= 0) {
                 return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", "Số lượng phải lớn hơn 0"
+                        "success", false,
+                        "error", "Số lượng phải lớn hơn 0"
                 ));
             }
 
-            Double currentPrice = systemPriceService.getCurrentPrice();
-            Double totalAmount = currentPrice * quantity;
+            // [ĐÃ SỬA] Hard-code để dùng giá đổi pin tiêu chuẩn
+            Double swapPrice = systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
+            Double totalAmount = swapPrice * quantity;
 
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "quantity", quantity,
-                "pricePerSwap", currentPrice,
-                "totalAmount", totalAmount
+                    "success", true,
+                    "quantity", quantity,
+                    "pricePerSwap", swapPrice,
+                    "totalAmount", totalAmount,
+                    "priceType", SystemPrice.PriceType.BATTERY_SWAP.name()
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi khi tính tổng tiền"
+                    "success", false,
+                    "error", "Lỗi khi tính tổng tiền",
+                    "message", e.getMessage()
             ));
         }
     }
 
     @PostMapping("/calculate")
-    @Operation(summary = "Tính tổng tiền (POST)", description = "Tính tổng tiền dựa trên số lượng lượt đổi pin")
+    @Operation(summary = "Tính tổng tiền (POST, cho ĐỔI PIN)", description = "Tính tổng tiền dựa trên số lượng lượt đổi pin (dùng giá BATTERY_SWAP)")
     public ResponseEntity<Map<String, Object>> calculateTotalAmountPost(@RequestBody CalculateRequest request) {
         try {
             if (request.getQuantity() == null || request.getQuantity() <= 0) {
                 return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", "Số lượng phải lớn hơn 0"
+                        "success", false,
+                        "error", "Số lượng phải lớn hơn 0"
                 ));
             }
 
-            Double currentPrice = systemPriceService.getCurrentPrice();
-            Double totalAmount = currentPrice * request.getQuantity();
+            // [ĐÃ SỬA] Hard-code để dùng giá đổi pin tiêu chuẩn
+            Double swapPrice = systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
+            Double totalAmount = swapPrice * request.getQuantity();
 
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "quantity", request.getQuantity(),
-                "pricePerSwap", currentPrice,
-                "totalAmount", totalAmount
+                    "success", true,
+                    "quantity", request.getQuantity(),
+                    "pricePerSwap", swapPrice,
+                    "totalAmount", totalAmount,
+                    "priceType", SystemPrice.PriceType.BATTERY_SWAP.name()
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi khi tính tổng tiền"
+                    "success", false,
+                    "error", "Lỗi khi tính tổng tiền",
+                    "message", e.getMessage()
             ));
         }
     }
 
-    // DTO cho request
-    public static class UpdatePriceRequest {
+    // --- DTOs (Cập nhật) ---
+
+    /**
+     * DTO (Data Transfer Object) cho request Tạo / Cập nhật giá
+     */
+    @Data // Thêm Lombok
+    public static class PriceRequest {
+        private SystemPrice.PriceType priceType; // Bắt buộc phải có
         private Double price;
         private String description;
-
-        // Constructors
-        public UpdatePriceRequest() {}
-
-        public UpdatePriceRequest(Double price, String description) {
-            this.price = price;
-            this.description = description;
-        }
-
-        // Getters and setters
-        public Double getPrice() {
-            return price != null ? price : 15000.0;
-        }
-
-        public void setPrice(Double price) {
-            this.price = price;
-        }
-
-        public String getDescription() {
-            return description != null ? description : "Cập nhật giá hệ thống";
-        }
-
-        public void setDescription(String description) {
-            this.description = description;
-        }
     }
 
-    // DTO cho calculate request
+    /**
+     * DTO cho request tính toán
+     */
+    @Data // Thêm Lombok
     public static class CalculateRequest {
         private Integer quantity;
-        private String description;
-
-        // Constructors
-        public CalculateRequest() {}
-
-        public CalculateRequest(Integer quantity, String description) {
-            this.quantity = quantity;
-            this.description = description;
-        }
-
-        // Getters and setters
-        public Integer getQuantity() {
-            return quantity;
-        }
-
-        public void setQuantity(Integer quantity) {
-            this.quantity = quantity;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public void setDescription(String description) {
-            this.description = description;
-        }
+        // (Xóa 'description' vì không dùng)
     }
 }

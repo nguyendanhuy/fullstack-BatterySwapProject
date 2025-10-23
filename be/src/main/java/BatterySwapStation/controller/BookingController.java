@@ -1,6 +1,7 @@
 package BatterySwapStation.controller;
 
 import BatterySwapStation.dto.*;
+import BatterySwapStation.entity.SystemPrice;
 import BatterySwapStation.service.BookingService;
 import BatterySwapStation.service.InvoiceService;
 import BatterySwapStation.service.SystemPriceService;
@@ -12,7 +13,6 @@ import BatterySwapStation.utils.QrTokenUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -667,44 +667,58 @@ public class BookingController {
     }
 
     // Thay thế method getBatteryPrice để sử dụng giá thống nhất từ SystemPrice
+    // [ĐÃ SỬA] - Thay thế method getBatteryPrice để sử dụng giá linh hoạt
     private double getBatteryPrice(String batteryType) {
-        // Bỏ qua batteryType vì giờ tất cả đều dùng chung 1 giá từ SystemPrice
-        return systemPriceService.getCurrentPrice();
+        // Bỏ qua batteryType, vì tất cả các lần đổi pin đều dùng
+        // chung một mã giá là BATTERY_SWAP (logic mới)
+        return systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
     }
 
     // Cập nhật API để lấy giá thống nhất từ SystemPrice
+    // [ĐÃ SỬA] - Cập nhật API để lấy giá từ SystemPrice linh hoạt
     @GetMapping("/battery-types")
-    @Operation(summary = "Lấy danh sách loại pin và giá", description = "Lấy tất cả loại pin - giá thống nhất từ SystemPrice")
+    @Operation(summary = "Lấy danh sách loại pin và giá", description = "[ĐÃ CẬP NHẬT] Lấy tất cả loại pin và giá đổi pin tiêu chuẩn")
     public ResponseEntity<Map<String, Object>> getBatteryTypes() {
         try {
-            Double systemPrice = systemPriceService.getCurrentPrice();
-            String priceInfo = systemPriceService.getCurrentPriceInfo();
+            // [SỬA] Lấy giá và thông tin theo PriceType cụ thể
+            SystemPrice.PriceType swapPriceType = SystemPrice.PriceType.BATTERY_SWAP;
+
+            // Lấy đối tượng SystemPrice để có cả giá và mô tả
+            SystemPrice priceObject = systemPriceService.getSystemPriceByType(swapPriceType);
+
+            Double standardSwapPrice = priceObject.getPrice();
+            String priceInfo = String.format("Giá %s: %.0f VND - %s",
+                    swapPriceType.getDisplayName(),
+                    standardSwapPrice,
+                    priceObject.getDescription()
+            );
+
             List<Map<String, Object>> batteryTypes = new ArrayList<>();
 
-            // Tất cả loại pin đều có cùng 1 giá từ SystemPrice
+            // Tất cả loại pin đều có cùng 1 giá (là giá BATTERY_SWAP)
             for (Battery.BatteryType type : Battery.BatteryType.getAllTypes()) {
                 batteryTypes.add(Map.of(
-                    "type", type.name(),
-                    "displayName", type.getDisplayName(),
-                    "price", systemPrice, // Tất cả đều dùng giá thống nhất
-                    "systemRule", "Giá thống nhất cho tất cả loại pin"
+                        "type", type.name(),
+                        "displayName", type.getDisplayName(),
+                        "price", standardSwapPrice, // Tất cả đều dùng giá BATTERY_SWAP
+                        "systemRule", "Áp dụng giá " + swapPriceType.name()
                 ));
             }
 
             return ResponseEntity.ok(Map.of(
-                "success", true,
-                "batteryTypes", batteryTypes,
-                "total", batteryTypes.size(),
-                "systemPrice", systemPrice,
-                "priceInfo", priceInfo,
-                "source", "SystemPrice - Quy luật chung toàn dự án",
-                "rule", "Tất cả loại pin đều sử dụng cùng 1 giá: " + systemPrice + " VND"
+                    "success", true,
+                    "batteryTypes", batteryTypes,
+                    "total", batteryTypes.size(),
+                    "systemPrice", standardSwapPrice,
+                    "priceInfo", priceInfo, // Thông tin mô tả giá
+                    "source", "SystemPrice - Bảng giá linh hoạt",
+                    "rule", "Tất cả loại pin đều sử dụng cùng 1 mã giá: " + swapPriceType.name()
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", "Lỗi lấy danh sách loại pin",
-                "message", e.getMessage()
+                    "success", false,
+                    "error", "Lỗi lấy danh sách loại pin",
+                    "message", e.getMessage()
             ));
         }
     }
@@ -891,6 +905,19 @@ public class BookingController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponseDto(false, "Lỗi xác thực QR: " + e.getMessage()));
+        }
+    }
+    @PutMapping("/{bookingId}/cancel-with-refund")
+    @Operation(summary = "Hủy booking kèm hoàn tiền",
+            description = "Nếu booking đã thanh toán, hệ thống sẽ tự động hoàn tiền VNPay. Nếu chưa thanh toán, chỉ hủy booking.")
+    public ResponseEntity<ApiResponseDto> cancelBookingWithRefund(
+            @PathVariable Long bookingId) {
+        try {
+            Map<String, Object> result = bookingService.cancelBookingWithRefund(bookingId);
+            return ResponseEntity.ok(new ApiResponseDto(true, "Đã hủy booking (và hoàn tiền nếu có)", result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, "Lỗi hủy booking: " + e.getMessage()));
         }
     }
 

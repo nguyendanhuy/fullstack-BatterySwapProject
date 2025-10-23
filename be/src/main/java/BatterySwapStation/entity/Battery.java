@@ -27,6 +27,9 @@ public class Battery {
     @Column(name = "BatteryStatus", nullable = false, length = 50)
     private BatteryStatus batteryStatus = BatteryStatus.AVAILABLE;
 
+    @Column(name = "CurrentCapacity")
+    private Double currentCapacity;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "BatteryType", nullable = false, length = 50)
     private BatteryType batteryType;

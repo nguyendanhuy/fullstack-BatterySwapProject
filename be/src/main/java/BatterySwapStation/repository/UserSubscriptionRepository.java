@@ -36,5 +36,14 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
             @Param("now") LocalDateTime now,
             @Param("futureDate") LocalDateTime futureDate
     );
+
+    /**
+     * * [MỚI] Tìm TẤT CẢ các gói cước (cả active, expired, cancelled)
+     *      * của một user, sắp xếp theo ngày bắt đầu mới nhất.
+     *
+     */
+
+    List<UserSubscription> findByUser_UserIdOrderByStartDateDesc(String userId);
+
 }
 

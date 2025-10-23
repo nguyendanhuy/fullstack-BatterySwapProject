@@ -43,6 +43,8 @@ public class PaymentService {
      */
     @Transactional
     public String createVnPayPaymentUrlByInvoice(VnPayCreatePaymentRequest req, HttpServletRequest http) {
+        log.info("🟢 [CREATE] Bắt đầu tạo URL thanh toán cho invoiceId={}", req.getInvoiceId());
+
         Invoice invoice = invoiceRepository.findById(req.getInvoiceId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn: " + req.getInvoiceId()));
 
@@ -94,15 +96,19 @@ public class PaymentService {
                 .build();
 
         paymentRepository.save(payment);
-        return VnPayUtils.buildPaymentUrl(props.getPayUrl(), params, props.getHashSecret());
-    }
+        String payUrl = VnPayUtils.buildPaymentUrl(props.getPayUrl(), params, props.getHashSecret());
+        log.info("✅ [CREATE DONE] Invoice #{} | TxnRef={} | Amount={} | IP={} | URL={}",
+                invoice.getInvoiceId(), txnRef, amount, ipAddr, payUrl);
 
+        return payUrl;
+    }
     /**
      * 2️⃣ IPN callback (VNPAY → BE)
      * 👉 Xử lý chính thức: cập nhật DB, trạng thái hóa đơn & booking.
      */
     @Transactional
     public Map<String, String> handleVnPayIpn(Map<String, String> query) {
+        log.info("📩 [IPN RECEIVED] {}", query);
         Map<String, String> response = new HashMap<>();
         try {
             Map<String, String> fields = new HashMap<>(query);
@@ -113,32 +119,37 @@ public class PaymentService {
             String signed = VnPayUtils.hmacSHA512(props.getHashSecret(), dataToSign);
 
             if (!signed.equalsIgnoreCase(secureHash)) {
+                log.warn("❌ [IPN] Checksum KHÔNG HỢP LỆ. expected={}, actual={}", signed, secureHash);
                 response.put("RspCode", "97");
                 response.put("Message", "Checksum không hợp lệ");
                 return response;
             }
 
             String txnRef = fields.get("vnp_TxnRef");
+            log.info("🔍 [IPN] txnRef={}", txnRef);
+
             Payment payment = paymentRepository.findByVnpTxnRef(txnRef)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giao dịch"));
 
             long amountFromVnp = Long.parseLong(fields.get("vnp_Amount"));
             if (amountFromVnp != (long) (payment.getAmount() * 100)) {
+                log.warn("⚠️ [IPN] Sai tổng tiền! DB={}, VNPay={}", payment.getAmount(), amountFromVnp);
                 response.put("RspCode", "04");
                 response.put("Message", "Tổng tiền không hợp lệ");
                 return response;
             }
 
             if (payment.getPaymentStatus() != Payment.PaymentStatus.PENDING) {
+                log.info("ℹ️ [IPN] Payment đã xử lý trước đó. status={}", payment.getPaymentStatus());
                 response.put("RspCode", "02");
                 response.put("Message", "Đã xử lý rồi");
                 return response;
             }
 
-            // ✅ fallback nếu sandbox thiếu mã phản hồi
             String respCode = fields.getOrDefault("vnp_ResponseCode", "99");
             String transStatus = fields.getOrDefault("vnp_TransactionStatus", "99");
             boolean success = "00".equals(respCode) && "00".equals(transStatus);
+            log.info("🧾 [IPN] respCode={} | transStatus={} | success={}", respCode, transStatus, success);
 
             payment.setChecksumOk(true);
             payment.setVnpResponseCode(respCode);
@@ -146,10 +157,12 @@ public class PaymentService {
             payment.setVnpTransactionNo(fields.get("vnp_TransactionNo"));
             payment.setVnpBankCode(fields.get("vnp_BankCode"));
             payment.setVnpPayDate(fields.get("vnp_PayDate"));
-            payment.setMessage(VnPayUtils.getVnPayResponseMessage(respCode)); // ✅ thêm dòng này
+            payment.setMessage(VnPayUtils.getVnPayResponseMessage(respCode));
             payment.setPaymentStatus(success ? Payment.PaymentStatus.SUCCESS : Payment.PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
+            log.info("💾 [IPN SAVED] PaymentId={} | status={} | txnNo={} | payDate={}",
+                    payment.getPaymentId(), payment.getPaymentStatus(), payment.getVnpTransactionNo(), payment.getVnpPayDate());
 
             Invoice invoice = payment.getInvoice();
             if (invoice != null) {
@@ -157,13 +170,13 @@ public class PaymentService {
                     invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
                     invoiceRepository.save(invoice);
                     subscriptionService.activateSubscription(invoice);
-
                     if (invoice.getBookings() != null) {
                         for (Booking booking : invoice.getBookings()) {
                             booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING);
                             bookingRepository.save(booking);
                         }
                     }
+                    log.info("✅ [IPN SUCCESS] Invoice #{} marked PAID", invoice.getInvoiceId());
                 } else {
                     invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
                     invoiceRepository.save(invoice);
@@ -173,13 +186,16 @@ public class PaymentService {
                             bookingRepository.save(booking);
                         }
                     }
+                    log.warn("❌ [IPN FAIL] Invoice #{} marked PAYMENTFAILED", invoice.getInvoiceId());
                 }
             }
 
             response.put("RspCode", "00");
             response.put("Message", VnPayUtils.getVnPayResponseMessage(respCode));
             return response;
+
         } catch (Exception e) {
+            log.error("🔥 [IPN ERROR] {}", e.getMessage(), e);
             response.put("RspCode", "99");
             response.put("Message", "Lỗi xử lý IPN: " + e.getMessage());
             return response;
@@ -191,6 +207,8 @@ public class PaymentService {
      */
     @Transactional
     public Map<String, Object> handleVnPayReturn(Map<String, String> query) {
+        log.info("📩 [RETURN RECEIVED] {}", query);
+
         Map<String, Object> result = new HashMap<>();
         Map<String, String> fields = new HashMap<>(query);
 
@@ -205,9 +223,18 @@ public class PaymentService {
         String txnRef = query.get("vnp_TxnRef");
         boolean success = checksumOk && "00".equals(respCode);
 
+        log.info("🔍 [RETURN VALIDATION] txnRef={} | checksumOk={} | respCode={} | success={}",
+                txnRef, checksumOk, respCode, success);
+
+        // 🔹 Nếu người dùng HỦY giao dịch (respCode=24)
         if (checksumOk && "24".equals(respCode)) {
             paymentRepository.findByVnpTxnRef(txnRef).ifPresent(payment -> {
                 if (payment.getPaymentStatus() == Payment.PaymentStatus.PENDING) {
+
+                    // 🔧 Lưu thông tin VNPAY vào DB
+                    updateVnpFields(payment, query);
+                    payment.setChecksumOk(checksumOk);
+                    payment.setMessage("Khách hàng hủy giao dịch.");
                     payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
                     paymentRepository.save(payment);
 
@@ -215,7 +242,6 @@ public class PaymentService {
                     if (invoice != null) {
                         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
                         invoiceRepository.save(invoice);
-
                         if (invoice.getBookings() != null) {
                             for (Booking booking : invoice.getBookings()) {
                                 booking.setBookingStatus(Booking.BookingStatus.FAILED);
@@ -223,8 +249,21 @@ public class PaymentService {
                             }
                         }
                     }
+                    log.warn("⚠️ [RETURN CANCELLED] txnRef={} - User cancelled payment.", txnRef);
                 }
             });
+        }
+
+        // 🔹 Tạo message trả về FE
+        String message = VnPayUtils.getVnPayResponseMessage(respCode);
+        if (message == null || message.isBlank()) {
+            if ("24".equals(respCode)) {
+                message = "Khách hàng hủy giao dịch.";
+            } else if ("07".equals(respCode)) {
+                message = "Giao dịch bị từ chối (do nghi ngờ gian lận hoặc lỗi hệ thống).";
+            } else {
+                message = "Giao dịch không thành công.";
+            }
         }
 
         result.put("success", success);
@@ -232,8 +271,17 @@ public class PaymentService {
         result.put("vnp_Amount", query.get("vnp_Amount"));
         result.put("vnp_TxnRef", txnRef);
         result.put("vnp_ResponseCode", respCode);
-        result.put("message", VnPayUtils.getVnPayResponseMessage(respCode));
+        result.put("message", message);
+
+        log.info("📤 [RETURN RESULT] txnRef={} | success={} | message={}", txnRef, success, result.get("message"));
         return result;
+    }
+    private void updateVnpFields(Payment payment, Map<String, String> query) {
+        payment.setVnpBankCode(query.get("vnp_BankCode"));
+        payment.setVnpTransactionNo(query.get("vnp_TransactionNo"));
+        payment.setVnpPayDate(query.get("vnp_PayDate"));
+        payment.setVnpResponseCode(query.get("vnp_ResponseCode"));
+        payment.setVnpTransactionStatus(query.get("vnp_TransactionStatus"));
     }
 
     @Transactional

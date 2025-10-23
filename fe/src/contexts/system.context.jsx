@@ -3,17 +3,8 @@ import { createContext, useState } from "react";
 export const SystemContext = createContext(null);
 
 export const SystemProvider = (props) => {
-    const [userData, setUserData] = useState(
-        {
-            phone: "",
-            email: "",
-            fullName: "",
-            role: "",
-            userId: "",
-        });
-    const [userVehicles, setUserVehicles] = useState(
-        {}
-    );
+    const [userData, setUserData] = useState({});
+    const [userVehicles, setUserVehicles] = useState([]);
     const value = { userData, setUserData, userVehicles, setUserVehicles };
     console.log(">>> check userData in SystemProvider: ", userData);
     console.log(">>> check userVehicles in SystemProvider: ", userVehicles);

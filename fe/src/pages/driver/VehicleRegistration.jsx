@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Car, ArrowLeft, Battery, CheckCircle, Star, Home, X, Eye
+  Car, Battery, CheckCircle, Star, Eye
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { getVehicleInfoByVin, registerVehicleByVin } from "@/services/axios.services";
-import { deactivateVehicleByVin, viewUserVehicles } from "../../services/axios.services";
+import { deactivateVehicleByVin, getUserAllVehicles } from "../../services/axios.services";
+import { SystemContext } from "../../contexts/system.context";
 
 // Dialog xác nhận xóa đăng ký xe
 import {
@@ -25,10 +26,9 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { SystemContext } from "../../contexts/system.context";
 
 export default function VehicleRegistration() {
-  const { userData } = useContext(SystemContext);
+  const { userData, userVehicles, setUserVehicles } = useContext(SystemContext);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -44,64 +44,46 @@ export default function VehicleRegistration() {
     userId: "",
   });
 
-  // State tra cứu VIN & đăng ký
   const [checkingVin, setCheckingVin] = useState(false);
   const [lastQueriedVin, setLastQueriedVin] = useState("");
   const [isAlreadyActive, setIsAlreadyActive] = useState(false); // BE active: true
   const [canRegister, setCanRegister] = useState(false); // chỉ true khi tra cứu VIN OK
 
-  // State hiển thị & hủy xe
   const [registeredVehicles, setRegisteredVehicles] = useState([]);
 
   useEffect(() => {
-    loadUserVehicles();
-  }, []);
+    // userVehicles được fetch tự động bởi AuthProvider khi có token
+    // Chỉ cần đồng bộ vào state local
+    if (userVehicles && Array.isArray(userVehicles)) {
+      setRegisteredVehicles(userVehicles);
+    } else {
+      setRegisteredVehicles([]);
+    }
+  }, [userVehicles]);
 
   // Kiểm tra VIN hợp lệ (17 ký tự, không chứa I, O, Q)
   const isValidVin = (vin) => /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
 
-  const loadUserVehicles = async () => {
-    const res = await viewUserVehicles();
-    if (res) {
-      setRegisteredVehicles(res);
-    } else if (res?.error) {
-      toast({
-        title: "Lỗi gọi hiển thị xe",
-        description: JSON.stringify(res.error),
-        variant: "destructive",
-      });
-    }
-  };
+  const pickApiMessage = (res) =>
+    res?.messages?.auth ||
+    res?.messages?.business ||
+    res?.error ||
+    'Vui lòng kiểm tra lại.';
 
-  // Helper lấy thông điệp lỗi (rút gọn 1 tham số)
-  const pickApiMessage = (p) =>
-    p?.messages?.auth ??
-    p?.messages?.business ??
-    p?.error ??
-    (typeof p?.status === "number"
-      ? `Lỗi ${p.status}`
-      : typeof p?.code === "number"
-        ? `Lỗi ${p.code}`
-        : "Đã xảy ra lỗi không xác định");
+  const isErrorResponse = (res) =>
+    (typeof res?.status === 'number' && res?.status >= 400) ||
+    !!res?.error ||
+    !!res?.messages?.auth ||
+    !!res?.messages?.business;
 
   const lookupVin = async (vin) => {
     try {
       setCheckingVin(true);
       const res = await getVehicleInfoByVin(vin);
-      const payload = res;
-      const httpStatus = payload?.status;
 
-      console.log("payload :", payload);
-      // Lỗi
-      const isError =
-        (typeof httpStatus === "number" && httpStatus >= 400) ||
-        !!payload?.error ||
-        !!payload?.messages?.auth ||
-        !!payload?.messages?.business;
+      console.log("Vin Information :", vin, res);
 
-      if (isError) {
-        const msg = pickApiMessage(payload);
-        // Xóa toàn bộ thông tin tự nhận (giữ nguyên VIN người dùng đã nhập)
+      if (isErrorResponse(res)) {
         setFormData((prev) => ({
           ...prev,
           ownername: "",
@@ -117,25 +99,25 @@ export default function VehicleRegistration() {
         setIsAlreadyActive(false);
         setCanRegister(false);
         setLastQueriedVin("");
-        toast({ title: "Tra cứu VIN thất bại", description: msg, variant: "destructive" });
+        toast({ title: "Tra cứu VIN thất bại", description: pickApiMessage(res), variant: "destructive" });
         return;
       }
 
       // Thành công
-      const activeFlag = (payload?.active !== false) || (payload?.userId != null);
+      const activeFlag = (res?.active !== false) || (res?.userId != null);
 
 
       setFormData((prev) => ({
         ...prev,
-        vehicleType: payload?.vehicleType,
-        batteryType: payload?.batteryType,
-        batteryCount: payload?.batteryCount,
-        color: payload?.color,
-        manufactureYear: payload?.manufactureYear,
-        purchaseDate: payload?.purchaseDate,
-        licensePlate: payload?.licensePlate,
-        ownername: payload?.ownerName ?? payload?.ownername,
-        userId: payload?.userId,
+        vehicleType: res?.vehicleType,
+        batteryType: res?.batteryType,
+        batteryCount: res?.batteryCount,
+        color: res?.color,
+        manufactureYear: res?.manufactureYear,
+        purchaseDate: res?.purchaseDate,
+        licensePlate: res?.licensePlate,
+        ownername: res?.ownerName ?? res?.ownername,
+        userId: res?.userId,
       }));
       setIsAlreadyActive(activeFlag);
       setLastQueriedVin(vin);
@@ -185,29 +167,36 @@ export default function VehicleRegistration() {
 
     try {
       const res = await registerVehicleByVin(vin);
-      const payload = res;
-      const httpStatus = payload?.status;
 
-      const isError =
-        (typeof httpStatus === "number" && httpStatus >= 400) ||
-        !!payload?.error ||
-        !!payload?.messages?.auth ||
-        !!payload?.messages?.business;
 
-      if (isError) {
-        const msg = pickApiMessage(payload);
-        toast({ title: "Đăng ký xe thất bại", description: msg, variant: "destructive" });
+      if (isErrorResponse(res)) {
+        toast({ title: "Đăng ký xe thất bại", description: pickApiMessage(res), variant: "destructive" });
         return;
       }
 
       toast({
         title: "Đăng ký xe thành công!",
-        description: payload?.messages?.success || payload?.message || "Xe đã được đăng ký vào hệ thống.",
+        description: res?.messages?.success || res?.message || "Xe đã được đăng ký vào hệ thống.",
         className: "bg-green-500 text-white",
       });
 
-      await loadUserVehicles();
-      if (payload?.active === true) setIsAlreadyActive(true);
+      // ✅ Reload lại danh sách xe và cập nhật context
+      try {
+        const updatedVehicles = await getUserAllVehicles();
+
+        if (isErrorResponse(updatedVehicles)) {
+          toast({ title: "Đăng ký xe thất bại", description: pickApiMessage(updatedVehicles), variant: "destructive" });
+          return;
+        }
+
+        if (updatedVehicles && Array.isArray(updatedVehicles)) {
+          setUserVehicles(updatedVehicles);
+        }
+      } catch (err) {
+        console.error("Lỗi khi reload danh sách xe:", err);
+      }
+
+      if (res?.active === true) setIsAlreadyActive(true);
 
       setFormData({
         vin: "",
@@ -224,23 +213,17 @@ export default function VehicleRegistration() {
       setLastQueriedVin("");
       setCanRegister(false);
     } catch (err) {
-      const d = err?.response?.data;
-      const msg = pickApiMessage(d);
-      toast({ title: "Đăng ký xe thất bại", description: msg, variant: "destructive" });
+      toast({ title: "Đăng ký xe thất bại", description: err?.message || "Vui lòng thử lại sau", variant: "destructive" });
     }
   };
 
   const handleUnregisterVehicle = async (vehicleID) => {
     try {
       const res = await deactivateVehicleByVin(vehicleID);
-      const isError =
-        !!res?.error ||
-        !!res?.messages?.auth ||
-        !!res?.messages?.business;
 
-      if (isError) {
-        const msg = pickApiMessage(res);
-        toast({ title: "Xóa xe thất bại", description: msg, variant: "destructive" });
+
+      if (isErrorResponse(res)) {
+        toast({ title: "Xóa xe thất bại", description: pickApiMessage(res), variant: "destructive" });
         return;
       }
 
@@ -249,11 +232,23 @@ export default function VehicleRegistration() {
         description: res?.messages?.success || res?.message || "Xe đã được hủy đăng ký.",
         className: "bg-green-500 text-white",
       });
-      await loadUserVehicles();
+
+      // ✅ Reload lại danh sách xe và cập nhật context
+      try {
+        const updatedVehicles = await getUserAllVehicles();
+        if (isErrorResponse(updatedVehicles)) {
+          toast({ title: "Đăng ký xe thất bại", description: pickApiMessage(updatedVehicles), variant: "destructive" });
+          return;
+        }
+
+        if (updatedVehicles && Array.isArray(updatedVehicles)) {
+          setUserVehicles(updatedVehicles);
+        }
+      } catch (err) {
+        console.error("Lỗi khi reload danh sách xe:", err);
+      }
     } catch (err) {
-      const d = err?.response?.data;
-      const msg = pickApiMessage(d);
-      toast({ title: "Xóa xe thất bại", description: msg, variant: "destructive" });
+      toast({ title: "Xóa xe thất bại", description: err?.message || "Vui lòng thử lại sau", variant: "destructive" });
     }
   };
 
@@ -459,7 +454,7 @@ export default function VehicleRegistration() {
                     Xe đã đăng ký
                   </div>
                   <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                    {registeredVehicles.length}/3
+                    {registeredVehicles?.length || 0}/3
                   </span>
                 </CardTitle>
               </CardHeader>

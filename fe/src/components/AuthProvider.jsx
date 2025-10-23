@@ -1,9 +1,9 @@
 import { useContext, useEffect, useState } from "react";
 import { SystemContext } from "../contexts/system.context";
-import { getInfoByToken } from "../services/axios.services";
+import { getInfoByToken, getUserAllVehicles } from "../services/axios.services";
 
 const AuthProvider = ({ children }) => {
-    const { userData, setUserData } = useContext(SystemContext);
+    const { userData, setUserData, setUserVehicles } = useContext(SystemContext);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -20,7 +20,22 @@ const AuthProvider = ({ children }) => {
             if (token) {
                 const res = await getInfoByToken();
                 if (res) {
-                    setUserData(res);
+                    // Nếu là DRIVER, fetch song song userData và vehicles
+                    if (res.role === "DRIVER") {
+                        try {
+                            const vehicles = await getUserAllVehicles();
+                            setUserData(res);
+                            if (vehicles && Array.isArray(vehicles)) {
+                                setUserVehicles(vehicles);
+                            }
+                        } catch (err) {
+                            console.error("Error fetching user vehicles:", err);
+                            setUserData(res); // Vẫn set userData dù vehicles lỗi
+                        }
+                    } else {
+                        // Không phải DRIVER, chỉ set userData
+                        setUserData(res);
+                    }
                 }
             }
         } catch (error) {

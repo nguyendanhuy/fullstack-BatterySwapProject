@@ -38,7 +38,7 @@ const registerVehicleByVin = (vin) => {
     if (!vin) throw new Error("VIN is required");
     return axios.post(`/v1/vehicles/assign`, { vin });
 }
-const viewUserVehicles = () => {
+const getUserAllVehicles = () => {
     return axios.get("/v1/vehicles/my-vehicles");
 }
 const deactivateVehicleByVin = (vin) => {
@@ -113,7 +113,7 @@ export {
     getInfoByToken,
     registerVehicleByVin,
     getVehicleInfoByVin,
-    viewUserVehicles,
+    getUserAllVehicles,
     deactivateVehicleByVin,
     getAllStations,
     getStationNearbyLocation,

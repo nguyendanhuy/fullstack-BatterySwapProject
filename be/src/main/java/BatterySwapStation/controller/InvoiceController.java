@@ -2,6 +2,7 @@ package BatterySwapStation.controller;
 
 import BatterySwapStation.dto.ApiResponseDto;
 import BatterySwapStation.dto.InvoiceSimpleResponseDTO;
+import BatterySwapStation.entity.SystemPrice;
 import BatterySwapStation.repository.InvoiceRepository;
 import BatterySwapStation.service.InvoiceService;
 import BatterySwapStation.entity.Invoice;
@@ -13,7 +14,9 @@ import BatterySwapStation.service.SystemPriceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -148,6 +151,7 @@ public class InvoiceController {
     public ResponseEntity<Map<String, Object>> createInvoiceFromBatteries(
             @RequestParam @Parameter(description = "ID của user") String userId,
             @RequestBody List<String> batteryIds) {
+
         try {
             if (batteryIds == null || batteryIds.isEmpty()) {
                 Map<String, Object> errorResponse = new HashMap<>();
@@ -156,12 +160,13 @@ public class InvoiceController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            // ✅ BƯỚC 2: Lấy giá cố định (15.000) từ service
-            double standardSwapPrice = systemPriceService.getCurrentPrice();
+            // ✅ BƯỚC 2: [ĐÃ SỬA] Lấy giá đổi pin tiêu chuẩn (logic mới)
+            double standardSwapPrice = systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
 
             // Tính tổng tiền từ danh sách pin
             double totalAmount = 0.0;
             List<Map<String, Object>> batteryDetails = new ArrayList<>();
+            List<Battery> batteriesToUpdate = new ArrayList<>(); // <-- TỐI ƯU HÓA: Tạo list chờ
 
             for (String batteryId : batteryIds) {
                 // Lấy battery thực tế từ database
@@ -173,34 +178,41 @@ public class InvoiceController {
                     throw new RuntimeException("Pin " + batteryId + " không khả dụng");
                 }
 
-                // ✅ BƯỚC 3: SỬA LỖI TẠI ĐÂY
-                // Tính tiền cho pin - SỬ DỤNG GIÁ CỐ ĐỊNH LẤY TỪ SERVICE
-                double batteryAmount = standardSwapPrice; // Thay thế cho battery.getCalculatedPrice()
-                totalAmount += batteryAmount;
+                // Tính tiền cho pin - SỬ DỤNG GIÁ CỐ ĐỊNH
+                totalAmount += standardSwapPrice;
 
-                // Cập nhật trạng thái pin sang IN_USE
+                // ⚠️ CẢNH BÁO LOGIC:
+                // Việc set IN_USE ở đây rất nguy hiểm. Nếu user tạo invoice
+                // nhưng không thanh toán (bị timeout), pin này sẽ bị kẹt
+                // ở trạng thái IN_USE. Bạn nên xem xét lại logic này.
                 battery.setBatteryStatus(Battery.BatteryStatus.IN_USE);
-                batteryRepository.save(battery);
+                batteriesToUpdate.add(battery); // <-- TỐI ƯU HÓA: Thêm vào list, chưa save
 
                 // Thêm thông tin pin thực tế
                 Map<String, Object> batteryInfo = new HashMap<>();
                 batteryInfo.put("batteryId", battery.getBatteryId());
                 batteryInfo.put("batteryType", battery.getBatteryType().toString());
-                batteryInfo.put("price", batteryAmount); // <--- Dùng giá cố định
+                batteryInfo.put("price", standardSwapPrice); // <--- Dùng giá cố định
                 batteryInfo.put("stationId", battery.getStationId());
                 batteryDetails.add(batteryInfo);
             }
+
+            // ✅ TỐI ƯU HÓA: Cập nhật trạng thái tất cả pin 1 LẦN
+            batteryRepository.saveAll(batteriesToUpdate);
 
             // Tạo invoice
             Invoice invoice = new Invoice();
             invoice.setUserId(userId);
             invoice.setTotalAmount(totalAmount);
-            // Tính giá trung bình
-            invoice.setPricePerSwap(totalAmount / batteryIds.size());
-            // Số lượng swap (pin)
-            invoice.setNumberOfSwaps(batteryIds.size());
-            invoice.setCreatedDate(java.time.LocalDate.now());
 
+            // ✅ SỬA LOGIC: Gán giá chuẩn cho 'pricePerSwap'
+            // (Thay vì 'totalAmount / batteryIds.size()')
+            invoice.setPricePerSwap(standardSwapPrice);
+
+            invoice.setNumberOfSwaps(batteryIds.size());
+            invoice.setCreatedDate(java.time.LocalDateTime.now());
+
+            // Gọi service (đã sửa) để lưu invoice (sẽ không bị lỗi số 0)
             Invoice savedInvoice = invoiceService.createInvoice(invoice);
 
             // Trả về response đơn giản
@@ -211,7 +223,7 @@ public class InvoiceController {
             response.put("totalAmount", savedInvoice.getTotalAmount());
             response.put("pricePerSwap", savedInvoice.getPricePerSwap());
             response.put("numberOfSwaps", savedInvoice.getNumberOfSwaps());
-            response.put("status", "PENDING");
+            response.put("status", savedInvoice.getInvoiceStatus().toString()); // Lấy status từ DB
             response.put("batteriesCount", batteryIds.size());
             response.put("message", "Invoice được tạo thành công");
 
@@ -294,22 +306,83 @@ public class InvoiceController {
      * API để lọc Invoices theo trạng thái
      * Ví dụ: GET /api/invoices/status/PAID
      * GET /api/invoices/status/PENDING
+     * GET /api/invoices/status/PAYMENTFAILED
      */
     @GetMapping("/status/{status}")
-    // ✅ CẬP NHẬT MÔ TẢ
-    @Operation(summary = "Lọc hóa đơn theo trạng thái", description = "Lấy danh sách hóa đơn theo trạng thái (PENDING hoặc PAID)")
+    @Operation(
+            summary = "Lọc hóa đơn theo trạng thái",
+            description = "Lấy danh sách hóa đơn theo trạng thái (PENDING, PAID, PAYMENTFAILED)"
+    )
     public ResponseEntity<?> getInvoicesByStatus(
-            @Parameter(description = "Trạng thái cần lọc (PENDING, PAID)") @PathVariable String status) {
+            @Parameter(description = "Trạng thái cần lọc (PENDING, PAID, PAYMENTFAILED)")
+            @PathVariable String status) {
 
         try {
+            // Gọi service (service sẽ throw IllegalArgumentException nếu status không hợp lệ)
             List<InvoiceSimpleResponseDTO> invoices = invoiceService.getInvoicesByStatus(status);
+
+            // Kiểm tra kết quả
             if (invoices.isEmpty()) {
-                return ResponseEntity.noContent().build(); // 204
+                //  Status hợp lệ nhưng không có invoice
+                return ResponseEntity.ok(new ApiResponseDto(
+                        true,
+                        String.format("Không tìm thấy hóa đơn nào có trạng thái '%s'", status.toUpperCase()),
+                        new ArrayList<>()
+                ));
             }
-            return ResponseEntity.ok(invoices);
+
+            //  Có invoice
+            return ResponseEntity.ok(new ApiResponseDto(
+                    true,
+                    String.format("Tìm thấy %d hóa đơn có trạng thái '%s'", invoices.size(), status.toUpperCase()),
+                    invoices
+            ));
+
         } catch (IllegalArgumentException e) {
-            // Bắt lỗi (ví dụ: user nhập "CANCELLED")
-            return ResponseEntity.badRequest().body(new ApiResponseDto(false, e.getMessage()));
+            //  Status không hợp lệ (service đã throw)
+            return ResponseEntity.badRequest().body(new ApiResponseDto(
+                    false,
+                    e.getMessage()
+            ));
+        } catch (Exception e) {
+            //  Lỗi khác
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDto(
+                    false,
+                    "Lỗi hệ thống: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * API để người dùng chủ động hủy một invoice PENDING
+     * Ví dụ: POST /api/invoices/10028/cancel
+     */
+    @PostMapping("/{id}/cancel")
+    @Operation(summary = "Hủy Invoice (cho User)",
+            description = "Cho phép người dùng hủy một invoice đang ở trạng thái PENDING. " +
+                    "Tất cả booking và payment liên quan sẽ bị hủy theo.")
+    public ResponseEntity<ApiResponseDto> cancelInvoice(
+            @Parameter(description = "ID của invoice cần hủy") @PathVariable("id") Long invoiceId) {
+
+        try {
+            // Gọi service
+            invoiceService.userCancelInvoice(invoiceId);
+
+            return ResponseEntity.ok(new ApiResponseDto(
+                    true,
+                    "Invoice ID " + invoiceId + " và các booking liên quan đã được hủy thành công."
+            ));
+
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponseDto(false, e.getMessage()));
+        } catch (IllegalStateException e) {
+            // Bắt lỗi (ví dụ: "Invoice đã được thanh toán")
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponseDto(false, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponseDto(false, "Lỗi máy chủ: " + e.getMessage()));
         }
     }
 }

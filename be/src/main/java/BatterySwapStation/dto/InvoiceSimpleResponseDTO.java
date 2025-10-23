@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -16,7 +17,7 @@ public class InvoiceSimpleResponseDTO {
 
     private Long invoiceId;
     private String userId;
-    private LocalDate createdDate;
+    private LocalDateTime createdDate;
     private Double totalAmount;
     private Double pricePerSwap;
     private Integer numberOfSwaps;

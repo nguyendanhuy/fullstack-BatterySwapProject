@@ -1,20 +1,21 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.BookingRequest;
-import BatterySwapStation.dto.BookingResponse;
-import BatterySwapStation.dto.CancelBookingRequest;
-import BatterySwapStation.dto.FlexibleBatchBookingRequest;
+import BatterySwapStation.dto.*;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import BatterySwapStation.repository.InvoiceRepository;
+import BatterySwapStation.repository.UserSubscriptionRepository;
+import BatterySwapStation.entity.UserSubscription; // ✅ THÊM IMPORT NÀY
+import BatterySwapStation.entity.SubscriptionPlan; // ✅ THÊM IMPORT NÀY
 import BatterySwapStation.entity.Invoice;
+import BatterySwapStation.entity.User;
 
+import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -25,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@RequiredArgsConstructor // (Giữ nguyên nếu bạn đang dùng)
+@Slf4j
 public class BookingService {
 
     private final BookingRepository bookingRepository;
@@ -35,29 +38,9 @@ public class BookingService {
     private final InvoiceService invoiceService;
     private final InvoiceRepository invoiceRepository;
     private final ObjectMapper objectMapper;
+    private final UserSubscriptionRepository userSubscriptionRepository;
 
 
-    // 2. TẠO CONSTRUCTOR ĐỂ TIÊM TẤT CẢ
-    @Autowired
-    public BookingService(BookingRepository bookingRepository,
-                          UserRepository userRepository,
-                          StationRepository stationRepository,
-                          VehicleRepository vehicleRepository,
-                          SystemPriceService systemPriceService,
-                          InvoiceService invoiceService, // <--- Lỗi sẽ hết sau Bước 1
-                          InvoiceRepository invoiceRepository,
-                          ObjectMapper objectMapper) {
-
-        // 3. GÁN GIÁ TRỊ
-        this.bookingRepository = bookingRepository;
-        this.userRepository = userRepository;
-        this.stationRepository = stationRepository;
-        this.vehicleRepository = vehicleRepository;
-        this.systemPriceService = systemPriceService;
-        this.invoiceService = invoiceService;
-        this.invoiceRepository = invoiceRepository;
-        this.objectMapper = objectMapper;
-    }
 
     /**
      * Tạo đặt chỗ mới (giới hạn tối đa 1 xe, chỉ 1 trạm, ngày trong 2 ngày, khung giờ hợp lệ)
@@ -122,18 +105,8 @@ public class BookingService {
         if (request.getTimeSlot() == null) {
             throw new IllegalArgumentException("Bạn phải chọn khung giờ.");
         }
+        // Chuyển đổi String sang LocalTime (Giữ nguyên)
         LocalTime timeSlot = LocalTime.parse(request.getTimeSlot(), DateTimeFormatter.ofPattern("HH:mm"));
-
-        // [ĐÃ XÓA] - Logic cũ: Kiểm tra người dùng đã có đặt chỗ đang hoạt động chưa
-        // LocalDate currentDate = LocalDate.now();
-        // if (bookingRepository.existsActiveBookingForUserByDate(user, currentDate)) {
-        //    throw new IllegalStateException("Bạn đã có một lượt đặt pin đang hoạt động.");
-        // }
-
-        // [ĐÃ XÓA] - Logic cũ: Kiểm tra khung giờ đã được đặt chưa (1 slot = 1 booking)
-        // if (bookingRepository.existsBookingAtTimeSlot(station, request.getBookingDate(), timeSlot)) {
-        //    throw new IllegalStateException("Khung giờ này đã có người đặt trước.");
-        // }
 
         // Kiểm tra trùng lặp booking (Giữ nguyên)
         if (bookingRepository.existsDuplicateBooking(user, vehicle, station, request.getBookingDate(), timeSlot)) {
@@ -145,7 +118,6 @@ public class BookingService {
         if (requestedBatteryCount == null) {
             requestedBatteryCount = vehicle.getBatteryCount();
         }
-        // (Giữ nguyên các kiểm tra requestedBatteryCount...)
 
 
         // ========== [LOGIC MỚI] - KIỂM TRA CÔNG SUẤT TRẠM ==========
@@ -161,10 +133,6 @@ public class BookingService {
         }
 
         // 2. Lấy tổng công suất của trạm
-        // ⚠️ LƯU Ý QUAN TRỌNG: Tôi đang giả định trạm có phương thức station.getCapacity()
-        // Bạn vui lòng cung cấp file 'Station.java' hoặc thay thế
-        // station.getCapacity() bằng tên trường/phương thức đúng của bạn
-        // (ví dụ: station.getTotalSlots() hoặc station.getAvailableSlots())
         Integer stationCapacity = station.getDocks().size(); // <--- ĐÃ SỬA
 
         // 3. Kiểm tra
@@ -179,9 +147,50 @@ public class BookingService {
         }
         // =============================================================
 
-        // Tính giá theo systemPrice (Giữ nguyên)
-        Double basePrice = systemPriceService.getCurrentPrice();
-        Double bookingAmount = basePrice * requestedBatteryCount.doubleValue();
+        // ========== [SỬA ĐỔI] - TÍNH GIÁ DỰA TRÊN GÓI CƯỚC (SUBSCRIPTION) ==========
+
+        // 1. Lấy giá đổi pin tiêu chuẩn (15000)
+        Double standardSwapPrice = systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
+        Double finalBookingPrice = standardSwapPrice * requestedBatteryCount.doubleValue(); // Giá mặc định
+        boolean isFreeSwap = false; // Cờ (flag) để theo dõi
+        Optional<UserSubscription> activeSub = Optional.empty(); // Biến để lưu sub
+
+        // 2. KIỂM TRA SUBSCRIPTION CỦA USER (user object đã được lấy từ vehicle)
+        activeSub = userSubscriptionRepository.findActiveSubscriptionForUser(
+                user.getUserId(),
+                UserSubscription.SubscriptionStatus.ACTIVE,
+                LocalDateTime.now()
+        );
+
+        if (activeSub.isPresent()) {
+            // User này CÓ gói cước!
+            log.info("User {} có gói cước ACTIVE. Đang kiểm tra quyền lợi...", user.getUserId());
+            UserSubscription sub = activeSub.get();
+            SubscriptionPlan plan = sub.getPlan();
+
+            int limit = (plan.getSwapLimit() == null || plan.getSwapLimit() < 0) ? -1 : plan.getSwapLimit();
+            int used = sub.getUsedSwaps();
+
+            // 3. Kiểm tra giới hạn (Limit)
+            if (limit == -1) {
+                // Gói KHÔNG GIỚI HẠN
+                log.info("User {} dùng gói KHÔNG GIỚI HẠN. Áp dụng miễn phí.", user.getUserId());
+                finalBookingPrice = 0.0; // Miễn phí!
+                isFreeSwap = true;
+
+            } else if (used + requestedBatteryCount <= limit) {
+                // Gói CÓ GIỚI HẠN, và còn đủ lượt
+                log.info("User {} còn {}/{} lượt. Áp dụng miễn phí.", user.getUserId(), (limit - used), limit);
+                finalBookingPrice = 0.0; // Miễn phí!
+                isFreeSwap = true;
+
+            } else {
+                // Gói CÓ GIỚI HẠN, nhưng đã VƯỢT QUÁ
+                log.warn("User {} đã hết {}/{} lượt. Tính phí {} VND cho booking này.",
+                        user.getUserId(), used, limit, finalBookingPrice);
+                // Không làm gì, 'finalBookingPrice' vẫn là giá 15k
+            }
+        }
 
         // Lấy vehicleType từ vehicle (Giữ nguyên)
         String vehicleTypeStr = vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : "UNKNOWN";
@@ -192,13 +201,13 @@ public class BookingService {
             batteryTypeStr = vehicle.getBatteryType() != null ? vehicle.getBatteryType().toString() : "UNKNOWN";
         }
 
-        // Tạo đặt chỗ mới (Giữ nguyên)
+        // Tạo đặt chỗ mới
         Booking booking = Booking.builder()
                 .user(user)
                 .station(station)
                 .vehicle(vehicle)
                 .vehicleType(vehicleTypeStr)
-                .amount(bookingAmount)
+                .amount(finalBookingPrice) // ✅ [SỬA] Dùng giá cuối cùng (0đ hoặc 15k)
                 .bookingDate(request.getBookingDate())
                 .timeSlot(timeSlot)
                 .batteryType(batteryTypeStr)
@@ -208,13 +217,41 @@ public class BookingService {
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Tạo thông báo (GiVũ nguyên)
+        // ========== [THÊM MỚI] - CẬP NHẬT SỐ LƯỢT ĐÃ DÙNG (NẾU MIỄN PHÍ) ==========
+        if (isFreeSwap && activeSub.isPresent()) {
+            UserSubscription sub = activeSub.get();
+            sub.setUsedSwaps(sub.getUsedSwaps() + requestedBatteryCount);
+            userSubscriptionRepository.save(sub);
+
+            String limitStr = (sub.getPlan().getSwapLimit() == null || sub.getPlan().getSwapLimit() < 0)
+                    ? "Không giới hạn"
+                    : String.valueOf(sub.getPlan().getSwapLimit());
+
+            log.info("User {} đã sử dụng {}/{} lượt. (Booking #{})",
+                    user.getUserId(), sub.getUsedSwaps(),
+                    limitStr,
+                    savedBooking.getBookingId());
+        }
+        // =======================================================================
+
+        // Tạo thông báo (Giữ nguyên)
         BookingResponse response = convertToResponse(savedBooking);
-        String createMessage = String.format(
-                "Booking #%d được tạo thành công! Tổng tiền: %.0f VND",
-                savedBooking.getBookingId(),
-                savedBooking.getAmount()
-        );
+
+
+        // [SỬA] Thông báo linh hoạt
+        String createMessage;
+        if(isFreeSwap) {
+            createMessage = String.format(
+                    "Booking #%d (Gói cước) được tạo thành công! Tổng tiền: MIỄN PHÍ",
+                    savedBooking.getBookingId()
+            );
+        } else {
+            createMessage = String.format(
+                    "Booking #%d được tạo thành công! Tổng tiền: %.0f VND",
+                    savedBooking.getBookingId(),
+                    savedBooking.getAmount()
+            );
+        }
         response.setMessage(createMessage);
         response.setBatteryCount(savedBooking.getBatteryCount());
 
@@ -806,7 +843,8 @@ public class BookingService {
             }
 
             // Verify số tiền thanh toán có đúng không
-            Double expectedAmount = systemPriceService.getCurrentPrice() * request.getQuantity();
+            Double swapPrice = systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
+            Double expectedAmount = swapPrice * request.getQuantity();
             if (!expectedAmount.equals(request.getPaidAmount())) {
                 throw new IllegalArgumentException("Số tiền thanh toán không đúng. Mong đợi: " + expectedAmount + ", Nhận được: " + request.getPaidAmount());
             }
@@ -986,7 +1024,10 @@ public class BookingService {
         response.setBookingStatus(booking.getBookingStatus().name());
         response.setAmount(booking.getAmount());
         response.setBookingDate(booking.getBookingDate());
-        response.setTimeSlot(booking.getTimeSlot());
+        // Chuyển đổi LocalTime (ví dụ: 14:30:00) về String (ví dụ: "14:30")
+        if (booking.getTimeSlot() != null) {
+            response.setTimeSlot(LocalTime.parse(booking.getTimeSlot().format(DateTimeFormatter.ofPattern("HH:mm"))));
+        }
 
         // Thông tin user
         if (booking.getUser() != null) {
@@ -1017,23 +1058,52 @@ public class BookingService {
         response.setCancellationReason(booking.getCancellationReason());
         response.setCompletedTime(booking.getCompletedTime());
 
-        // Thông tin hóa đơn
-        if (booking.getInvoice() != null) {
-            response.setInvoiceId(String.valueOf(booking.getInvoice().getInvoiceId())); // Convert Long to String
+        // ✅ [THAY THẾ] Lấy thông tin thanh toán (Dùng DTO PaymentInfo)
+        if (booking.getInvoice() != null && booking.getInvoice().getPayments() != null) {
+
+            // (Logic tìm 'paymentToShow' giữ nguyên...)
+            Payment paymentToShow = booking.getInvoice().getPayments().stream()
+                    .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS)
+                    .findFirst()
+                    .orElse(
+                            booking.getInvoice().getPayments().stream()
+                                    .max(Comparator.comparing(Payment::getCreatedAt)) // Giả sử có hàm getCreatedAt()
+                                    .orElse(null)
+                    );
+
+            if (paymentToShow != null) {
+
+                // ✅ [SỬA] Chuyển đổi sang DTO PaymentInfo (theo DTO bạn vừa gửi)
+                BookingResponse.PaymentInfo paymentInfoDTO = new BookingResponse.PaymentInfo();
+
+                paymentInfoDTO.setPaymentId(paymentToShow.getPaymentId()); // Giả sử có hàm getId()
+                paymentInfoDTO.setPaymentMethod(paymentToShow.getPaymentMethod().name());
+                paymentInfoDTO.setAmount(paymentToShow.getAmount());
+                paymentInfoDTO.setPaymentStatus(paymentToShow.getPaymentStatus().name());
+
+                // Chuyển đổi LocalDateTime (từ Payment) sang LocalDate (mà DTO yêu cầu)
+                if (paymentToShow.getCreatedAt() != null) {
+                    paymentInfoDTO.setPaymentDate(paymentToShow.getCreatedAt().toLocalDate());
+                }
+
+                response.setPayment(paymentInfoDTO); // ✅ Gán DTO, lỗi sẽ hết
+            } else {
+                response.setPayment(null); // Không tìm thấy payment nào
+            }
+        } else {
+            response.setPayment(null); // Booking này chưa có invoice hoặc payment
         }
 
-        // Thông tin thanh toán (để null, sẽ implement sau)
-        response.setPayment(null);
-
         return response;
-    }
+      }
+
 
     /**
      * Tính toán giá tiền đặt chỗ dựa trên SystemPrice - THỐNG NHẤT CHO TẤT CẢ
      */
     private Double calculateBookingAmountByVehicleBatteryType(Vehicle vehicle) {
         // Lấy giá thống nhất từ SystemPrice (không phân biệt loại pin)
-        double basePrice = systemPriceService.getCurrentPrice();
+        double basePrice = systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
 
         // Nhân với số lượng pin của xe (nếu có)
         Integer batteryCount = vehicle.getBatteryCount();
@@ -1184,6 +1254,7 @@ public class BookingService {
         // 6. Trả về kết quả
         return Map.of("deleted", foundCount, "notFound", notFoundCount);
     }
+
 
 
 }

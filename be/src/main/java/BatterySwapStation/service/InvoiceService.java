@@ -5,13 +5,18 @@ import BatterySwapStation.entity.Booking;
 import BatterySwapStation.dto.InvoiceResponseDTO;
 import BatterySwapStation.dto.BookingInfoDTO;
 import BatterySwapStation.dto.InvoiceSimpleResponseDTO;
+import BatterySwapStation.entity.Payment;
+import BatterySwapStation.entity.SystemPrice;
 import BatterySwapStation.repository.InvoiceRepository;
 import BatterySwapStation.repository.BookingRepository;
+import BatterySwapStation.repository.PaymentRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,7 +29,10 @@ public class InvoiceService {
     private BookingRepository bookingRepository;
 
     @Autowired
-    private SystemPriceService systemPriceService; // Thêm SystemPriceService
+    private SystemPriceService systemPriceService;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
 
     /**
      * Lấy chi tiết invoice bao gồm thông tin các booking
@@ -67,10 +75,10 @@ public class InvoiceService {
         invoice.setInvoiceId(null);
 
         if (invoice.getPricePerSwap() == null) {
-            invoice.setPricePerSwap(systemPriceService.getCurrentPrice());
+            invoice.setPricePerSwap(systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP));
         }
         if (invoice.getCreatedDate() == null) {
-            invoice.setCreatedDate(LocalDate.now());
+            invoice.setCreatedDate(LocalDateTime.now().now());
         }
         if (invoice.getInvoiceStatus() == null) {
             invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
@@ -109,7 +117,7 @@ public class InvoiceService {
         invoice.setUserId(booking.getUser().getUserId()); // Set userId từ booking
         invoice.setPricePerSwap(booking.getAmount());
         invoice.setNumberOfSwaps(1);
-        invoice.setCreatedDate(LocalDate.now());
+        invoice.setCreatedDate(LocalDateTime.now());
         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID); // Set status PAID vì booking đã thanh toán
 
         // Tính tổng tiền
@@ -246,8 +254,8 @@ public class InvoiceService {
     public Invoice createInvoiceWithBookings(List<Long> bookingIds) {
         // Tạo invoice mới
         Invoice invoice = new Invoice();
-        invoice.setPricePerSwap(systemPriceService.getCurrentPrice());
-        invoice.setCreatedDate(LocalDate.now());
+        invoice.setPricePerSwap(systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP));
+        invoice.setCreatedDate(LocalDateTime.now());
         invoice.setNumberOfSwaps(0);
         invoice.setTotalAmount(0.0);
 
@@ -368,28 +376,74 @@ public class InvoiceService {
     }
 
     /**
-     * Lọc Invoices theo trạng thái (CHỈ PENDING HOẶC PAID)
+     * Lọc Invoices theo trạng thái (PENDING/ PAID/ PAYMENTFAILED)
      */
     public List<InvoiceSimpleResponseDTO> getInvoicesByStatus(String statusString) {
         Invoice.InvoiceStatus status;
         String upperStatus = statusString.trim().toUpperCase();
 
-        // ✅ LOGIC CẬP NHẬT: Chỉ chấp nhận PENDING hoặc PAID
+        // ✅ LOGIC CẬP NHẬT: Chỉ chấp nhận PENDING, PAID, PAYMENTFAILED
         if ("PENDING".equals(upperStatus)) {
             status = Invoice.InvoiceStatus.PENDING;
         } else if ("PAID".equals(upperStatus)) {
             status = Invoice.InvoiceStatus.PAID;
+        } else if ("PAYMENTFAILED".equals(upperStatus)) {
+            status = Invoice.InvoiceStatus.PAYMENTFAILED;
         } else {
             // Ném lỗi nếu nhập trạng thái khác
-            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + statusString + ". Chỉ chấp nhận PENDING hoặc PAID.");
+            throw new IllegalArgumentException(
+                    "Trạng thái không hợp lệ: " + statusString +
+                            ". Chỉ chấp nhận PENDING, PAID hoặc PAYMENTFAILED."
+            );
         }
 
-        // Gọi phương thức Repository (vẫn như cũ)
+        // Gọi phương thức Repository
         List<Invoice> invoices = invoiceRepository.findByInvoiceStatus(status);
 
-        // Chuyển đổi sang DTO (vẫn như cũ)
+        // Chuyển đổi sang DTO
         return invoices.stream()
                 .map(invoice -> getInvoiceSimple(invoice.getInvoiceId()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Logic cho API hủy invoice (chạy thủ công)
+     */
+    @Transactional
+    public void userCancelInvoice(Long invoiceId) {
+        // 1. Tìm invoice
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Invoice ID: " + invoiceId));
+
+        // 2. Kiểm tra trạng thái
+        if (invoice.getInvoiceStatus() != Invoice.InvoiceStatus.PENDING) {
+            throw new IllegalStateException("Bạn chỉ có thể hủy invoice đang ở trạng thái PENDING. " +
+                    "Invoice này đang ở trạng thái: " + invoice.getInvoiceStatus());
+        }
+
+        // 3. Cập nhật Invoice status
+        // (Chúng ta sẽ dùng status PAYMENTFAILED của scheduler,
+        // hoặc bạn có thể tạo status mới là 'CANCELLED')
+        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
+
+        // 4. Cập nhật Booking status (liên kết)
+        List<Booking> bookings = bookingRepository.findAllByInvoice(invoice);
+        for (Booking booking : bookings) {
+            booking.setBookingStatus(Booking.BookingStatus.FAILED);
+        }
+
+        // 5. Cập nhật Payment status (liên kết)
+        Payment payment = paymentRepository.findByInvoice(invoice);
+        if (payment != null) {
+            payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+        }
+
+        // 6. Lưu thay đổi
+        invoiceRepository.save(invoice);
+        bookingRepository.saveAll(bookings);
+
+        // (Ghi log nếu cần)
+        // logger.info("Người dùng đã chủ động hủy Invoice #{}", invoice.getInvoiceId());
     }
 }

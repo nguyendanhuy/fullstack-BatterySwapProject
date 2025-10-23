@@ -1,6 +1,7 @@
 package BatterySwapStation.repository;
 
 import BatterySwapStation.entity.Booking;
+import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.User;
 import BatterySwapStation.entity.Station;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,6 +25,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     // Tìm booking theo ID và User (để đảm bảo user chỉ thao tác với booking của mình)
     Optional<Booking> findByBookingIdAndUser(Long bookingId, User user);
+
+    // Tìm tất cả booking theo invoice
+    List<Booking> findAllByInvoice(Invoice invoice);
 
     // Kiểm tra xem user đã có booking PENDINGPAYMENT hoặc PENDINGSWAPPING chưa (theo ngày)
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.user = :user " +

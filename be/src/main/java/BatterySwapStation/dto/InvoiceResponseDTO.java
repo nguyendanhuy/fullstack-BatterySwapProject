@@ -1,11 +1,12 @@
 package BatterySwapStation.dto;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class InvoiceResponseDTO {
     private Long id;
-    private LocalDate createdDate;
+    private LocalDateTime createdDate;
     private Double totalAmount;
     private Double pricePerSwap;      // Giá mỗi lần đổi pin
     private Integer numberOfSwaps;    // Số lần đổi pin
@@ -14,8 +15,8 @@ public class InvoiceResponseDTO {
     // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public LocalDate getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDate createdDate) { this.createdDate = createdDate; }
+    public LocalDateTime getCreatedDate() { return createdDate; }
+    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
     public Double getTotalAmount() { return totalAmount; }
     public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
     public Double getPricePerSwap() { return pricePerSwap; }

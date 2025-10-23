@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 @Table(name = "SystemPrice")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor // Lombok sẽ tạo constructor rỗng
+@AllArgsConstructor // Lombok sẽ tạo constructor cho tất cả các trường
 @Builder
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -21,13 +21,21 @@ public class SystemPrice {
     @EqualsAndHashCode.Include
     private Long id;
 
+    // ✅ BƯỚC 1: Thêm trường này để định danh loại giá
+    @Enumerated(EnumType.STRING)
+    @Column(name = "PriceType", nullable = false, unique = true, length = 50)
+    private PriceType priceType;
+
+    // ✅ BƯỚC 2: Xóa giá trị mặc định (15000.0)
     @Column(name = "Price", nullable = false)
-    private Double price = 15000.0; // Giá mặc định 15,000 VND cho mỗi lượt đổi pin
+    private Double price;
+    // LƯU Ý: Nên dùng BigDecimal cho tiền tệ để tránh lỗi làm tròn
 
+    // ✅ BƯỚC 3: Xóa giá trị mặc định
     @Column(name = "Description", length = 500)
-    private String description = "Giá mặc định cho mỗi lượt đổi pin";
+    private String description;
 
-    @Column(name = "CreatedDate", nullable = false)
+    @Column(name = "CreatedDate", nullable = false, updatable = false)
     private LocalDateTime createdDate;
 
     @Column(name = "UpdatedDate")
@@ -43,11 +51,14 @@ public class SystemPrice {
         updatedDate = LocalDateTime.now();
     }
 
-    // Enum cho các loại quy luật giá (có thể mở rộng sau)
+    // Enum cho các loại quy luật giá (Giữ nguyên)
     public enum PriceType {
         BATTERY_SWAP("Giá đổi pin"),
         SERVICE_FEE("Phí dịch vụ"),
-        MAINTENANCE("Phí bảo trì");
+        MAINTENANCE("Phí bảo trì"),
+        MONTHLY_SUBSCRIPTION_BASIC("Gói tháng Cơ bản - 299k"),
+        MONTHLY_SUBSCRIPTION_PREMIUM("Gói tháng Cao cấp - 499k"),
+        MONTHLY_SUBSCRIPTION_UNLIMITED("Gói tháng Không giới hạn - 899k");
 
         private final String displayName;
 
@@ -60,24 +71,7 @@ public class SystemPrice {
         }
     }
 
-    // Constructor với giá trị mặc định
-    public SystemPrice(String description) {
-        this.price = 15000.0;
-        this.description = description != null ? description : "Giá mặc định cho mỗi lượt đổi pin";
-    }
-
-    public SystemPrice(Double price, String description) {
-        this.price = price != null ? price : 15000.0;
-        this.description = description != null ? description : "Giá mặc định cho mỗi lượt đổi pin";
-    }
-
-    // Method để lấy giá với fallback
-    public Double getSafePrice() {
-        return this.price != null ? this.price : 15000.0;
-    }
-
-    // Method kiểm tra có phải giá mặc định không
-    public boolean isDefaultPrice() {
-        return this.price != null && this.price.equals(15000.0);
-    }
+    // ✅ BƯỚC 4: Xóa các constructor cũ và các hàm helper
+    // (Xóa: SystemPrice(String description), SystemPrice(Double price, ...))
+    // (Xóa: getSafePrice(), isDefaultPrice())
 }

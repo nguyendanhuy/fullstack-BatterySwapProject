@@ -52,7 +52,7 @@ public class Booking {
         PENDINGSWAPPING, // Đã thanh toán, chờ đổi pin
         CANCELLED,       // Đã hủy
         COMPLETED,        // Hoàn thành
-        FAILED          // Thất bại
+        FAILED          // Thất bại, áp dụng trong trường hợp thanh toán thất bại
     }
 
     @Enumerated(EnumType.STRING)

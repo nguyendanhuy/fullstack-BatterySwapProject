@@ -11,4 +11,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByVnpTxnRef(String vnpTxnRef);
 
     boolean existsByInvoiceAndPaymentStatus(Invoice invoice, Payment.PaymentStatus status);
+
+    Payment findByInvoice(Invoice invoice);
 }

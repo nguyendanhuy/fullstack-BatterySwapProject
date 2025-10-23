@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
@@ -68,6 +69,6 @@ public class BookingResponse {
         private String paymentStatus;
 
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-        private LocalDate paymentDate;
+        private LocalDateTime paymentDate;
     }
 }

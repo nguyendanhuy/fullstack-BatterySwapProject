@@ -2,13 +2,11 @@ package BatterySwapStation.service;
 
 import BatterySwapStation.config.VnPayProperties;
 import BatterySwapStation.dto.VnPayCreatePaymentRequest;
-import BatterySwapStation.entity.Booking;
-import BatterySwapStation.entity.Invoice;
-import BatterySwapStation.entity.Payment;
-import BatterySwapStation.repository.BookingRepository;
-import BatterySwapStation.repository.InvoiceRepository;
-import BatterySwapStation.repository.PaymentRepository;
+import BatterySwapStation.entity.*;
+import BatterySwapStation.repository.*;
+import lombok.extern.slf4j.Slf4j;
 import BatterySwapStation.utils.VnPayUtils;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class PaymentService {
 
@@ -28,6 +27,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final InvoiceRepository invoiceRepository;
     private final BookingRepository bookingRepository;
+    private final SubscriptionService subscriptionService;
 
     /**
      * 1️⃣ Tạo URL thanh toán (FE gọi)
@@ -143,20 +143,34 @@ public class PaymentService {
 
             // Cập nhật Invoice + Booking theo kết quả
             Invoice invoice = payment.getInvoice();
-            if (invoice != null && invoice.getBookings() != null) {
+
+            // ✅ [SỬA] Chỉ kiểm tra invoice != null
+            if (invoice != null) {
                 if (success) {
+                    // 1. Luôn cập nhật Invoice sang PAID
                     invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
                     invoiceRepository.save(invoice);
-                    for (Booking booking : invoice.getBookings()) {
-                        booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING);
-                        bookingRepository.save(booking);
+
+                    // 2. [THÊM] Kích hoạt Subscription (nếu đây là invoice mua gói)
+                    subscriptionService.activateSubscription(invoice);
+
+                    // 3. [GIỮ NGUYÊN] Chỉ cập nhật booking NẾU CÓ
+                    if (invoice.getBookings() != null) {
+                        for (Booking booking : invoice.getBookings()) {
+                            booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING);
+                            bookingRepository.save(booking);
+                        }
                     }
                 } else {
+                    // Logic FAILED (tương tự)
                     invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
                     invoiceRepository.save(invoice);
-                    for (Booking booking : invoice.getBookings()) {
-                        booking.setBookingStatus(Booking.BookingStatus.FAILED);
-                        bookingRepository.save(booking);
+
+                    if (invoice.getBookings() != null) {
+                        for (Booking booking : invoice.getBookings()) {
+                            booking.setBookingStatus(Booking.BookingStatus.FAILED);
+                            bookingRepository.save(booking);
+                        }
                     }
                 }
             }

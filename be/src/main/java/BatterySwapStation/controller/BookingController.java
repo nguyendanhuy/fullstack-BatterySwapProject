@@ -907,6 +907,19 @@ public class BookingController {
                     .body(new ApiResponseDto(false, "Lỗi xác thực QR: " + e.getMessage()));
         }
     }
+    @PutMapping("/{bookingId}/cancel-with-refund")
+    @Operation(summary = "Hủy booking kèm hoàn tiền",
+            description = "Nếu booking đã thanh toán, hệ thống sẽ tự động hoàn tiền VNPay. Nếu chưa thanh toán, chỉ hủy booking.")
+    public ResponseEntity<ApiResponseDto> cancelBookingWithRefund(
+            @PathVariable Long bookingId) {
+        try {
+            Map<String, Object> result = bookingService.cancelBookingWithRefund(bookingId);
+            return ResponseEntity.ok(new ApiResponseDto(true, "Đã hủy booking (và hoàn tiền nếu có)", result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, "Lỗi hủy booking: " + e.getMessage()));
+        }
+    }
 
 
 

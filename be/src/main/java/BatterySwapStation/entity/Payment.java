@@ -34,6 +34,9 @@ public class Payment {
 
     @OneToOne(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true)
     private CreditCardPayment creditCardInfo;
+    @Column(name = "Message")
+    private String message;
+
 
     // 🆕 --- Bổ sung cho VNPAY ---
     @Column(name = "Gateway", length = 50)

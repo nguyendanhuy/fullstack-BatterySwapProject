@@ -20,4 +20,5 @@ public class VnPayProperties {
     private Integer expireMinutes;
     private String returnUrl;
     private String ipnUrl;
+    private String refundUrl;
 }

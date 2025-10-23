@@ -39,7 +39,7 @@ public class BookingService {
     private final InvoiceRepository invoiceRepository;
     private final ObjectMapper objectMapper;
     private final UserSubscriptionRepository userSubscriptionRepository;
-
+    private final PaymentService paymentService;
 
 
     /**
@@ -1083,7 +1083,7 @@ public class BookingService {
 
                 // Chuyển đổi LocalDateTime (từ Payment) sang LocalDate (mà DTO yêu cầu)
                 if (paymentToShow.getCreatedAt() != null) {
-                    paymentInfoDTO.setPaymentDate(paymentToShow.getCreatedAt().toLocalDate());
+                    paymentInfoDTO.setPaymentDate(paymentToShow.getCreatedAt());
                 }
 
                 response.setPayment(paymentInfoDTO); // ✅ Gán DTO, lỗi sẽ hết
@@ -1254,6 +1254,53 @@ public class BookingService {
         // 6. Trả về kết quả
         return Map.of("deleted", foundCount, "notFound", notFoundCount);
     }
+
+    @Transactional
+    public Map<String, Object> cancelBookingWithRefund(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking #" + bookingId));
+
+        // 🔸 Nếu chưa thanh toán thì chỉ hủy booking
+        if (booking.getInvoice() == null
+                || booking.getInvoice().getInvoiceStatus() != Invoice.InvoiceStatus.PAID) {
+            booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
+            booking.setCancellationReason("Hủy booking chưa thanh toán.");
+            bookingRepository.save(booking);
+            return Map.of(
+                    "bookingId", bookingId,
+                    "status", "CANCELLED",
+                    "message", "Đã hủy booking (chưa thanh toán)"
+            );
+        }
+
+        // 🔹 Nếu hóa đơn đã thanh toán → gọi refund VNPay
+        Map<String, Object> refundResult = paymentService.refundBooking(String.valueOf(bookingId));
+
+        // ✅ Tìm payment tương ứng với booking để set REFUNDED
+        Invoice invoice = booking.getInvoice();
+        if (invoice != null && invoice.getPayments() != null) {
+            invoice.getPayments().stream()
+                    .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS)
+                    .reduce((first, second) -> second)
+                    .ifPresent(p -> {
+                        p.setPaymentStatus(Payment.PaymentStatus.REFUNDED);
+                        p.setMessage("Đã hoàn tiền cho booking #" + bookingId);
+                    });
+        }
+
+        // ✅ Booking chỉ set CANCELLED
+        booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
+        booking.setCancellationReason("Đã hủy và hoàn tiền VNPay.");
+        bookingRepository.save(booking);
+
+        return Map.of(
+                "bookingId", bookingId,
+                "status", "CANCELLED",
+                "message", "Đã hủy booking và hoàn tiền thành công",
+                "refundResult", refundResult
+        );
+    }
+
 
 
 

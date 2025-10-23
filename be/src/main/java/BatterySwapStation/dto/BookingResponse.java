@@ -68,6 +68,7 @@ public class BookingResponse {
         private Double amount;
         private String paymentStatus;
 
+
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime paymentDate;
     }

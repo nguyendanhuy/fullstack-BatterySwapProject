@@ -1,9 +1,6 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.dto.ApiResponseDto;
-import BatterySwapStation.dto.BatteryModelCheckRequest;
-import BatterySwapStation.dto.SwapCancelRequest;
-import BatterySwapStation.dto.SwapRequest;
+import BatterySwapStation.dto.*;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.BookingRepository;
 import BatterySwapStation.service.SwapService;
@@ -124,6 +121,14 @@ public class SwapController {
             ));
         }
     }
+
+    @GetMapping
+    public ResponseEntity<List<SwapListItemDTO>> getSwapsByStation(
+            @RequestParam(name = "stationId") Integer stationId
+    ) {
+        return ResponseEntity.ok(swapService.getSwapsByStation(stationId));
+    }
+
 
 
 }

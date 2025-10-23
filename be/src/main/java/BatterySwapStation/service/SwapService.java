@@ -1,22 +1,13 @@
 package BatterySwapStation.service;
 
+import BatterySwapStation.dto.SwapListItemDTO;
 import BatterySwapStation.dto.SwapRequest;
 import BatterySwapStation.dto.SwapResponseDTO;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
-<<<<<<< Updated upstream
-=======
 import lombok.RequiredArgsConstructor;
->>>>>>> Stashed changes
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-<<<<<<< Updated upstream
-
-import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-=======
->>>>>>> Stashed changes
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -44,56 +35,8 @@ public class SwapService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking #" + bookingId));
 
-<<<<<<< Updated upstream
-        Booking booking = swap.getBooking();
-        if (booking == null) {
-            throw new IllegalStateException("Không xác định được booking của swap này.");
-        }
-
-        //  TEMP = hủy tạm thời (user có thể quay lại retry)
-        if ("TEMP".equalsIgnoreCase(cancelType)) {
-            swap.setStatus(Swap.SwapStatus.CANCELLED_TEMP);
-            swap.setDescription("Swap bị hủy tạm thời. Chờ người dùng quay lại xác nhận.");
-            swapRepository.save(swap);
-            return Map.of(
-                    "swapId", swapId,
-                    "status", "CANCELLED_TEMP",
-                    "message", "Đã hủy tạm thời swap #" + swapId
-            );
-        }
-
-        //  PERMANENT = hủy hoàn toàn, rollback dữ liệu
-        if ("PERMANENT".equalsIgnoreCase(cancelType)) {
-            String batteryOutId = swap.getBatteryOutId();
-            String batteryInId = swap.getBatteryInId();
-
-            Battery batteryOut = batteryRepository.findById(batteryOutId)
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy pinOut: " + batteryOutId));
-            Battery batteryIn = batteryRepository.findById(batteryInId)
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy pinIn: " + batteryInId));
-
-            DockSlot emptySlot = dockSlotRepository
-                    .findFirstByDock_Station_StationIdAndIsActiveTrueAndBatteryIsNull(
-                            booking.getStation().getStationId())
-                    .orElseThrow(() -> new IllegalStateException("Không còn slot trống để trả pinOut."));
-            emptySlot.setBattery(batteryOut);
-            emptySlot.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
-
-            batteryOut.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
-            batteryOut.setStationId(booking.getStation().getStationId());
-            batteryOut.setDockSlot(emptySlot);
-
-            batteryIn.setDockSlot(null);
-            batteryIn.setStationId(null);
-            batteryIn.setBatteryStatus(Battery.BatteryStatus.IN_USE);
-
-            batteryRepository.save(batteryOut);
-            batteryRepository.save(batteryIn);
-            dockSlotRepository.save(emptySlot);
-=======
         Swap swap = swapRepository.findTopByBooking_BookingIdOrderBySwapIdDesc(bookingId)
                 .orElse(null);
->>>>>>> Stashed changes
 
         if (swap == null) {
             booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
@@ -249,19 +192,9 @@ public class SwapService {
         if (batteryIn.getBatteryStatus() == Battery.BatteryStatus.MAINTENANCE)
             throw new IllegalStateException("Pin " + batteryInId + " đang bảo trì.");
 
-<<<<<<< Updated upstream
-        String bookedType = booking.getBatteryType();
-        if (bookedType != null && !batteryIn.getBatteryType().name().equalsIgnoreCase(bookedType))
-            throw new IllegalStateException("Pin " + batteryInId + " không cùng loại với pin đã booking.");
-
-        // Chọn pinOut cùng model với booking hoặc pinIn
-        DockSlot dockOutSlot = dockSlotRepository
-                .findFirstByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
-=======
         // 🔹 Tìm pinOut phù hợp
         List<DockSlot> availableSlots = dockSlotRepository
                 .findAllByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
->>>>>>> Stashed changes
                         stationId,
                         batteryIn.getBatteryType(),
                         Battery.BatteryStatus.AVAILABLE,
@@ -281,27 +214,6 @@ public class SwapService {
         Battery batteryOut = dockOutSlot.getBattery();
         String dockCode = dockOutSlot.getDock().getDockName() + dockOutSlot.getSlotNumber();
 
-<<<<<<< Updated upstream
-        if(swapStatus == Swap.SwapStatus.SUCCESS) {
-            batteryOut.setBatteryStatus(Battery.BatteryStatus.IN_USE);
-            dockOutSlot.setBattery(null);
-            dockOutSlot.setSlotStatus(DockSlot.SlotStatus.EMPTY);
-            batteryOut.setStationId(null);
-            batteryOut.setDockSlot(null);
-
-        } else {
-            batteryOut.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
-            dockOutSlot.setBattery(batteryOut);
-            dockOutSlot.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
-        }
-
-        batteryRepository.save(batteryIn);
-        batteryRepository.save(batteryOut);
-        dockSlotRepository.save(dockInSlot);
-        dockSlotRepository.save(dockOutSlot);
-
-        Integer dockIdForRecord = dockOutSlot.getDock() != null ? dockOutSlot.getDock().getDockId() : stationId;
-=======
         // 1️⃣ Nhả pinOut
         batteryOut.setBatteryStatus(Battery.BatteryStatus.IN_USE);
         batteryOut.setStationId(null);
@@ -328,7 +240,6 @@ public class SwapService {
         dockSlotRepository.save(dockOutSlot);
 
         // 3️⃣ Ghi swap record
->>>>>>> Stashed changes
         Swap swap = Swap.builder()
                 .booking(booking)
                 .dockId(dockOutSlot.getDock().getDockId())
@@ -336,15 +247,9 @@ public class SwapService {
                 .batteryOutId(batteryOut.getBatteryId())
                 .batteryInId(batteryIn.getBatteryId())
                 .staffUserId(staffUserId)
-<<<<<<< Updated upstream
-                .status(swapStatus)
-                .dockOutSlot(dockOutCode)
-                .dockInSlot(dockInCode)
-=======
                 .status(Swap.SwapStatus.SUCCESS)
                 .dockOutSlot(dockCode)
                 .dockInSlot(dockCode)
->>>>>>> Stashed changes
                 .completedTime(LocalDateTime.now())
                 .description("Swap hoàn tất: Trạm giao " + batteryOut.getBatteryId() +
                         ", nhận lại " + batteryIn.getBatteryId() + " từ khách để sạc.")
@@ -364,11 +269,7 @@ public class SwapService {
                 .build();
     }
 
-<<<<<<< Updated upstream
-    //  RESOLVE STAFF ID
-=======
     // ====================== RESOLVE STAFF ID ======================
->>>>>>> Stashed changes
     private String resolveStaffUserId(SwapRequest request) {
         Authentication auth = SecurityContextHolder.getContext() != null
                 ? SecurityContextHolder.getContext().getAuthentication()
@@ -380,5 +281,28 @@ public class SwapService {
         if (request.getStaffUserId() != null && !request.getStaffUserId().isBlank())
             return request.getStaffUserId();
         throw new IllegalStateException("Thiếu staffUserId (chưa đăng nhập staff hoặc không truyền staffUserId).");
+    }
+
+    @Transactional(readOnly = true)
+    public List<SwapListItemDTO> getSwapsByStation(Integer stationId) {
+        List<Swap> swaps = swapRepository.findAllByStationId(stationId);
+        return swaps.stream().map(this::toListItemDTO).toList();
+    }
+
+    private SwapListItemDTO toListItemDTO(Swap s) {
+        return SwapListItemDTO.builder()
+                .swapId(s.getSwapId())
+                .bookingId(s.getBooking().getBookingId())
+                .stationId(s.getBooking().getStation().getStationId())
+                .userId(s.getUserId())
+                .staffUserId(s.getStaffUserId())
+                .batteryOutId(s.getBatteryOutId())
+                .batteryInId(s.getBatteryInId())
+                .dockOutSlot(s.getDockOutSlot())
+                .dockInSlot(s.getDockInSlot())
+                .status(s.getStatus() != null ? s.getStatus().name() : null)
+                .completedTime(s.getCompletedTime())
+                .description(s.getDescription())
+                .build();
     }
 }

@@ -19,6 +19,7 @@ const Payment = () => {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+  const [count, setCount] = useState(0);
 
   const items = Object.values(reservationData || {});
   const groupedByStation = items.reduce((acc, item) => {
@@ -39,47 +40,49 @@ const Payment = () => {
   }, []);
 
   const handleVNPayReturn = async (txnRef) => {
-    try {
-      const paymentStatus = await checkVNPayPaymentStatus(txnRef);
-      console.log("✅ VNPay payment status:", paymentStatus);
+    let retryCount = 0; // ✅ Khởi tạo counter local
 
-      const ResponseCode = () => {
-        if (paymentStatus?.vnpResponseCode) {
-          if (paymentStatus.vnpResponseCode === "00") return `Giao dịch đã được xác nhận. Số tiền: ${paymentStatus.amount?.toLocaleString("vi-VN")} VNĐ`;
-          else if (paymentStatus.vnpResponseCode === "24") return "Bạn đã hủy giao dịch tại cổng thanh toán.";
-          else return paymentStatus?.message || "Vui lòng kiểm tra lại thông tin.";
-        } else return "Vui lòng kiểm tra lại thông tin.";
+    const checkStatus = async () => {
+      try {
+        const paymentStatus = await checkVNPayPaymentStatus(txnRef);
+        console.log("✅ VNPay payment status:", paymentStatus);
+
+        // Nếu vẫn PENDING do get kết quả sớm hơn vnpay trả thì retry đợi vnpay
+        if (retryCount < 5 && paymentStatus.paymentStatus === "PENDING") {
+          console.log(`⏳ Payment still pending, retry ${retryCount + 1}/5...`);
+          retryCount++;
+          setTimeout(checkStatus, 3000);
+          return;
+        }
+
+
+        if (paymentStatus.paymentStatus === "SUCCESS" || paymentStatus.vnpResponseCode === "00") {
+          sessionStorage.removeItem('battery-booking-selection');
+          toast({
+            title: "Thanh toán thành công!",
+            description: paymentStatus.message || "Giao dịch đã được xác nhận.",
+            className: "bg-green-500 text-white",
+            duration: 5000,
+          });
+          setTimeout(() => navigate("/driver"), 2000);
+
+        } else {
+          toast({
+            title: "Thanh toán thất bại!",
+            description: paymentStatus.message || "Vui lòng kiểm tra lại thông tin.",
+            variant: "destructive",
+            duration: 5000,
+          });
+          setTimeout(() => navigate("/driver"), 3000);
+        }
+      } catch (error) {
+        console.error("❌ VNPay status check error:", error);
+        // Retry nếu lỗi
+        setTimeout(checkStatus, 3000);
       }
+    };
 
-      if (paymentStatus.paymentStatus === "SUCCESS" || paymentStatus.vnpResponseCode === "00") {
-        sessionStorage.removeItem('battery-booking-selection');
-
-        toast({
-          title: "Thanh toán thành công!",
-          description: ResponseCode(),
-          className: "bg-green-500 text-white",
-          duration: 5000,
-        });
-
-        setTimeout(() => navigate("/driver"), 2000);
-      } else {
-        toast({
-          title: "Thanh toán thất bại!",
-          description: paymentStatus.message || ResponseCode(),
-          variant: "destructive",
-          duration: 5000,
-        });
-
-        setTimeout(() => navigate("/driver"), 3000);
-      }
-    } catch (error) {
-      console.error("❌ VNPay status check error:", error);
-      toast({
-        title: "Lỗi kiểm tra thanh toán!",
-        description: "Không thể xác minh trạng thái thanh toán",
-        variant: "destructive",
-      });
-    }
+    checkStatus();
   };
 
   // Format data cho API

@@ -9,7 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -233,6 +236,74 @@ public class SubscriptionService {
         log.info("User {} đã TẮT AUTO-RENEW cho Gói {}", userId, savedSub.getPlan().getPlanName());
 
         return savedSub;
+    }
+
+
+    /**
+     * [MỚI] Lấy gói cước ĐANG HOẠT ĐỘNG (ACTIVE) của user.
+     */
+    public Map<String, Object> getActiveSubscription(String userId) {
+        // (Chúng ta dùng lại hàm cũ)
+        UserSubscription activeSub = userSubscriptionRepository
+                .findActiveSubscriptionForUser(
+                        userId,
+                        UserSubscription.SubscriptionStatus.ACTIVE,
+                        LocalDateTime.now()
+                ).orElse(null); // Trả về null nếu không tìm thấy
+
+        if (activeSub == null) {
+            return null; // Không có gói nào đang active
+        }
+
+        return convertSubscriptionToMap(activeSub);
+    }
+
+    /**
+     * [MỚI] Lấy TẤT CẢ lịch sử gói cước của user (active, expired, ...).
+     */
+    public List<Map<String, Object>> getSubscriptionHistory(String userId) {
+        List<UserSubscription> allSubs = userSubscriptionRepository
+                .findByUser_UserIdOrderByStartDateDesc(userId);
+
+        return allSubs.stream()
+                .map(this::convertSubscriptionToMap) // Chuyển đổi từng cái sang Map
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * [MỚI] Hàm helper để chuyển đổi Entity sang Map DTO
+     */
+    private Map<String, Object> convertSubscriptionToMap(UserSubscription sub) {
+        if (sub == null) {
+            return null;
+        }
+
+        SubscriptionPlan plan = sub.getPlan();
+        Double price = systemPriceService.getPriceByType(plan.getPriceType());
+
+        // Lấy giới hạn (limit)
+        Integer limit = plan.getSwapLimit();
+        String limitStr = "Không giới hạn";
+        if (limit != null && limit >= 0) {
+            limitStr = String.valueOf(limit);
+        }
+
+        return Map.of(
+                "userSubscriptionId", sub.getId(),
+                "status", sub.getStatus().name(),
+                "autoRenew", sub.isAutoRenew(),
+                "startDate", sub.getStartDate(),
+                "endDate", sub.getEndDate(),
+                "usedSwaps", sub.getUsedSwaps(),
+                "plan", Map.of(
+                        "planId", plan.getId(),
+                        "planName", plan.getPlanName(),
+                        "description", plan.getDescription(),
+                        "durationInDays", plan.getDurationInDays(),
+                        "swapLimit", limitStr, // Trả về "10" hoặc "Không giới hạn"
+                        "price", price
+                )
+        );
     }
 
 }

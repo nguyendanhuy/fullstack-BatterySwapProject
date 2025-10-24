@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 // (Giả sử bạn đã có SecurityConfig để lấy 'principal' - người dùng đã đăng nhập)
 // import org.springframework.security.core.Authentication;
@@ -102,5 +103,64 @@ public class SubscriptionController {
         // (Sử dụng Integer hay Long tùy thuộc vào lỗi hôm qua bạn đã sửa)
         private Integer planId; // ID của SubscriptionPlan
         private String userId; // ID của User (thêm trường này)
+    }
+
+    /**
+     * API để lấy gói cước ĐANG HOẠT ĐỘNG (ACTIVE)
+     */
+    @GetMapping("/my-subscription")
+    @Operation(summary = "Lấy gói cước đang ACTIVE",
+            description = "Lấy thông tin gói cước đang hoạt động (nếu có) của user.")
+    public ResponseEntity<Map<String, Object>> getMyActiveSubscription(
+            @RequestParam String userId // (Bạn có thể thay bằng @AuthenticationPrincipal)
+    ) {
+        try {
+            Map<String, Object> activeSub = subscriptionService.getActiveSubscription(userId);
+
+            if (activeSub == null) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", "Bạn không có gói cước nào đang hoạt động.",
+                        "subscription", (Object)null // Trả về null
+                ));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Lấy thông tin gói cước thành công.",
+                    "subscription", activeSub
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * API để lấy TẤT CẢ lịch sử gói cước
+     */
+    @GetMapping("/my-history")
+    @Operation(summary = "Lấy lịch sử gói cước",
+            description = "Lấy tất cả các gói cước đã mua (active, expired, cancelled).")
+    public ResponseEntity<Map<String, Object>> getMySubscriptionHistory(
+            @RequestParam String userId // (Bạn có thể thay bằng @AuthenticationPrincipal)
+    ) {
+        try {
+            List<Map<String, Object>> history = subscriptionService.getSubscriptionHistory(userId);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Lấy lịch sử gói cước thành công.",
+                    "history", history,
+                    "total", history.size()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
     }
 }

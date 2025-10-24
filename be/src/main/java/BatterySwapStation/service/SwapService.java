@@ -97,7 +97,7 @@ public class SwapService {
 
         slotForIn.setBattery(batteryIn);
         slotForIn.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
-        batteryIn.setBatteryStatus(Battery.BatteryStatus.CHARGING);
+        batteryIn.setBatteryStatus(Battery.BatteryStatus.WAITING_CHARGE);
         batteryIn.setStationId(stationId);
         batteryIn.setDockSlot(slotForIn);
 

@@ -41,6 +41,7 @@ const Reservation = () => {
     const fetchDefaultPrice = async () => {
       try {
         const res = await getSwapDefaultPrice();
+        console.log("Default swap price:", res);
         setDefaultPrice(res?.price ?? 15000);
       } catch (error) {
         console.error("Error fetching default price:", error);

@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { QrCode, CreditCard, Battery, Search, BarChart3, Home, Settings, Zap, Star, TrendingUp, Users, CheckCircle, Clock } from "lucide-react";
+import { QrCode, CreditCard, Battery, Search, BarChart3, Home, Settings, Zap, Star, TrendingUp, Users, CheckCircle, Clock, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useContext, useState } from "react";
 import AccountSettings from "@/components/AccountSettings";
@@ -125,6 +125,14 @@ const StaffDashboard = () => {
               link: "/staff/transaction-history",
               color: "from-green-500 to-emerald-500",
               badge: "Báo cáo"
+            },
+            {
+              icon: FileText,
+              title: "Lịch sử Swap",
+              desc: "Xem lịch sử swap (đổi pin) đã thực hiện tại trạm",
+              link: "/staff/swap-history",
+              color: "from-blue-500 to-indigo-500",
+              badge: "Swap"
             },
             {
               icon: Battery,

@@ -1,12 +1,14 @@
 package BatterySwapStation.repository;
 
 import BatterySwapStation.entity.Battery;
+import BatterySwapStation.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BatteryRepository extends JpaRepository<Battery, String> {
@@ -31,4 +33,7 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
            "(b.batteryStatus = 'AVAILABLE' OR b.batteryStatus = 'CHARGING') AND " +
            "b.stateOfHealth > 70.0")
     Long countAvailableBatteriesAtStation(@Param("stationId") Integer stationId);
+
+
+    Optional<Battery> findByVehicle(Vehicle vehicle);
 }

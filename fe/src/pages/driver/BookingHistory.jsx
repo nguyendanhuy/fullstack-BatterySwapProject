@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar as CalendarIcon, MapPin, Car, Battery, CreditCard, X, AlertTriangle, Filter, Search, FileText, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, MapPin, Car, Battery, CreditCard, X, AlertTriangle, Filter, Search, FileText, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,7 +18,7 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { SystemContext } from "../../contexts/system.context";
 import { cancelBookingById, generateQRBooking, getBookingHistoryByUserId } from "../../services/axios.services";
-import { Spin } from "antd";
+import { Spin, Drawer } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 dayjs.extend(customParseFormat);
 const BookingHistory = () => {
@@ -28,8 +28,6 @@ const BookingHistory = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [startDate, setStartDate] = useState();
-  const [endDate, setEndDate] = useState();
   const [dateRange, setDateRange] = useState([null, null]);
   const { RangePicker } = DatePicker;
   const DATE_TIME_FMT = "YYYY-MM-DD";
@@ -40,6 +38,7 @@ const BookingHistory = () => {
   const [isCanceling, setIsCanceling] = useState(false);
   const [qr, setQr] = useState(null);
   const [isQrLoading, setIsQrLoading] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const loadUserHistory = async () => {
     setIsLoading(true);
     try {
@@ -96,29 +95,6 @@ const BookingHistory = () => {
   useEffect(() => {
     loadUserHistory();
   }, [])
-
-  // const allBookings = [
-  //   {
-  //     id: "BK003",
-  //     vehicleType: "VinFast VF6",
-  //     batteryType: "Lithium-ion",
-  //     bookingTime: "17/01/2024 16:45",
-  //     paymentTime: "17/01/2024 16:50",
-  //     stationLocation: "Trạm Quận 3 - 456 Lê Văn Sỹ",
-  //     bookingMethod: "Thanh toán đầy đủ",
-  //     status: "Hoàn thành",
-  //     amount: "110,000",
-  //     canCancel: false,
-  //     batteryInfo: {
-  //       code: "BT-3001",
-  //       soh: 85,
-  //       chargeCycles: 620,
-  //       manufactureDate: "05/12/2022",
-  //       expiryDate: "05/12/2027",
-  //     },
-  //   },
-  // ];
-
   // Filter and sort bookings
 
   const filteredBookings = (allBookings ?? []).filter((booking) => {
@@ -158,10 +134,18 @@ const BookingHistory = () => {
         setCancelReason("");
         loadUserHistory();
       } else if (res?.error) {
-        toast.error("Lỗi hủy đăt chỗ", { description: JSON.stringify(res.error?.message ?? res.error) });
+        toast({
+          title: "Lỗi hủy đăt chỗ",
+          description: JSON.stringify(res.error?.message ?? res.error) || "Lỗi mạng",
+          variant: "destructive",
+        });
       }
     } catch (err) {
-      toast.error("Lỗi mạng khi hủy đặt chỗ", { description: String(err?.message ?? err) });
+      toast({
+        title: "Lỗi mạng khi tải lịch sử",
+        description: String(err?.message ?? err) || "Lỗi mạng",
+        variant: "destructive",
+      });
     }
     finally {
       setIsCanceling(false);
@@ -178,6 +162,15 @@ const BookingHistory = () => {
         return "outline";
       default:
         return "default";
+    }
+  };
+  //Lấy tên
+  const statusLabel = (s) => {
+    switch (s) {
+      case "PENDINGSWAPPING": return "Đã thanh toán";
+      case "COMPLETED": return "Hoàn thành";
+      case "CANCELLED": return "Đã hủy";
+      default: return s || "";
     }
   };
   const doDownload = (url, fileName) => {
@@ -384,9 +377,7 @@ const BookingHistory = () => {
                                   variant={getStatusColor(booking.bookingStatus)}
                                   className="text-xs"
                                 >
-                                  {booking.bookingStatus === "PENDINGSWAPPING" && "Đã thanh toán"}
-                                  {booking.bookingStatus === "CANCELLED" && "Đã hủy"}
-                                  {booking.bookingStatus === "COMPLETED" && "Hoàn thành"}
+                                  {statusLabel(booking.bookingStatus)}
                                 </Badge>
                               </div>
                               <div className="flex items-center text-sm text-muted-foreground">
@@ -395,6 +386,7 @@ const BookingHistory = () => {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
+                              {/* Nút hủy booking */}
                               {booking.bookingStatus === "PENDINGSWAPPING" && (
                                 <Dialog
                                   open={cancelDialogOpen}
@@ -479,7 +471,7 @@ const BookingHistory = () => {
                                   </DialogContent>
                                 </Dialog>
                               )}
-
+                              {/* Nút xem hóa đơn */}
                               {
                                 booking.bookingStatus === "COMPLETED" || booking.bookingStatus === "PENDINGSWAPPING" && (
                                   <>
@@ -499,7 +491,7 @@ const BookingHistory = () => {
                                   </>
                                 )
                               }
-
+                              {/* nút xem QR */}
                               {booking.bookingStatus === "PENDINGSWAPPING" && (
                                 <Dialog>
                                   <DialogTrigger asChild>
@@ -585,7 +577,8 @@ const BookingHistory = () => {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                            {/* Cột 1 - Phương tiện */}
                             <div className="space-y-1">
                               <div className="flex items-center text-xs text-muted-foreground">
                                 <Car className="h-3 w-3 mr-1" />
@@ -595,22 +588,17 @@ const BookingHistory = () => {
                               <p className="text-xs text-muted-foreground">{booking?.batteryType}</p>
                             </div>
 
+                            {/* Cột 2 - Trạm */}
                             <div className="space-y-1">
                               <div className="flex items-center text-xs text-muted-foreground">
                                 <MapPin className="h-3 w-3 mr-1" />
                                 Trạm
                               </div>
                               <p className="font-medium text-sm">{booking.stationName}</p>
+                              <p className="text-xs text-muted-foreground">{booking.stationAddress}</p>
                             </div>
 
-                            <div className="space-y-1">
-                              <div className="flex items-center text-xs text-muted-foreground">
-                                <MapPin className="h-3 w-3 mr-1" />
-                                Địa điểm
-                              </div>
-                              <p className="font-medium text-sm">{booking.stationAddress}</p>
-                            </div>
-
+                            {/* Cột 3 - Số tiền */}
                             <div className="space-y-1 text-right">
                               <div className="flex items-center justify-end text-xs text-muted-foreground">
                                 <CreditCard className="h-3 w-3 mr-1" />
@@ -620,19 +608,194 @@ const BookingHistory = () => {
                                 {booking?.amount?.toLocaleString() ?? ""} VNĐ
                               </p>
                             </div>
-
-                            <div className="space-y-1">
-                              <div className="flex items-center text-xs text-muted-foreground">
-                                <Battery className="h-3 w-3 mr-1" />
-                                Loại pin
-                              </div>
-                              <p className="font-medium text-sm">{booking.batteryType}</p>
-                            </div>
                           </div>
+
+
+                          {/* Nút xem chi tiết booking */}
+                          <div className="mt-4 flex justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBooking(booking);
+                                setIsDetailOpen(true);
+                              }}
+                              className="hover:bg-purple-50 hover:text-blue-600 transition-all"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Xem chi tiết
+                            </Button>
+                          </div>
+
                         </CardContent>
                       </Card>
-
                     ))}
+
+
+
+                    {/* Drawer hiển thị chi tiết booking */}
+                    <Drawer
+                      open={isDetailOpen}
+                      width={560}
+                      onClose={() => setIsDetailOpen(false)}
+                      destroyOnClose
+                      title={
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">Chi tiết đặt chỗ</span>
+                            {selectedBooking?.bookingId && (
+                              <span className="text-muted-foreground">#BK{selectedBooking.bookingId}</span>
+                            )}
+                          </div>
+                          {selectedBooking?.bookingStatus && (
+                            <Badge variant={getStatusColor(selectedBooking.bookingStatus)}>
+                              {statusLabel(selectedBooking.bookingStatus)}
+                            </Badge>
+                          )}
+                        </div>
+                      }
+                    >
+                      {!selectedBooking ? (
+                        <p className="text-sm text-muted-foreground">Không có dữ liệu.</p>
+                      ) : (
+                        <div className="space-y-6">
+                          {/* Block: Thông tin đặt chỗ */}
+                          <section className="rounded-xl border bg-white/70 dark:bg-slate-900/60 p-4 shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="p-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                                <CalendarIcon className="h-4 w-4" />
+                              </div>
+                              <h4 className="font-semibold">Thông tin đặt chỗ</h4>
+                            </div>
+
+                            <div className="divide-y">
+                              <div className="py-2 flex items-start justify-between">
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Mã đặt chỗ</span>
+                                <span className="font-medium">BK{selectedBooking.bookingId}</span>
+                              </div>
+                              <div className="py-2 flex items-start justify-between">
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Trạng thái</span>
+                                <span className="font-medium">{statusLabel(selectedBooking.bookingStatus)}</span>
+                              </div>
+                              <div className="py-2 flex items-start justify-between">
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Ngày giờ</span>
+                                <span className="font-medium">
+                                  {selectedBooking.bookingDate} {selectedBooking.timeSlot}
+                                </span>
+                              </div>
+                              <div className="py-2 flex items-start justify-between">
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Số tiền</span>
+                                <span className="font-semibold text-green-600">
+                                  {(selectedBooking.amount || 0).toLocaleString()} VNĐ
+                                </span>
+                              </div>
+
+                              {selectedBooking.bookingStatus === "CANCELLED" && (
+                                <div className="py-2 flex items-start justify-between">
+                                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Lý do hủy</span>
+                                  <span className="font-medium text-right max-w-[65%]">
+                                    {selectedBooking.cancellationReason || "—"}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </section>
+
+                          {/* Block: Trạm */}
+                          <section className="rounded-xl border bg-white/70 dark:bg-slate-900/60 p-4 shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                                <MapPin className="h-4 w-4" />
+                              </div>
+                              <h4 className="font-semibold">Trạm</h4>
+                            </div>
+
+                            <div className="divide-y">
+                              <div className="py-2 flex items-start justify-between">
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Tên trạm</span>
+                                <span className="font-medium text-right max-w-[65%]">{selectedBooking.stationName}</span>
+                              </div>
+                              <div className="py-2 flex items-start justify-between">
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Địa chỉ</span>
+                                <span className="font-medium text-right max-w-[65%]">{selectedBooking.stationAddress}</span>
+                              </div>
+                            </div>
+                          </section>
+
+                          {/* Block: Phương tiện & Pin */}
+                          <section className="rounded-xl border bg-white/70 dark:bg-slate-900/60 p-4 shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="p-2 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 text-white">
+                                <Car className="h-4 w-4" />
+                              </div>
+                              <h4 className="font-semibold">Phương tiện & Pin</h4>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Car className="h-3 w-3" /> Loại xe
+                                </div>
+                                <div className="font-medium mt-1">{selectedBooking.vehicleType}</div>
+                              </div>
+
+                              <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                <div className="text-xs text-muted-foreground">VIN</div>
+                                <div className="font-medium mt-1">{selectedBooking.vehicleVin}</div>
+                              </div>
+
+                              <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Battery className="h-3 w-3" /> Số lượng pin
+                                </div>
+                                <div className="font-medium mt-1">{selectedBooking.batteryCount}</div>
+                              </div>
+
+                              <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                <div className="text-xs text-muted-foreground">Loại pin</div>
+                                <div className="font-medium mt-1">{selectedBooking.batteryType}</div>
+                              </div>
+                            </div>
+                          </section>
+
+                          {/* Block: Thanh toán (ẩn amount) */}
+                          {!!selectedBooking?.payment && (
+                            <section className="rounded-xl border bg-white/70 dark:bg-slate-900/60 p-4 shadow-sm">
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="p-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white">
+                                  <CreditCard className="h-4 w-4" />
+                                </div>
+                                <h4 className="font-semibold">Thanh toán</h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                  <div className="text-xs text-muted-foreground">Mã giao dịch</div>
+                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentId}</div>
+                                </div>
+
+                                <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                  <div className="text-xs text-muted-foreground">Phương thức</div>
+                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentMethod}</div>
+                                </div>
+
+                                <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                  <div className="text-xs text-muted-foreground">Trạng thái</div>
+                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentStatus}</div>
+                                </div>
+
+                                <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
+                                  <div className="text-xs text-muted-foreground">Thời gian</div>
+                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentDate}</div>
+                                </div>
+                              </div>
+                            </section>
+                          )}
+                        </div>
+                      )}
+                    </Drawer>
+
+
                   </div>
                 )}
               </Spin>

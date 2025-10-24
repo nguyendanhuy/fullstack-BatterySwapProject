@@ -77,8 +77,6 @@ const Subscriptions = () => {
 
           setPackages(mappedPackages);
         }
-        console.log("User data:", userData);
-
         // Fetch current subscription
         if (userData && userData.userId) {
           const subscriptionResponse = await getDriverSubscription(userData.userId);

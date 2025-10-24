@@ -7,7 +7,6 @@ import BatterySwapStation.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import BatterySwapStation.utils.VnPayUtils;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
@@ -18,8 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -36,6 +33,9 @@ public class PaymentService {
     private final InvoiceRepository invoiceRepository;
     private final BookingRepository bookingRepository;
     private final SubscriptionService subscriptionService;
+    private final SystemPriceRepository systemPriceRepository;
+    private final UserRepository userRepository;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
 
     /**
      * 1️⃣ Tạo URL thanh toán (FE gọi)
@@ -426,6 +426,69 @@ public class PaymentService {
 
         return responseData;
     }
+
+//    @Transactional
+//    public String createVnPayPaymentUrlForSubscription(VnPayCreateSubscriptionPaymentRequest req, HttpServletRequest http) {
+//        log.info("🟢 [CREATE] Bắt đầu tạo URL thanh toán gói cho user={} | planId={}", req.getUserId(), req.getPlanId());
+//
+//        User user = userRepository.findById(req.getUserId())
+//                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user: " + req.getUserId()));
+//
+//        SubscriptionPlan plan = subscriptionPlanRepository.findById(req.getPlanId().intValue())
+//                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói cước: " + req.getPlanId()));
+//
+//        // 🔹 Lấy giá gói từ SystemPrice
+//        Double amount = systemPriceRepository.findPriceByPriceType(plan.getPriceType())
+//                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giá cho gói: " + plan.getPriceType()));
+//
+//        String ipAddr = VnPayUtils.getClientIp(http);
+//        String txnRef = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+//        long amountTimes100 = Math.round(amount) * 100L;
+//
+//        ZoneId zone = ZoneId.of("Asia/Ho_Chi_Minh");
+//        ZonedDateTime now = ZonedDateTime.now(zone);
+//        String vnpCreateDate = now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+//        String vnpExpireDate = now.plusMinutes(props.getExpireMinutes())
+//                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+//
+//        Map<String, String> params = new LinkedHashMap<>();
+//        params.put("vnp_Version", props.getApiVersion());
+//        params.put("vnp_Command", props.getCommand());
+//        params.put("vnp_TmnCode", props.getTmnCode());
+//        params.put("vnp_Amount", String.valueOf(amountTimes100));
+//        params.put("vnp_CurrCode", props.getCurrCode());
+//        params.put("vnp_TxnRef", txnRef);
+//        params.put("vnp_OrderInfo", "Thanh toán gói " + plan.getPlanName());
+//        params.put("vnp_OrderType", "subscription");
+//        params.put("vnp_Locale", (req.getLocale() == null || req.getLocale().isBlank()) ? "vn" : req.getLocale());
+//        params.put("vnp_ReturnUrl", props.getReturnUrl());
+//        params.put("vnp_IpAddr", ipAddr);
+//        params.put("vnp_CreateDate", vnpCreateDate);
+//        params.put("vnp_ExpireDate", vnpExpireDate);
+//        if (req.getBankCode() != null && !req.getBankCode().isBlank()) {
+//            params.put("vnp_BankCode", req.getBankCode());
+//        }
+//
+//        // 🔹 Lưu Payment
+//        Payment payment = Payment.builder()
+//                .user(user)
+//                .plan(plan)
+//                .amount(amount)
+//                .paymentMethod(Payment.PaymentMethod.QR_BANKING)
+//                .paymentStatus(Payment.PaymentStatus.PENDING)
+//                .gateway("VNPAY")
+//                .vnpTxnRef(txnRef)
+//                .message("Thanh toán gói: " + plan.getPlanName())
+//                .createdAt(LocalDateTime.now(zone))
+//                .build();
+//        paymentRepository.save(payment);
+//
+//        // 🔹 Build URL
+//        String payUrl = VnPayUtils.buildPaymentUrl(props.getPayUrl(), params, props.getHashSecret());
+//        log.info("✅ [CREATE DONE] plan={} | txnRef={} | amount={} | URL={}", plan.getPlanName(), txnRef, amount, payUrl);
+//
+//        return payUrl;
+//    }
 
 
 }

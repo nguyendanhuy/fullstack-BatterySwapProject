@@ -1,5 +1,6 @@
 package BatterySwapStation.service;
 
+import BatterySwapStation.dto.BatteryRealtimeEvent;
 import BatterySwapStation.dto.SwapListItemDTO;
 import BatterySwapStation.dto.SwapRequest;
 import BatterySwapStation.dto.SwapResponseDTO;
@@ -8,6 +9,7 @@ import BatterySwapStation.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ public class SwapService {
     private final BatteryRepository batteryRepository;
     private final DockSlotRepository dockSlotRepository;
     private final StaffAssignRepository staffAssignRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // ====================== CANCEL SWAP ======================
     @Transactional
@@ -226,6 +229,9 @@ public class SwapService {
         batteryRepository.flush();
         dockSlotRepository.flush();
 
+        // 🔔 Gửi realtime: pinOut bị lấy ra
+        sendRealtimeUpdate(dockOutSlot, "REMOVED");
+
         // 2️⃣ Gắn pinIn vào slot (CHARGING)
         batteryIn.setBatteryStatus(Battery.BatteryStatus.CHARGING);
         batteryIn.setStationId(stationId);
@@ -238,6 +244,9 @@ public class SwapService {
 
         batteryRepository.save(batteryIn);
         dockSlotRepository.save(dockOutSlot);
+
+        // 🔔 Gửi realtime: pinIn mới được đưa vào trạm
+        sendRealtimeUpdate(dockOutSlot, "INSERTED");
 
         // 3️⃣ Ghi swap record
         Swap swap = Swap.builder()
@@ -256,6 +265,9 @@ public class SwapService {
                 .build();
         swapRepository.save(swap);
 
+        // Gửi realtime tổng thể: trạng thái slot đã thay đổi
+        sendRealtimeUpdate(dockOutSlot, "STATUS_CHANGED");
+
         return SwapResponseDTO.builder()
                 .swapId(swap.getSwapId())
                 .status("SUCCESS")
@@ -268,7 +280,6 @@ public class SwapService {
                 .dockInSlot(dockCode)
                 .build();
     }
-
     // ====================== RESOLVE STAFF ID ======================
     private String resolveStaffUserId(SwapRequest request) {
         Authentication auth = SecurityContextHolder.getContext() != null
@@ -304,5 +315,25 @@ public class SwapService {
                 .completedTime(s.getCompletedTime())
                 .description(s.getDescription())
                 .build();
+    }
+
+    private void sendRealtimeUpdate(DockSlot slot, String action) {
+        var battery = slot.getBattery();
+        var dock = slot.getDock();
+        var station = dock.getStation();
+
+        BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
+                .stationId(station.getStationId())
+                .dockName(dock.getDockName())
+                .slotNumber(slot.getSlotNumber())
+                .batteryId(battery != null ? battery.getBatteryId() : null)
+                .batteryStatus(battery != null ? battery.getBatteryStatus().name() : "EMPTY")
+                .stateOfHealth(battery != null ? battery.getStateOfHealth() : null)
+                .currentCapacity(battery != null ? battery.getCurrentCapacity() : null)
+                .action(action)
+                .timestamp(LocalDateTime.now().toString())
+                .build();
+
+        messagingTemplate.convertAndSend("/topic/station-" + station.getStationId(), event);
     }
 }

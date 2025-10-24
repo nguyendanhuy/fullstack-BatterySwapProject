@@ -2,6 +2,7 @@ package BatterySwapStation.repository;
 
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.Vehicle;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +37,11 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
 
 
     Optional<Battery> findByVehicle(Vehicle vehicle);
+
+    @EntityGraph(attributePaths = {"dockSlot", "dockSlot.dock", "dockSlot.dock.station"})
+    List<Battery> findAll(); // ✅ chỉ override findAll() mặc định
+
+    // 🔹 Lấy tất cả Battery trong 1 station cụ thể (cũng fetch full quan hệ)
+    @EntityGraph(attributePaths = {"dockSlot", "dockSlot.dock", "dockSlot.dock.station"})
+    List<Battery> findByStationId(Integer stationId);
 }

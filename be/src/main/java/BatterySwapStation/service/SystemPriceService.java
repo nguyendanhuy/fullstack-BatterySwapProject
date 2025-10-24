@@ -85,7 +85,6 @@ public class SystemPriceService {
         log.info("Đã cập nhật giá cho {}: {} VND", saved.getPriceType(), saved.getPrice());
         return saved;
     }
-
     // [ĐÃ XÓA] - Tất cả các hàm cũ như:
     // getCurrentPrice(), getCurrentPrice(String batteryType),
     // getCurrentSystemPrice(), updateSystemPrice(Double newPrice, ...),

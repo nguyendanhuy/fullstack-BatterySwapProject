@@ -116,4 +116,14 @@ public class PaymentController {
         Map<String, Object> result = paymentService.refundBooking(bookingId);
         return ResponseEntity.ok(result);
     }
+//
+//    @PostMapping("/vnpay/subscription")
+//    public ResponseEntity<Map<String, Object>> createSubscriptionPayment(
+//            @RequestBody VnPayCreateSubscriptionPaymentRequest req,
+//            HttpServletRequest http) {
+//
+//        String url = paymentService.createVnPayPaymentUrlForSubscription(req, http);
+//        return ResponseEntity.ok(Map.of("success", true, "paymentUrl", url));
+//    }
+
 }

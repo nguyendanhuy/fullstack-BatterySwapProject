@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -23,6 +24,8 @@ public interface SystemPriceRepository extends JpaRepository<SystemPrice, Long> 
      */
     @Query("SELECT sp.price FROM SystemPrice sp WHERE sp.priceType = :priceType")
     Optional<Double> findPriceByPriceType(@Param("priceType") SystemPrice.PriceType priceType);
+
+
 
     // [ĐÃ XÓA] Các hàm cũ như 'findCurrentSystemPrice', 'existsBy',
     // và 'findFirstByOrderByIdAsc' đã bị xóa vì chúng không còn

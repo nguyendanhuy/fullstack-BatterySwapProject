@@ -9,10 +9,7 @@ import BatterySwapStation.service.StationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @PreAuthorize("permitAll()")
@@ -24,7 +21,6 @@ public class StationController {
     private final StationService stationService;
     private final DockSlotRepository dockSlotRepository;
 
-
     @GetMapping
     public List<StationResponseDTO> getAllStations() {
         return stationService.getAllStations();
@@ -35,7 +31,6 @@ public class StationController {
         return stationService.getStationDetail(id);
     }
 
-    // /api/stations/nearby?lat=10.77&lng=106.68&radiusKm=5
     @GetMapping("/nearby")
     public List<StationResponseDTO> getNearbyStations(
             @RequestParam double lat,
@@ -45,18 +40,13 @@ public class StationController {
     }
 
 
-
-
     @GetMapping("/{stationId}/batteries/grouped")
     public List<DockBatteryGroupDTO> getGroupedBatteriesByDock(@PathVariable Integer stationId) {
 
-        // Lấy toàn bộ slot của station
-        List<DockSlot> slots = dockSlotRepository.findAll()
-                .stream()
-                .filter(s -> s.getDock().getStation().getStationId().equals(stationId))
-                .collect(Collectors.toList());
+        // 🔹 Truy vấn 1 lần duy nhất toàn bộ DockSlot (kèm Dock, Station, Battery)
+        List<DockSlot> slots = dockSlotRepository.findAllByDock_Station_StationId(stationId);
 
-        // Group theo dock name
+        // 🔹 Group theo dock name
         Map<String, List<DockSlot>> grouped = slots.stream()
                 .collect(Collectors.groupingBy(s -> s.getDock().getDockName()));
 
@@ -66,14 +56,14 @@ public class StationController {
             String dockName = entry.getKey();
             List<DockSlot> dockSlots = entry.getValue();
 
-            // Sắp xếp slot theo thứ tự
+            // Sắp xếp slot theo thứ tự tăng dần
             dockSlots.sort(Comparator.comparing(DockSlot::getSlotNumber));
 
             // Tạo map slotNumber -> DockSlot
             Map<Integer, DockSlot> slotMap = dockSlots.stream()
                     .collect(Collectors.toMap(DockSlot::getSlotNumber, s -> s));
 
-            // Xác định số lượng slot tối đa của dock (nếu biết trước có thể cố định 10)
+            // Xác định số lượng slot tối đa (nếu biết trước, có thể cố định 10)
             int maxSlot = dockSlots.stream()
                     .mapToInt(DockSlot::getSlotNumber)
                     .max()
@@ -81,12 +71,16 @@ public class StationController {
 
             List<SlotBatteryDTO> slotDtos = new ArrayList<>();
 
-            // Duyệt từ 1 → maxSlot, nếu trống thì thêm EMPTY
+            // Duyệt từng slot 1 → maxSlot
             for (int i = 1; i <= maxSlot; i++) {
                 DockSlot slot = slotMap.get(i);
                 SlotBatteryDTO dto = new SlotBatteryDTO();
                 dto.setSlotNumber(i);
                 dto.setSlotCode(dockName + i);
+
+                if (slot != null) {
+                    dto.setSlotId(slot.getDockSlotId()); // ✅ thêm slotId vào DTO
+                }
 
                 if (slot != null && slot.getBattery() != null) {
                     var b = slot.getBattery();
@@ -112,11 +106,10 @@ public class StationController {
             result.add(dockDto);
         }
 
-        // Sort dock theo tên (A, B, C)
+        // Sắp xếp dock theo tên (A, B, C)
         result.sort(Comparator.comparing(DockBatteryGroupDTO::getDockName));
 
         return result;
     }
-
 
 }

@@ -16,6 +16,7 @@ import StationFinder from "./pages/driver/StationFinder";
 import Reservation from "./pages/driver/Reservation";
 import Payment from "./pages/driver/Payment";
 import Subscriptions from "./pages/driver/Subscriptions";
+import SubscriptionCheckout from "./pages/driver/SubscriptionCheckout";
 import BookingHistory from "./pages/driver/BookingHistory";
 // Staff pages
 import StaffDashboard from "./pages/staff/Dashboard";
@@ -64,6 +65,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
               <Route path="reservation" element={<Reservation />} />
               <Route path="payment" element={<Payment />} />
               <Route path="subscriptions" element={<Subscriptions />} />
+              <Route path="subscriptions/checkout" element={<SubscriptionCheckout />} />
               <Route path="booking-history" element={<BookingHistory />} />
             </Route>
 

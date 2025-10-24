@@ -40,16 +40,16 @@ const QRCheckIn = () => {
     }
   }, [previewUrl]);
 
-  const mockCustomer = {
-    name: "Nguyễn Văn A",
-    phone: "0123456789",
-    vehicle: "VF 8 Plus",
-    batteryType: "Lithium-ion",
-    paymentStatus: "Đã thanh toán",
-    reservationTime: "14:30 - 15/12/2024",
-    qrCode: "QR123456789",
-    expectedBatteryId: "BAT001"
-  };
+  // const mockCustomer = {
+  //   name: "Nguyễn Văn A",
+  //   phone: "0123456789",
+  //   vehicle: "VF 8 Plus",
+  //   batteryType: "Lithium-ion",
+  //   paymentStatus: "Đã thanh toán",
+  //   reservationTime: "14:30 - 15/12/2024",
+  //   qrCode: "QR123456789",
+  //   expectedBatteryId: "BAT001"
+  // };
   //hàm format đầu vào của batteryId
   const formatBatteryIdInput = (input) => {
     return (input ?? "").split(/[,\n\r\t ]+/).map(id => id.trim()).filter(Boolean).map(id => id.toUpperCase());
@@ -100,7 +100,7 @@ const QRCheckIn = () => {
       setIsVerifying(false);
     }
   }
-
+  //hàm bắt đầu dịch vụ
   const startService = async () => {
     if (!enteredBatteryId.trim()) {
       setVerificationError("Vui lòng nhập ID pin");
@@ -118,7 +118,6 @@ const QRCheckIn = () => {
       batteryInIds: ids,
       staffUserId: userData.userId
     }
-
     console.log("Starting service with data:", data);
     //gọi api commitSwap
     setIsService(true)
@@ -133,6 +132,12 @@ const QRCheckIn = () => {
         const slotNumber = res.data.map(item => item.dockOutSlot);
         setBatterySlotNumber(slotNumber);
         console.log("Swap committed:", res);
+        setVerificationError("");
+        setIsDialogOpen(true);
+        toast({
+          title: "Dịch vụ đã bắt đầu",
+          description: `Ô pin đang mở....`,
+        });
       } else {
         setVerificationError(res.message || "Xác thực pin thất bại");
       }
@@ -144,12 +149,6 @@ const QRCheckIn = () => {
       });
     } finally {
       setIsService(false);
-      setVerificationError("");
-      setIsDialogOpen(true);
-      toast({
-        title: "Dịch vụ đã bắt đầu",
-        description: `Ô pin đang mở....`,
-      });
     }
   };
 
@@ -618,7 +617,13 @@ const QRCheckIn = () => {
           </div>
           <div className="flex justify-center">
             <Button
-              onClick={() => setIsDialogOpen(false)}
+              onClick={() => {
+                setIsDialogOpen(false);
+                setScannedCustomer(null);
+                setEnteredBatteryId("");
+                setVerificationError("");
+                setPreviewUrl(null);
+              }}
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-8"
             >
               Đã hiểu

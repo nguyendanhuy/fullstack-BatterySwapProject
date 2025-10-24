@@ -2,8 +2,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Battery, Check, Crown, Star, Zap, Shield, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 const Subscriptions = () => {
+  const navigate = useNavigate();
   const packages = [
     {
       id: "basic",
@@ -157,9 +158,17 @@ const Subscriptions = () => {
                     </li>))}
                   </ul>
 
-                  <Button className={`w-full h-12 text-lg font-semibold rounded-xl transition-all duration-300 hover:scale-105 shadow-lg ${pkg.popular
-                    ? `bg-gradient-to-r ${pkg.color} hover:opacity-90 text-white`
-                    : 'border-2 border-gray-200 text-gray-700 hover:bg-gray-50'}`} variant={pkg.popular ? "default" : "outline"}>
+                  <Button
+                    onClick={() => {
+                      // Tránh đưa React component (icon) vào history state vì không serializable
+                      const { icon, ...plan } = pkg;
+                      navigate("/driver/subscriptions/checkout", { state: { plan } });
+                    }}
+                    className={`w-full h-12 text-lg font-semibold rounded-xl transition-all duration-300 hover:scale-105 shadow-lg ${pkg.popular
+                      ? `bg-gradient-to-r ${pkg.color} hover:opacity-90 text-white`
+                      : 'border-2 border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                    variant={pkg.popular ? "default" : "outline"}
+                  >
                     <Zap className="h-5 w-5 mr-2" />
                     {currentSubscription.package === pkg.id ? "Gia hạn gói" : "Chọn gói này"}
                   </Button>

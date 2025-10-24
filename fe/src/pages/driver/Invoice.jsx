@@ -26,65 +26,6 @@ import { SystemContext } from "../../contexts/system.context";
 import { useToast } from "@/hooks/use-toast";
 import { Spin } from "antd";
 
-// const mockInvoicesData = {
-//     total: 2,
-//     invoices: [
-//         {
-//             invoiceId: 10048,
-//             userId: "DR004",
-//             createdDate: "2025-10-21",
-//             totalAmount: 45000,
-//             pricePerSwap: 15000,
-//             numberOfSwaps: 2,
-//             bookings: [
-//                 {
-//                     bookingId: 142,
-//                     bookingDate: "2025-10-22",
-//                     timeSlot: "08:00:00",
-//                     vehicleType: "FELIZ",
-//                     amount: 15000,
-//                     bookingStatus: "PENDINGSWAPPING",
-//                     stationId: 12,
-//                     stationName: "Trạm Kha Vạn Cân - Thủ Đức",
-//                     stationAddress:
-//                         "102 Kha Vạn Cân, Phường Linh Trung, Thành phố Thủ Đức, Thành phố Hồ Chí Minh",
-//                     vehicleId: 9,
-//                     licensePlate: "30B2-23459",
-//                     vehicleBatteryType: "LITHIUM_ION",
-//                 },
-//                 {
-//                     bookingId: 143,
-//                     bookingDate: "2025-10-22",
-//                     timeSlot: "08:30:00",
-//                     vehicleType: "KLARA_S",
-//                     amount: 30000,
-//                     bookingStatus: "PENDINGSWAPPING",
-//                     stationId: 12,
-//                     stationName: "Trạm Kha Vạn Cân - Thủ Đức",
-//                     stationAddress:
-//                         "102 Kha Vạn Cân, Phường Linh Trung, Thành phố Thủ Đức, Thành phố Hồ Chí Minh",
-//                     vehicleId: 13,
-//                     licensePlate: "31C3-34569",
-//                     vehicleBatteryType: "LITHIUM_ION",
-//                 },
-//             ],
-//             invoiceStatus: "PAID",
-//         },
-//         {
-//             invoiceId: 10043,
-//             userId: "DR004",
-//             createdDate: "2025-10-20",
-//             totalAmount: 30000,
-//             pricePerSwap: 15000,
-//             numberOfSwaps: 2,
-//             bookings: [],
-//             invoiceStatus: "PAID",
-//         },
-//     ],
-//     success: true,
-//     userId: "DR004",
-// };
-
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
         style: "currency",
@@ -104,25 +45,22 @@ const formatTime = (timeString) => {
     return timeString.substring(0, 5);
 };
 
+// Chỉ giữ 2 trạng thái cho HÓA ĐƠN: PENDING, PAID
 const getStatusBadge = (status) => {
     const statusConfig = {
         PAID: { label: "Đã thanh toán", className: "bg-green-100 text-green-800 border-green-300" },
-        UNPAID: { label: "Chưa thanh toán", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
-        PENDINGSWAPPING: { label: "Chờ đổi pin", className: "bg-blue-100 text-blue-800 border-blue-300" },
-        COMPLETED: { label: "Hoàn thành", className: "bg-green-100 text-green-800 border-green-300" },
-        CANCELLED: { label: "Đã hủy", className: "bg-red-100 text-red-800 border-red-300" },
+        PENDING: { label: "Đang chờ", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
     };
-
-    return statusConfig[status] || statusConfig.UNPAID;
+    return statusConfig[status] || statusConfig.PENDING;
 };
 
 const calculateStats = (invoices) => {
     const totalInvoices = invoices.length;
     const paidInvoices = invoices.filter((inv) => inv.invoiceStatus === "PAID").length;
-    const unpaidInvoices = totalInvoices - paidInvoices;
-    const totalAmount = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+    const pendingInvoices = invoices.filter((inv) => inv.invoiceStatus === "PENDING").length;
+    const totalAmount = invoices.reduce((sum, inv) => sum + (inv.invoiceStatus === "PAID" ? inv.totalAmount : 0), 0);
 
-    return { totalInvoices, paidInvoices, unpaidInvoices, totalAmount };
+    return { totalInvoices, paidInvoices, pendingInvoices, totalAmount };
 };
 
 const StatsCard = ({ icon: Icon, label, value, iconColor }) => (
@@ -142,20 +80,21 @@ const StatsCard = ({ icon: Icon, label, value, iconColor }) => (
 );
 
 const BookingCard = ({ booking, isHighlighted }) => {
+    // Lưu ý: bookingStatus có thể khác; badge hiển thị theo bookingStatus riêng nếu bạn muốn.
     const statusBadge = getStatusBadge(booking.bookingStatus);
 
     return (
-        <div className={`bg-gradient-to-br rounded-xl p-6 mb-4 border-2 transition-all duration-300 ${isHighlighted
-            ? 'from-yellow-50 to-orange-50 border-orange-300 shadow-lg animate-pulse'
-            : 'from-slate-50 to-blue-50 border-slate-200 hover:shadow-md'
-            }`}>
+        <div
+            className={`bg-gradient-to-br rounded-xl p-6 mb-4 border-2 transition-all duration-300 ${isHighlighted
+                ? "from-yellow-50 to-orange-50 border-orange-300 shadow-lg animate-pulse"
+                : "from-slate-50 to-blue-50 border-slate-200 hover:shadow-md"
+                }`}
+        >
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Receipt className="h-5 w-5 text-primary" />
                     <h4 className="font-semibold text-lg">Booking #{booking.bookingId}</h4>
-                    {isHighlighted && (
-                        <Badge className="bg-orange-500 text-white">Được tìm thấy</Badge>
-                    )}
+                    {isHighlighted && <Badge className="bg-orange-500 text-white">Được tìm thấy</Badge>}
                 </div>
                 <Badge className={`${statusBadge.className} border`}>{statusBadge.label}</Badge>
             </div>
@@ -221,7 +160,7 @@ const Invoices = () => {
     const navigate = useNavigate();
 
     const [invoices, setInvoices] = useState([]);
-    const [filterStatus, setFilterStatus] = useState("all"); // "all" | "paid" | "unpaid"
+    const [filterStatus, setFilterStatus] = useState("all"); // "all" | "PAID" | "PENDING"
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [highlightBookingId, setHighlightBookingId] = useState(null);
@@ -233,12 +172,11 @@ const Invoices = () => {
     useEffect(() => {
         loadInvoices();
 
-        // Nếu có bookingId từ navigation, highlight nó
         if (targetBookingId) {
             setHighlightBookingId(targetBookingId);
-            // Remove highlight after 5 seconds
             setTimeout(() => setHighlightBookingId(null), 5000);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [targetBookingId]);
 
     const loadInvoices = async () => {
@@ -248,12 +186,16 @@ const Invoices = () => {
         try {
             const res = await getInvoicebyUserId(userData.userId);
             if (res && Array.isArray(res?.invoices)) {
-                setInvoices(res.invoices);
+                // 1) Lọc cứng: chỉ giữ PENDING | PAID
+                const filtered = res.invoices.filter(
+                    (inv) => inv.invoiceStatus === "PENDING" || inv.invoiceStatus === "PAID"
+                );
+                setInvoices(filtered);
 
-                // Nếu có targetBookingId, tìm invoice chứa booking đó
+                // 2) Nếu có targetBookingId, tìm trong danh sách đã lọc
                 if (targetBookingId) {
-                    const targetInvoice = res.invoices.find(inv =>
-                        inv.bookings.some(booking => booking.bookingId === targetBookingId)
+                    const targetInvoice = filtered.find((inv) =>
+                        inv.bookings?.some((booking) => booking.bookingId === targetBookingId)
                     );
                     if (targetInvoice) {
                         setTargetInvoiceId(targetInvoice.invoiceId);
@@ -282,35 +224,29 @@ const Invoices = () => {
     const filteredInvoices = invoices.filter((inv) => {
         // Nếu có targetBookingId, chỉ hiển thị invoice chứa booking đó
         if (targetBookingId) {
-            const hasTargetBooking = inv.bookings.some(booking => booking.bookingId === targetBookingId);
+            const hasTargetBooking = inv.bookings?.some((booking) => booking.bookingId === targetBookingId);
             if (!hasTargetBooking) return false;
         }
 
-        // Filter by status
-        const statusMatch =
-            filterStatus === "all" ||
-            (filterStatus === "PAID" && inv.invoiceStatus === "PAID") ||
-            (filterStatus === "PAYMENTFAILED" && inv.invoiceStatus === "UNPAID");
-
+        // Lọc theo tab trạng thái
+        const statusMatch = filterStatus === "all" || inv.invoiceStatus === filterStatus;
         if (!statusMatch) return false;
 
-        // Filter by search query
+        // Lọc theo text search
         if (searchQuery.trim() === "") return true;
 
         const query = searchQuery.toLowerCase();
 
-        // Search in invoice ID
-        if (inv.invoiceId.toString().includes(query)) return true;
+        if (inv.invoiceId?.toString().includes(query)) return true;
 
-        // Search in bookings
-        return inv.bookings.some(
+        return inv.bookings?.some(
             (booking) =>
-                booking.bookingId.toString().includes(query) ||
-                booking.stationName.toLowerCase().includes(query) ||
-                booking.stationAddress.toLowerCase().includes(query) ||
-                booking.vehicleType.toLowerCase().includes(query) ||
-                booking.licensePlate.toLowerCase().includes(query) ||
-                booking.vehicleBatteryType.toLowerCase().includes(query)
+                booking.bookingId?.toString().includes(query) ||
+                booking.stationName?.toLowerCase().includes(query) ||
+                booking.stationAddress?.toLowerCase().includes(query) ||
+                booking.vehicleType?.toLowerCase().includes(query) ||
+                booking.licensePlate?.toLowerCase().includes(query) ||
+                booking.vehicleBatteryType?.toLowerCase().includes(query)
         );
     });
 
@@ -323,11 +259,7 @@ const Invoices = () => {
                 <div className="mb-8 animate-fade-in">
                     <div className="flex items-center gap-4 mb-4">
                         {targetBookingId && (
-                            <Button
-                                variant="outline"
-                                onClick={() => navigate(-1)}
-                                className="flex items-center gap-2"
-                            >
+                            <Button variant="outline" onClick={() => navigate(-1)} className="flex items-center gap-2">
                                 <ArrowLeft className="h-4 w-4" />
                                 Quay lại
                             </Button>
@@ -339,8 +271,7 @@ const Invoices = () => {
                             <p className="text-muted-foreground">
                                 {targetBookingId
                                     ? `Hiển thị hóa đơn cho booking #${targetBookingId}`
-                                    : "Quản lý và theo dõi tất cả hóa đơn của bạn"
-                                }
+                                    : "Quản lý và theo dõi tất cả hóa đơn của bạn"}
                             </p>
                         </div>
                     </div>
@@ -351,8 +282,13 @@ const Invoices = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <StatsCard icon={FileText} label="Tổng hóa đơn" value={stats.totalInvoices} iconColor="bg-blue-500" />
                         <StatsCard icon={CheckCircle} label="Đã thanh toán" value={stats.paidInvoices} iconColor="bg-green-500" />
-                        <StatsCard icon={Clock} label="Chưa thanh toán" value={stats.unpaidInvoices} iconColor="bg-yellow-500" />
-                        <StatsCard icon={DollarSign} label="Tổng chi" value={formatCurrency(stats.totalAmount)} iconColor="bg-purple-500" />
+                        <StatsCard icon={Clock} label="Đang chờ" value={stats.pendingInvoices} iconColor="bg-yellow-500" />
+                        <StatsCard
+                            icon={DollarSign}
+                            label="Tổng chi"
+                            value={formatCurrency(stats.totalAmount)}
+                            iconColor="bg-purple-500"
+                        />
                     </div>
                 )}
 
@@ -377,8 +313,8 @@ const Invoices = () => {
                     <Tabs value={filterStatus} onValueChange={(value) => setFilterStatus(value)} className="mb-6">
                         <TabsList className="grid w-full md:w-auto grid-cols-3">
                             <TabsTrigger value="all">Tất cả ({invoices.length})</TabsTrigger>
-                            <TabsTrigger value="paid">Đã thanh toán ({stats.paidInvoices})</TabsTrigger>
-                            <TabsTrigger value="unpaid">Chưa thanh toán ({stats.unpaidInvoices})</TabsTrigger>
+                            <TabsTrigger value="PAID">Đã thanh toán ({stats.paidInvoices})</TabsTrigger>
+                            <TabsTrigger value="PENDING">Đang chờ ({stats.pendingInvoices})</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 )}
@@ -396,8 +332,7 @@ const Invoices = () => {
                         <p className="text-muted-foreground">
                             {targetBookingId
                                 ? `Không tìm thấy hóa đơn cho booking #${targetBookingId}`
-                                : "Chưa có hóa đơn nào trong danh mục này"
-                            }
+                                : "Chưa có hóa đơn nào trong danh mục này"}
                         </p>
                     </Card>
                 ) : (
@@ -415,7 +350,7 @@ const Invoices = () => {
                                 <AccordionItem
                                     key={invoice.invoiceId}
                                     value={`invoice-${invoice.invoiceId}`}
-                                    className={`border-2 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-lg transition-all duration-300 ${isTargetInvoice ? 'border-orange-300 shadow-lg' : ''
+                                    className={`border-2 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-lg transition-all duration-300 ${isTargetInvoice ? "border-orange-300 shadow-lg" : ""
                                         }`}
                                 >
                                     <AccordionTrigger className="px-6 py-4 hover:no-underline">
@@ -428,9 +363,7 @@ const Invoices = () => {
                                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                                         Hóa đơn #{invoice.invoiceId}
                                                         {isTargetInvoice && (
-                                                            <Badge className="bg-orange-500 text-white text-xs">
-                                                                Booking #{targetBookingId}
-                                                            </Badge>
+                                                            <Badge className="bg-orange-500 text-white text-xs">Booking #{targetBookingId}</Badge>
                                                         )}
                                                     </h3>
                                                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
@@ -461,9 +394,9 @@ const Invoices = () => {
                                         <div className="pt-4 border-t-2">
                                             <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
                                                 <Receipt className="h-5 w-5 text-primary" />
-                                                Chi tiết các booking ({invoice.bookings.length})
+                                                Chi tiết các booking ({invoice.bookings?.length ?? 0})
                                             </h4>
-                                            {invoice.bookings.length === 0 ? (
+                                            {(!invoice.bookings || invoice.bookings.length === 0) ? (
                                                 <div className="bg-slate-100 rounded-xl p-8 text-center">
                                                     <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                                                     <p className="text-muted-foreground">Không có booking nào trong hóa đơn này</p>
@@ -489,6 +422,5 @@ const Invoices = () => {
             </div>
         </div>
     );
-};
-
+}
 export default Invoices;

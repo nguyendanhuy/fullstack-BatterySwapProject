@@ -138,10 +138,7 @@ export {
     generateQRBooking,
     verifyQrBooking,
     commitSwap,
-<<<<<<< HEAD
     checkBatteryModule,
-    cancelBooking
-=======
+    cancelBooking,
     cancelPendingInvoiceById
->>>>>>> ff9f341f3b96f45fa531e46fd44718e1fe36cb79
 };

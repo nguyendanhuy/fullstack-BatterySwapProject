@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 
 import java.time.LocalDateTime;
 
@@ -81,26 +83,40 @@ public class UserService {
      */
     @Transactional
     public void changePassword(UserDetails userDetails, ChangePasswordRequest request) {
-
-        // 1. Lấy user
+        // 1) Lấy user
         User user = getUserFromDetails(userDetails);
 
-        // 2. Kiểm tra mật khẩu mới và xác nhận
+        // 2) Kiểm tra new/confirm (giữ chặt ở BE phòng FE bỏ sót)
+        if (!StringUtils.hasText(request.getNewPassword()) || request.getNewPassword().length() < 6) {
+            throw new IllegalArgumentException("Mật khẩu mới phải có ít nhất 6 ký tự.");
+        }
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new IllegalArgumentException("Mật khẩu mới và xác nhận không khớp.");
         }
 
-        // 3. Kiểm tra mật khẩu cũ
-        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("Mật khẩu cũ không chính xác.");
-        }
+        // 3) Nếu user đã có mật khẩu -> bắt buộc kiểm tra oldPassword
+        String currentHash = user.getPassword(); // có thể null nếu đăng ký Google
+        boolean hasExistingPassword = StringUtils.hasText(currentHash);
 
-        // 4. Mã hóa và lưu mật khẩu mới
+        if (hasExistingPassword) {
+            // bắt buộc nhập oldPassword
+            if (!StringUtils.hasText(request.getOldPassword())) {
+                throw new IllegalArgumentException("Vui lòng nhập mật khẩu hiện tại.");
+            }
+            if (!passwordEncoder.matches(request.getOldPassword(), currentHash)) {
+                throw new IllegalArgumentException("Mật khẩu cũ không chính xác.");
+            }
+        }
+        // else: chưa có password (đăng ký Google) -> cho đặt lần đầu, bỏ qua kiểm tra oldPassword
+
+        // 4) Mã hoá & lưu
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setUpdateAt(LocalDateTime.now());
         userRepository.save(user);
 
-        log.info("User {} đã đổi mật khẩu thành công.", user.getUserId());
+        log.info("User {} đã đổi/đặt mật khẩu thành công.", user.getUserId());
     }
+
 
     /**
      * API 2: Logic đổi số điện thoại

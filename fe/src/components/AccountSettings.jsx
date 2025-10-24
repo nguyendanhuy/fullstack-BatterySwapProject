@@ -7,6 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { User, Phone, Lock, Eye, EyeOff } from "lucide-react";
 import { SystemContext } from "../contexts/system.context";
+import { useNavigate } from "react-router-dom";
+import { changeUserPassword, changeUserPhoneNumber } from "../services/axios.services";
+
 
 const AccountSettings = ({ userRole }) => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -18,12 +21,11 @@ const AccountSettings = ({ userRole }) => {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isPhoneDialogOpen, setIsPhoneDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { userData } = useContext(SystemContext);
+  const { userData, setUserData } = useContext(SystemContext);
+  const navigate = useNavigate();
 
-  console.log("User:", userData);
-
-  const handlePasswordChange = () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
+  const handlePasswordChange = async () => {
+    if (!newPassword || !confirmPassword) {
       toast({
         title: "Thiếu thông tin",
         description: "Vui lòng điền đầy đủ thông tin",
@@ -47,16 +49,45 @@ const AccountSettings = ({ userRole }) => {
       });
       return;
     }
-    toast({
-      title: "Cập nhật thành công",
-      description: "Mật khẩu đã được thay đổi thành công"
-    });
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setIsPasswordDialogOpen(false);
+
+    try {
+      const res = await changeUserPassword(currentPassword, newPassword, confirmPassword);
+      console.log("✅Change password response:", res);
+      if (res.success == true) {
+
+        toast({
+          title: "Cập nhật thành công",
+          description: "Mật khẩu đã được thay đổi thành công",
+          className: "bg-green-500 text-white",
+        });
+
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setIsPasswordDialogOpen(false);
+        if (localStorage.getItem("token")) {
+          localStorage.removeItem("token");
+        }
+        navigate("/login");
+      } else {
+        toast({
+          title: "Cập nhật thất bại",
+          description: res?.error || "Đã xảy ra lỗi khi thay đổi mật khẩu",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error changing password:", error);
+      toast({
+        title: "Cập nhật thất bại",
+        description: "Đã xảy ra lỗi khi cập nhật mật khẩu",
+        variant: "destructive"
+      });
+    }
+
+
   };
-  const handlePhoneChange = () => {
+  const handlePhoneChange = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       toast({
         title: "Số điện thoại không hợp lệ",
@@ -65,11 +96,40 @@ const AccountSettings = ({ userRole }) => {
       });
       return;
     }
-    toast({
-      title: "Cập nhật thành công",
-      description: "Số điện thoại đã được cập nhật"
-    });
-    setIsPhoneDialogOpen(false);
+
+    try {
+      const res = await changeUserPhoneNumber(phoneNumber);
+      console.log("✅Change phone response:", res);
+
+      if (res.success === true) {
+        toast({
+          title: "Cập nhật thành công",
+          description: "Số điện thoại đã được cập nhật",
+          className: "bg-green-500 text-white",
+        });
+        setUserData((prev) => ({
+          ...prev,
+          phone: phoneNumber,
+        }));
+        setIsPhoneDialogOpen(false);
+        setPhoneNumber("");
+      } else {
+        toast({
+          title: "Cập nhật thất bại",
+          description: res?.error || "Đã xảy ra lỗi khi cập nhật số điện thoại",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error changing phone number:", error);
+      toast({
+        title: "Cập nhật thất bại",
+        description: "Đã xảy ra lỗi khi cập nhật số điện thoại",
+        variant: "destructive"
+      });
+    }
+
+
   };
   return (<div className="space-y-6">
     {/* Account Information */}
@@ -107,7 +167,7 @@ const AccountSettings = ({ userRole }) => {
           </div>
           {userData.role === "staff" && "station" in userData && (<div>
             <Label className="text-sm font-medium text-muted-foreground">Trạm được gán</Label>
-            <p className="text-foreground font-medium">{userData?.station}</p>
+            <p className="text-foreground font-medium">{userData?.stationId}</p>
           </div>)}
         </div>
       </CardContent>
@@ -128,7 +188,7 @@ const AccountSettings = ({ userRole }) => {
         <div className="flex items-center justify-between p-4 border rounded-lg">
           <div>
             <h4 className="font-medium">Mật khẩu</h4>
-            <p className="text-sm text-muted-foreground">Thay đổi mật khẩu đăng nhập</p>
+            <p className="text-sm text-muted-foreground">Cập nhật mật khẩu đăng nhập</p>
           </div>
           <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
             <DialogTrigger asChild>
@@ -145,7 +205,7 @@ const AccountSettings = ({ userRole }) => {
                 <div className="space-y-2">
                   <Label htmlFor="current-password">Mật khẩu hiện tại</Label>
                   <div className="relative">
-                    <Input id="current-password" type={showCurrentPassword ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Nhập mật khẩu hiện tại" />
+                    <Input id="current-password" type={showCurrentPassword ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Nhập mật khẩu hiện tại (bỏ trống nếu đăng ký bằng Google)" />
                     <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowCurrentPassword(!showCurrentPassword)}>
                       {showCurrentPassword ? (<EyeOff className="h-4 w-4" />) : (<Eye className="h-4 w-4" />)}
                     </Button>

@@ -125,6 +125,14 @@ const getDriverSubscription = (UserId) => {
     return axios.get(`/plans/my-subscription?userId=${UserId}`);
 }
 
+const changeUserPhoneNumber = (newPhoneNumber) => {
+    return axios.put("users/profile/change-phone", { newPhoneNumber });
+}
+
+const changeUserPassword = (oldPassword, newPassword, confirmPassword) => {
+    return axios.post("/users/profile/change-password", { oldPassword, newPassword, confirmPassword });
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -155,5 +163,7 @@ export {
     checkBatteryModule,
     cancelBooking,
     getAllPlans,
-    getDriverSubscription
+    getDriverSubscription,
+    changeUserPhoneNumber,
+    changeUserPassword
 };

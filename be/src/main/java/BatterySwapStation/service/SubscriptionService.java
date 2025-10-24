@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +29,8 @@ public class SubscriptionService {
     private InvoiceRepository invoiceRepository;
     @Autowired
     private SystemPriceService systemPriceService;
+    @Autowired
+    private SubscriptionPlanRepository subscriptionPlanRepository;
     /**
      * Hàm chính: Xử lý việc user đăng ký 1 gói cước.
      * Logic: Tạo 1 Invoice PENDING cho gói cước đó.
@@ -304,6 +307,42 @@ public class SubscriptionService {
                         "price", price
                 )
         );
+    }
+
+    // (Bên trong SubscriptionService.java)
+// (Cần import java.util.stream.Collectors)
+
+    /**
+     * [MỚI] Lấy tất cả các gói SubscriptionPlan có sẵn.
+     */
+    public List<Map<String, Object>> getAllSubscriptionPlans() {
+
+        List<SubscriptionPlan> allPlans = subscriptionPlanRepository.findAll();
+
+        return allPlans.stream()
+                .map(plan -> {
+                    Double price = systemPriceService.getPriceByType(plan.getPriceType());
+
+                    Integer limit = plan.getSwapLimit();
+                    String limitStr = "Không giới hạn";
+                    if (limit != null && limit >= 0) {
+                        limitStr = String.valueOf(limit);
+                    }
+
+                    // ✅ [SỬA LỖI] Dùng HashMap thay vì Map.of()
+                    Map<String, Object> planMap = new HashMap<>();
+                    planMap.put("planId", plan.getId());
+                    planMap.put("planName", plan.getPlanName());
+                    planMap.put("description", plan.getDescription());
+                    planMap.put("price", price);
+                    planMap.put("priceType", plan.getPriceType().name());
+                    planMap.put("durationInDays", plan.getDurationInDays());
+                    planMap.put("swapLimit", limitStr);
+                    planMap.put("swapLimitInt", limit);
+
+                    return planMap; // Trả về HashMap
+                })
+                .collect(Collectors.toList()); // Lỗi sẽ hết
     }
 
 }

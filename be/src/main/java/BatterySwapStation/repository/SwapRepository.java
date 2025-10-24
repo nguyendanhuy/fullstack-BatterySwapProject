@@ -29,5 +29,4 @@ public interface SwapRepository extends JpaRepository<Swap, Long> {
      * cho một Booking cụ thể.
      */
     Optional<Swap> findFirstByBookingOrderByCompletedTimeDesc(Booking booking);
-
 }

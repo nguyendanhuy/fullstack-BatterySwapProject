@@ -163,4 +163,24 @@ public class SubscriptionController {
             ));
         }
     }
+
+    @GetMapping("/all")
+    @Operation(summary = "Lấy tất cả các Gói Subscription có sẵn",
+            description = "Hiển thị danh sách tất cả các gói (Basic, Premium, Unlimited) mà user có thể đăng ký.")
+    public ResponseEntity<Map<String, Object>> getAllPlans() {
+        try {
+            List<Map<String, Object>> plans = subscriptionService.getAllSubscriptionPlans();
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Lấy danh sách gói thành công.",
+                    "plans", plans
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
 }

@@ -34,7 +34,6 @@ const getVehicleInfoByVin = (vin) => {
 }
 
 const registerVehicleByVin = (vin) => {
-    if (!vin) throw new Error("VIN is required");
     return axios.post(`/v1/vehicles/assign`, { vin });
 }
 const getUserAllVehicles = () => {
@@ -117,6 +116,15 @@ const cancelBooking = (data) => {
 const getSwapsByStation = (stationId) => {
     return axios.get(`/swaps?stationId=${stationId}`);
 }
+
+const getAllPlans = () => {
+    return axios.get("/plans/all");
+}
+
+const getDriverSubscription = (UserId) => {
+    return axios.get(`/plans/my-subscription?userId=${UserId}`);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -145,5 +153,7 @@ export {
     getSwapsByStation,
     cancelPendingInvoiceById,
     checkBatteryModule,
-    cancelBooking
+    cancelBooking,
+    getAllPlans,
+    getDriverSubscription
 };

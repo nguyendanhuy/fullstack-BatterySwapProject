@@ -3,71 +3,114 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Battery, Check, Crown, Star, Zap, Shield, TrendingUp } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { getAllPlans, getDriverSubscription } from "../../services/axios.services";
+import { toast } from "sonner";
+import { useEffect, useState, useContext } from "react";
+import { SystemContext } from "../../contexts/system.context";
+
 const Subscriptions = () => {
+  const { userData } = useContext(SystemContext);
   const navigate = useNavigate();
-  const packages = [
-    {
-      id: "basic",
-      name: "Gói Cơ bản",
-      price: "299,000",
-      period: "tháng",
-      description: "Phù hợp cho việc sử dụng hàng ngày",
-      features: [
-        "10 lần đổi pin/tháng",
-        "Ưu tiên đặt lịch",
-        "Hỗ trợ 24/7",
-        "Không phí phụ thu",
-        "Thông báo trạng thái pin"
-      ],
-      popular: false,
-      icon: Battery,
-      color: "from-blue-500 to-indigo-500",
-      bgColor: "from-blue-50 to-indigo-50"
-    },
-    {
-      id: "premium",
-      name: "Gói Premium",
-      price: "499,000",
-      period: "tháng",
-      description: "Lựa chọn tốt nhất cho người dùng thường xuyên",
-      features: [
-        "20 lần đổi pin/tháng",
-        "Ưu tiên cao đặt lịch",
-        "Hỗ trợ VIP 24/7",
-        "Miễn phí tại mọi trạm",
-        "Bảo trì pin miễn phí",
-        "Báo cáo chi tiết hàng tháng"
-      ],
-      popular: true,
-      icon: Star,
-      color: "from-green-500 to-emerald-500",
-      bgColor: "from-green-50 to-emerald-50"
-    },
-    {
-      id: "unlimited",
-      name: "Gói Không giới hạn",
-      price: "899,000",
-      period: "tháng",
-      description: "Dành cho doanh nghiệp và sử dụng cao",
-      features: [
-        "Không giới hạn lần đổi pin",
-        "Ưu tiên tuyệt đối",
-        "Quản lý tài khoản riêng",
-        "Báo cáo chi tiết",
-        "Hỗ trợ kỹ thuật chuyên biệt",
-        "API tích hợp"
-      ],
-      popular: false,
-      icon: Crown,
-      color: "from-purple-500 to-pink-500",
-      bgColor: "from-purple-50 to-pink-50"
-    }
-  ];
-  const currentSubscription = {
-    package: "premium",
-    expiryDate: "15/01/2025",
-    remainingSwaps: 15
-  };
+  const [packages, setPackages] = useState([]);
+  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch plans
+        const plansResponse = await getAllPlans();
+        console.log("Plans response:", plansResponse);
+
+        if (plansResponse && plansResponse.success && plansResponse.plans) {
+          // Map API data to UI format
+          const mappedPackages = plansResponse.plans.map(plan => {
+            let icon, color, bgColor;
+
+            // Map based on planName
+            switch (plan.planName) {
+              case "BASIC":
+                icon = Battery;
+                color = "from-blue-500 to-indigo-500";
+                bgColor = "from-blue-50 to-indigo-50";
+                break;
+              case "PREMIUM":
+                icon = Star;
+                color = "from-green-500 to-emerald-500";
+                bgColor = "from-green-50 to-emerald-50";
+                break;
+              case "UNLIMITED":
+                icon = Crown;
+                color = "from-purple-500 to-pink-500";
+                bgColor = "from-purple-50 to-pink-50";
+                break;
+              default:
+                icon = Battery;
+                color = "from-gray-500 to-slate-500";
+                bgColor = "from-gray-50 to-slate-50";
+            }
+
+            // Split description into feature list
+            const features = plan.description
+              .split('. ')
+              .filter(item => item.trim().length > 0)
+              .map(item => item.trim().endsWith('.') ? item.trim() : item.trim() + '.');
+
+            return {
+              id: plan.planId,
+              name: plan.planName === "BASIC" ? "Gói Cơ bản"
+                : plan.planName === "PREMIUM" ? "Gói Premium"
+                  : "Gói Không giới hạn",
+              price: plan.price.toLocaleString('vi-VN'),
+              period: "tháng",
+              description: plan.description,
+              features: features,
+              popular: plan.planName === "PREMIUM",
+              icon: icon,
+              color: color,
+              bgColor: bgColor,
+              planName: plan.planName,
+              swapLimit: plan.swapLimit,
+              priceType: plan.priceType
+            };
+          });
+
+          setPackages(mappedPackages);
+        }
+        console.log("User data:", userData);
+
+        // Fetch current subscription
+        if (userData && userData.userId) {
+          const subscriptionResponse = await getDriverSubscription(userData.userId);
+          console.log("Subscription response:", subscriptionResponse);
+
+          if (subscriptionResponse && subscriptionResponse.success && subscriptionResponse.subscription) {
+            setCurrentSubscription(subscriptionResponse.subscription);
+          }
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Không thể tải dữ liệu");
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải danh sách gói...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       {/* Page Header */}
@@ -78,38 +121,75 @@ const Subscriptions = () => {
       </header>
       <div className="container mx-auto px-6 max-w-7xl">
         {/* Current Subscription */}
-        <Card className="mb-8 border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 animate-fade-in rounded-3xl overflow-hidden">
-          <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-500"></div>
-          <CardHeader>
-            <CardTitle className="flex items-center text-2xl font-bold text-gray-800">
-              <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl mr-4">
-                <Star className="h-6 w-6 text-white" />
-              </div>
-              Gói hiện tại của bạn
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center p-6 bg-white/60 rounded-3xl">
-                <h3 className="text-3xl font-bold text-green-600 mb-2">Premium</h3>
-                <p className="text-gray-600">Đang hoạt động</p>
-                <Badge className="mt-2 bg-green-100 text-green-800">Gói phổ biến</Badge>
-              </div>
-              <div className="text-center p-6 bg-white/60 rounded-3xl">
-                <h3 className="text-3xl font-bold text-blue-600 mb-2">{currentSubscription.remainingSwaps}</h3>
-                <p className="text-gray-600">Lần đổi còn lại</p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+        {currentSubscription ? (
+          <Card className="mb-8 border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 animate-fade-in rounded-3xl overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-500"></div>
+            <CardHeader>
+              <CardTitle className="flex items-center text-2xl font-bold text-gray-800">
+                <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl mr-4">
+                  <Star className="h-6 w-6 text-white" />
+                </div>
+                Gói hiện tại của bạn
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="text-center p-6 bg-white/60 rounded-3xl">
+                  <h3 className="text-3xl font-bold text-green-600 mb-2">
+                    {currentSubscription.plan.planName === "BASIC" ? "Cơ bản"
+                      : currentSubscription.plan.planName === "PREMIUM" ? "Premium"
+                        : "Không giới hạn"}
+                  </h3>
+                  <p className="text-gray-600">Đang hoạt động</p>
+                  {currentSubscription.plan.planName === "PREMIUM" && (
+                    <Badge className="mt-2 bg-green-100 text-green-800">Gói phổ biến</Badge>
+                  )}
+                </div>
+                <div className="text-center p-6 bg-white/60 rounded-3xl">
+                  <h3 className="text-3xl font-bold text-blue-600 mb-2">
+                    {currentSubscription.plan.swapLimit === "Không giới hạn"
+                      ? "∞"
+                      : parseInt(currentSubscription.plan.swapLimit) - currentSubscription.usedSwaps}
+                  </h3>
+                  <p className="text-gray-600">Lần đổi còn lại</p>
+                  {currentSubscription.plan.swapLimit !== "Không giới hạn" && (
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full"
+                        style={{
+                          width: `${((parseInt(currentSubscription.plan.swapLimit) - currentSubscription.usedSwaps) /
+                            parseInt(currentSubscription.plan.swapLimit)) * 100}%`
+                        }}
+                      ></div>
+                    </div>
+                  )}
+                </div>
+                <div className="text-center p-6 bg-white/60 rounded-3xl">
+                  <h3 className="text-3xl font-bold text-purple-600 mb-2">
+                    {new Date(currentSubscription.endDate).toLocaleDateString('vi-VN')}
+                  </h3>
+                  <p className="text-gray-600">Ngày hết hạn</p>
+                  <Button variant="outline" className="mt-2 text-sm">Gia hạn</Button>
                 </div>
               </div>
-              <div className="text-center p-6 bg-white/60 rounded-3xl">
-                <h3 className="text-3xl font-bold text-purple-600 mb-2">{currentSubscription.expiryDate}</h3>
-                <p className="text-gray-600">Ngày hết hạn</p>
-                <Button variant="outline" className="mt-2 text-sm">Gia hạn</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="mb-8 border-0 shadow-xl bg-gradient-to-br from-gray-50 to-slate-50 animate-fade-in rounded-3xl overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-gray-500 to-slate-500"></div>
+            <CardHeader>
+              <CardTitle className="flex items-center text-2xl font-bold text-gray-800">
+                <div className="p-3 bg-gradient-to-r from-gray-500 to-slate-500 rounded-2xl mr-4">
+                  <Battery className="h-6 w-6 text-white" />
+                </div>
+                Bạn chưa có gói thuê pin
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 text-center">Chọn một gói bên dưới để bắt đầu sử dụng dịch vụ</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Available Packages */}
         <div className="mb-8">
@@ -137,7 +217,7 @@ const Subscriptions = () => {
                     </div>
                   </div>
                   <CardTitle className="text-2xl font-bold text-gray-800 mb-2">{pkg.name}</CardTitle>
-                  <CardDescription className="text-gray-600 text-base mb-4">{pkg.description}</CardDescription>
+                  {/* <CardDescription className="text-gray-600 text-base mb-4">{pkg.description}</CardDescription> */}
                   <div className="text-4xl font-bold text-gray-800 mb-2">
                     {pkg.price} VNĐ
                     <span className="text-base text-gray-500 font-normal">/{pkg.period}</span>
@@ -170,7 +250,7 @@ const Subscriptions = () => {
                     variant={pkg.popular ? "default" : "outline"}
                   >
                     <Zap className="h-5 w-5 mr-2" />
-                    {currentSubscription.package === pkg.id ? "Gia hạn gói" : "Chọn gói này"}
+                    {currentSubscription && currentSubscription.plan.planId === pkg.id ? "Gia hạn gói" : "Chọn gói này"}
                   </Button>
 
                   {pkg.popular && (<div className="flex items-center justify-center mt-3 text-sm text-green-600">

@@ -1,9 +1,12 @@
 package BatterySwapStation.service;
 
 import BatterySwapStation.dto.RoleDTO;
+import BatterySwapStation.entity.StaffAssign;
+import BatterySwapStation.entity.UserSubscription;
+import BatterySwapStation.repository.StaffAssignRepository;
+import BatterySwapStation.repository.UserSubscriptionRepository;
 import BatterySwapStation.utils.UserIdGenerator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import BatterySwapStation.dto.LoginRequest;
 import BatterySwapStation.dto.AuthResponse;
@@ -12,35 +15,31 @@ import BatterySwapStation.entity.User;
 import BatterySwapStation.repository.RoleRepository;
 import BatterySwapStation.repository.UserRepository;
 import BatterySwapStation.dto.GoogleUserInfo;
-import java.util.Map;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-
 public class AuthService {
     private final UserIdGenerator userIdGenerator;
     private final UserRepository userRepository;
     private final UserService userService;
     private final RoleRepository roleRepository;
     private final JwtService jwtService;
+    private final StaffAssignRepository staffAssignRepository;
+    private final UserSubscriptionRepository userSubscriptionRepository;
 
-    // Đăng nhập
+    // 🔹 Đăng nhập thường
     public AuthResponse login(LoginRequest req) {
         User user = userService.findByEmail(req.getEmail());
-        if (user == null) {
-            throw new RuntimeException("Email không tồn tại");
-        }
-
-        if (!userService.checkPassword(req.getPassword(), user.getPassword())) {
+        if (user == null) throw new RuntimeException("Email không tồn tại");
+        if (!userService.checkPassword(req.getPassword(), user.getPassword()))
             throw new RuntimeException("Mật khẩu không đúng");
-        }
-        if (!user.isActive()) {
-            throw new RuntimeException("Tài khoản của bạn đã bị ban do chua du trinh de vao.");
-        }
-        if (!user.isVerified()) {
-            throw new RuntimeException("Bạn chưa xác thực email, chưa đủ điều kiện để đăng nhập.");
-        }
+        if (!user.isActive())
+            throw new RuntimeException("Ban đã bị ban khỏi server. Vui lòng liên hệ quản trị viên");
+        if (!user.isVerified())
+            throw new RuntimeException("Bạn chưa xác thực email");
 
         String token = jwtService.generateToken(
                 user.getUserId(),
@@ -49,6 +48,28 @@ public class AuthService {
                 user.getRole().getRoleName()
         );
 
+        Integer assignedStationId = null;
+        Long activeSubscriptionId = null;
+
+        // 🔹 Nếu là Staff
+        if (user.getRole().getRoleId() == 2) {
+            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            if (assign != null) assignedStationId = assign.getStationId();
+        }
+
+        // 🔹 Nếu là Driver
+        if (user.getRole().getRoleId() == 1) {
+            UserSubscription sub = userSubscriptionRepository
+                    .findFirstByUser_UserIdAndStatusAndEndDateAfter(
+                            user.getUserId(),
+                            UserSubscription.SubscriptionStatus.ACTIVE,
+                            LocalDateTime.now()
+                    );
+            if (sub != null && sub.getPlan() != null) {
+                activeSubscriptionId = sub.getPlan().getId();
+            }
+        }
+
         return new AuthResponse(
                 "Đăng nhập thành công",
                 user.getUserId(),
@@ -56,13 +77,13 @@ public class AuthService {
                 user.getFullName(),
                 user.getPhone(),
                 user.getRole().getRoleName(),
-                token
+                token,
+                assignedStationId,
+                activeSubscriptionId
         );
     }
 
-
-
-    // Cập nhật role cho user
+    // 🔹 Cập nhật role cho user
     public boolean updateUserRole(String userId, RoleDTO roleDTO) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return false;
@@ -81,12 +102,13 @@ public class AuthService {
         return true;
     }
 
-
+    // 🔹 Login bằng Google
     @Transactional
     public AuthResponse handleGoogleLogin(GoogleUserInfo info) {
         User user = userRepository.findByEmail(info.getEmail());
         boolean isNew = false;
-
+        if (!user.isActive())
+            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
         if (user == null) {
             Role defaultRole = roleRepository.findByRoleName("DRIVER");
             if (defaultRole == null) {
@@ -115,7 +137,31 @@ public class AuthService {
                 user.getRole().getRoleName()
         );
 
-        String message = isNew ? "Đăng ký mới thành công, vui lòng bổ sung SĐT và địa chỉ sau nhé" : "Đăng nhập thành công";
+        String message = isNew
+                ? "Đăng ký mới thành công, vui lòng bổ sung SĐT và địa chỉ sau nhé"
+                : "Đăng nhập thành công";
+
+        Integer assignedStationId = null;
+        Long activeSubscriptionId = null;
+
+        // Nếu là Staff (trường hợp Google Staff)
+        if (user.getRole().getRoleId() == 2) {
+            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            if (assign != null) assignedStationId = assign.getStationId();
+        }
+
+        // Nếu là Driver
+        if (user.getRole().getRoleId() == 1) {
+            UserSubscription sub = userSubscriptionRepository
+                    .findFirstByUser_UserIdAndStatusAndEndDateAfter(
+                            user.getUserId(),
+                            UserSubscription.SubscriptionStatus.ACTIVE,
+                            LocalDateTime.now()
+                    );
+            if (sub != null && sub.getPlan() != null) {
+                activeSubscriptionId = sub.getPlan().getId();
+            }
+        }
 
         return new AuthResponse(
                 message,
@@ -124,13 +170,9 @@ public class AuthService {
                 user.getFullName(),
                 user.getPhone(),
                 user.getRole().getRoleName(),
-                token
+                token,
+                assignedStationId,
+                activeSubscriptionId
         );
     }
-
-
-
-
-
-
 }

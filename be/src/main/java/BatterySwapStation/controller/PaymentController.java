@@ -45,6 +45,15 @@ public class PaymentController {
         return ResponseEntity.ok(new VnPayCreatePaymentResponse(paymentUrl));
     }
 
+    @PostMapping(value = "/create-subscription", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<VnPayCreatePaymentResponse> createSubscriptionPayment(
+            @RequestBody VnPayCreatePaymentRequest request,
+            HttpServletRequest httpServletRequest) {
+
+        String paymentUrl = paymentService.createVnPayPaymentUrlForSubscriptionInvoice(request, httpServletRequest);
+        return ResponseEntity.ok(new VnPayCreatePaymentResponse(paymentUrl));
+    }
+
     /** 🔹 API: IPN callback từ VNPAY (VNPAY → BE) */
     @GetMapping("/ipn")
     public ResponseEntity<Map<String, String>> handleVnPayIpn(

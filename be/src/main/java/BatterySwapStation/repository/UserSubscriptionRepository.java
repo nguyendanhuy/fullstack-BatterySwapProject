@@ -44,6 +44,7 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
      */
 
     List<UserSubscription> findByUser_UserIdOrderByStartDateDesc(String userId);
-
+    UserSubscription findFirstByUser_UserIdAndStatusAndEndDateAfter(
+            String userId, UserSubscription.SubscriptionStatus status, LocalDateTime now);
 }
 

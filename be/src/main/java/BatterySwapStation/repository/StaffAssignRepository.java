@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StaffAssignRepository extends JpaRepository<StaffAssign, Integer> {
     boolean existsByStationIdAndUser_UserId(Integer stationId, String userId);
+    StaffAssign findFirstByUser_UserIdAndIsActiveTrue(String userId);
 }

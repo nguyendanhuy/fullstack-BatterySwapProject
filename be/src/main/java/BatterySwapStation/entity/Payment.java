@@ -71,7 +71,8 @@ public class Payment {
     public enum PaymentMethod {
         CREDIT_CARD,
         E_WALLET,
-        QR_BANKING
+        QR_BANKING,
+        VNPAY
     }
 
     public enum PaymentStatus {

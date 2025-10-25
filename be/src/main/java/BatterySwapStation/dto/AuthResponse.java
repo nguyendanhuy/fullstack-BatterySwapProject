@@ -15,4 +15,8 @@ public class AuthResponse {
     private String phone;
     private String role;
     private String token;
+
+    private Integer assignedStationId; // chỉ khi Staff
+    private Long activeSubscriptionId;  // chỉ khi Driver
+
 }

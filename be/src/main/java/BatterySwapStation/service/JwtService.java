@@ -31,23 +31,30 @@ public class JwtService {
         this.resendKey = Keys.hmacShaKeyFor(resendSecret.getBytes(StandardCharsets.UTF_8));
         this.resendExpirationMillis = resendExpirationMillis;
 
-        //  Log để xác minh đã load đúng từ .env (tùy chọn)
         System.out.println(" JWT Main : " + expirationMillis + " ms");
         System.out.println(" JWT Resend : " + resendExpirationMillis + " ms");
     }
 
-    // 🔐 TOKEN CHO LOGIN
-
+    // 🔐 TOKEN CHO LOGIN (gốc)
     public String generateToken(String userId, String email, String phone, String role) {
-        return Jwts.builder()
+        return generateToken(userId, email, phone, role, null, null);
+    }
+
+    // 🔐 TOKEN LOGIN KÈM STATION ID (STAFF) HOẶC SUBSCRIPTION ID (DRIVER)
+    public String generateToken(String userId, String email, String phone, String role,
+                                Integer stationId, Long subscriptionId) {
+        var builder = Jwts.builder()
                 .setSubject(userId)
                 .claim("email", email)
                 .claim("phone", phone)
                 .claim("role", role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis));
+
+        if (stationId != null) builder.claim("stationId", stationId);
+        if (subscriptionId != null) builder.claim("subscriptionId", subscriptionId);
+
+        return builder.signWith(key, SignatureAlgorithm.HS256).compact();
     }
 
     public String extractUserId(String token) {
@@ -74,13 +81,13 @@ public class JwtService {
         return expiration.before(new Date());
     }
 
-
+    // 🔄 TOKEN VERIFY EMAIL
     public String generateVerifyEmailToken(String email) {
         return Jwts.builder()
                 .setSubject(email)
                 .claim("purpose", "verify_email")
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + resendExpirationMillis)) // ví dụ 15 phút
+                .setExpiration(new Date(System.currentTimeMillis() + resendExpirationMillis))
                 .signWith(resendKey, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -94,7 +101,7 @@ public class JwtService {
                     .getBody()
                     .getSubject();
         } catch (io.jsonwebtoken.ExpiredJwtException ex) {
-            return ex.getClaims().getSubject(); //  vẫn lấy được email nếu token hết hạn
+            return ex.getClaims().getSubject();
         } catch (Exception ex) {
             throw new IllegalArgumentException("Token không hợp lệ hoặc bị thay đổi!");
         }
@@ -114,14 +121,16 @@ public class JwtService {
             throw new IllegalArgumentException("Token không hợp lệ hoặc bị thay đổi!");
         }
     }
-    //GG
+
+    // 🔹 GG LOGIN fallback
     public String generateToken(BatterySwapStation.entity.User user) {
         return generateToken(
                 user.getUserId(),
                 user.getEmail(),
                 user.getPhone(),
-                user.getRole() != null ? user.getRole().getRoleName() : "USER"
+                user.getRole() != null ? user.getRole().getRoleName() : "USER",
+                null,
+                null
         );
     }
-
 }

@@ -41,13 +41,6 @@ public class AuthService {
         if (!user.isVerified())
             throw new RuntimeException("Bạn chưa xác thực email");
 
-        String token = jwtService.generateToken(
-                user.getUserId(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getRole().getRoleName()
-        );
-
         Integer assignedStationId = null;
         Long activeSubscriptionId = null;
 
@@ -70,6 +63,16 @@ public class AuthService {
             }
         }
 
+        // Token mới gắn thêm stationId / subscriptionId
+        String token = jwtService.generateToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getRole().getRoleName(),
+                assignedStationId,
+                activeSubscriptionId
+        );
+
         return new AuthResponse(
                 "Đăng nhập thành công",
                 user.getUserId(),
@@ -83,7 +86,7 @@ public class AuthService {
         );
     }
 
-    // 🔹 Cập nhật role cho user
+    // Cập nhật role cho user
     public boolean updateUserRole(String userId, RoleDTO roleDTO) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return false;
@@ -102,13 +105,12 @@ public class AuthService {
         return true;
     }
 
-    // 🔹 Login bằng Google
+    //  Login bằng Google
     @Transactional
     public AuthResponse handleGoogleLogin(GoogleUserInfo info) {
         User user = userRepository.findByEmail(info.getEmail());
         boolean isNew = false;
-        if (!user.isActive())
-            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
+
         if (user == null) {
             Role defaultRole = roleRepository.findByRoleName("DRIVER");
             if (defaultRole == null) {
@@ -130,16 +132,10 @@ public class AuthService {
             isNew = true;
         }
 
-        String token = jwtService.generateToken(
-                user.getUserId(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getRole().getRoleName()
-        );
-
-        String message = isNew
-                ? "Đăng ký mới thành công, vui lòng bổ sung SĐT và địa chỉ sau nhé"
-                : "Đăng nhập thành công";
+        if (!user.isActive())
+            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
+        if (!user.isVerified())
+            throw new RuntimeException("Bạn chưa xác thực email Google");
 
         Integer assignedStationId = null;
         Long activeSubscriptionId = null;
@@ -162,6 +158,20 @@ public class AuthService {
                 activeSubscriptionId = sub.getPlan().getId();
             }
         }
+
+        // Token mới gắn thêm stationId / subscriptionId
+        String token = jwtService.generateToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getRole().getRoleName(),
+                assignedStationId,
+                activeSubscriptionId
+        );
+
+        String message = isNew
+                ? "Đăng ký mới thành công, vui lòng bổ sung SĐT và địa chỉ sau nhé"
+                : "Đăng nhập thành công";
 
         return new AuthResponse(
                 message,

@@ -6,7 +6,7 @@ import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.DockSlot;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.DockSlotRepository;
-import BatterySwapStation.websocket.BatteryWebSocketHandler;
+import BatterySwapStation.websocket.BatterySocketController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -24,8 +24,8 @@ public class BatteryService {
 
     private final BatteryRepository batteryRepository;
     private final DockSlotRepository dockSlotRepository;
-    private final BatteryWebSocketHandler batteryWebSocketHandler; // ✅ Thay SimpMessagingTemplate
-    private final ObjectMapper objectMapper = new ObjectMapper(); // để chuyển JSON
+    private final BatterySocketController batterySocketController; // ✅ STOMP thay thế
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ==================== TỰ ĐỘNG SẠC ====================
     @Scheduled(fixedRate = 60000)
@@ -48,13 +48,11 @@ public class BatteryService {
 
             if (battery.getDockSlot() != null) {
                 DockSlot slot = battery.getDockSlot();
-
                 String action = fullyCharged ? "CHARGING_COMPLETE" : "CHARGING_PROGRESS";
                 sendRealtimeUpdate(slot, action, battery.getBatteryStatus().name(), battery);
             }
         }
     }
-
 
     // ==================== RÚT PIN ====================
     @Transactional
@@ -174,9 +172,9 @@ public class BatteryService {
                     .timestamp(LocalDateTime.now().toString())
                     .build();
 
-            // 🔹 gửi qua raw WebSocket
+            // ✅ Gửi dạng JSON string qua STOMP topic
             String json = objectMapper.writeValueAsString(event);
-            batteryWebSocketHandler.broadcastToStation(event.getStationId(), json);
+            batterySocketController.broadcastToStation(event.getStationId(), json);
         } catch (Exception e) {
             e.printStackTrace();
         }

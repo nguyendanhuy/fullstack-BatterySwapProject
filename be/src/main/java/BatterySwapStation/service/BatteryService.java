@@ -6,11 +6,11 @@ import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.DockSlot;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.DockSlotRepository;
+import BatterySwapStation.websocket.BatteryWebSocketHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -23,29 +23,39 @@ import java.util.Map;
 public class BatteryService {
 
     private final BatteryRepository batteryRepository;
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
     private final DockSlotRepository dockSlotRepository;
+    private final BatteryWebSocketHandler batteryWebSocketHandler; // ✅ Thay SimpMessagingTemplate
+    private final ObjectMapper objectMapper = new ObjectMapper(); // để chuyển JSON
 
     // ==================== TỰ ĐỘNG SẠC ====================
-    @Scheduled(fixedRate = 60000) // 1 phút
+    @Scheduled(fixedRate = 60000)
     @Transactional
     public void autoChargeBatteries() {
         List<Battery> chargingBatteries = batteryRepository.findByBatteryStatus(Battery.BatteryStatus.CHARGING);
 
         for (Battery battery : chargingBatteries) {
             double current = battery.getCurrentCapacity() == null ? 0.0 : battery.getCurrentCapacity();
-            current += 10.0; // tăng 10% mỗi phút
+            current += 10.0;
 
-            if (current >= 100.0) {
+            boolean fullyCharged = current >= 100.0;
+            if (fullyCharged) {
                 current = 100.0;
                 battery.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
             }
 
             battery.setCurrentCapacity(current);
             batteryRepository.save(battery);
+
+            if (battery.getDockSlot() != null) {
+                DockSlot slot = battery.getDockSlot();
+
+                String action = fullyCharged ? "CHARGING_COMPLETE" : "CHARGING_PROGRESS";
+                sendRealtimeUpdate(slot, action, battery.getBatteryStatus().name(), battery);
+            }
         }
     }
+
+
     // ==================== RÚT PIN ====================
     @Transactional
     public Map<String, Object> ejectBattery(String batteryId) {
@@ -59,7 +69,6 @@ public class BatteryService {
         var dock = slot.getDock();
         var station = dock.getStation();
 
-        // Cập nhật DB
         slot.setBattery(null);
         slot.setSlotStatus(DockSlot.SlotStatus.EMPTY);
         dockSlotRepository.save(slot);
@@ -69,7 +78,6 @@ public class BatteryService {
         battery.setStationId(null);
         batteryRepository.save(battery);
 
-        // Gửi realtime
         sendRealtimeUpdate(slot, "EJECTED", "EMPTY", battery);
 
         String msg = String.format(
@@ -103,18 +111,15 @@ public class BatteryService {
         var dock = slot.getDock();
         var station = dock.getStation();
 
-        // Cập nhật DB
         slot.setBattery(battery);
         slot.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
         dockSlotRepository.save(slot);
 
-        // ✅ trạng thái CHỜ SẠC thay vì CHARGING
-        battery.setBatteryStatus(Battery.BatteryStatus.WAITING_CHARGE);
+        battery.setBatteryStatus(Battery.BatteryStatus.WAITING);
         battery.setStationId(station.getStationId());
         battery.setDockSlot(slot);
         batteryRepository.save(battery);
 
-        // Gửi realtime
         sendRealtimeUpdate(slot, "INSERTED", "WAITING_CHARGE", battery);
 
         String msg = String.format(
@@ -133,8 +138,7 @@ public class BatteryService {
         );
     }
 
-
-
+    // ==================== CẬP NHẬT TRẠNG THÁI ====================
     @Transactional
     public Map<String, Object> updateBatteryStatus(BatteryStatusUpdateRequest req) {
         Battery battery = batteryRepository.findById(req.getBatteryId())
@@ -143,7 +147,6 @@ public class BatteryService {
         battery.setBatteryStatus(req.getNewStatus());
         batteryRepository.save(battery);
 
-        // 🔹 Gửi realtime nếu pin đang thuộc 1 station hoặc có slot
         if (battery.getDockSlot() != null) {
             DockSlot slot = battery.getDockSlot();
             sendRealtimeUpdate(slot, "STATUS_CHANGED", req.getNewStatus().name(), battery);
@@ -156,26 +159,26 @@ public class BatteryService {
         );
     }
 
-
-
-
     // ==================== GỬI REALTIME ====================
     private void sendRealtimeUpdate(DockSlot slot, String action, String status, Battery battery) {
-        BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
-                .stationId(slot.getDock().getStation().getStationId())
-                .dockName(slot.getDock().getDockName())
-                .slotNumber(slot.getSlotNumber())
-                .batteryId(battery != null ? battery.getBatteryId() : null)
-                .batteryStatus(status)
-                .stateOfHealth(battery != null ? battery.getStateOfHealth() : null)
-                .currentCapacity(battery != null ? battery.getCurrentCapacity() : null)
-                .action(action)
-                .timestamp(LocalDateTime.now().toString())
-                .build();
+        try {
+            BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
+                    .stationId(slot.getDock().getStation().getStationId())
+                    .dockName(slot.getDock().getDockName())
+                    .slotNumber(slot.getSlotNumber())
+                    .batteryId(battery != null ? battery.getBatteryId() : null)
+                    .batteryStatus(status)
+                    .stateOfHealth(battery != null ? battery.getStateOfHealth() : null)
+                    .currentCapacity(battery != null ? battery.getCurrentCapacity() : null)
+                    .action(action)
+                    .timestamp(LocalDateTime.now().toString())
+                    .build();
 
-        messagingTemplate.convertAndSend("/topic/station-" + event.getStationId(), event);
+            // 🔹 gửi qua raw WebSocket
+            String json = objectMapper.writeValueAsString(event);
+            batteryWebSocketHandler.broadcast(json);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-
-
-
 }

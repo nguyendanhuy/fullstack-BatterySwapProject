@@ -6,10 +6,11 @@ import BatterySwapStation.dto.SwapRequest;
 import BatterySwapStation.dto.SwapResponseDTO;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
+import BatterySwapStation.websocket.BatteryWebSocketHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class SwapService {
+
     @Autowired
     private ApplicationContext context;
     private final SwapRepository swapRepository;
@@ -30,7 +32,10 @@ public class SwapService {
     private final BatteryRepository batteryRepository;
     private final DockSlotRepository dockSlotRepository;
     private final StaffAssignRepository staffAssignRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+
+    // ✅ Dùng raw WebSocket thay vì SimpMessagingTemplate
+    private final BatteryWebSocketHandler batteryWebSocketHandler;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ====================== CANCEL SWAP ======================
     @Transactional
@@ -100,7 +105,7 @@ public class SwapService {
 
         slotForIn.setBattery(batteryIn);
         slotForIn.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
-        batteryIn.setBatteryStatus(Battery.BatteryStatus.WAITING_CHARGE);
+        batteryIn.setBatteryStatus(Battery.BatteryStatus.WAITING);
         batteryIn.setStationId(stationId);
         batteryIn.setDockSlot(slotForIn);
 
@@ -114,6 +119,10 @@ public class SwapService {
 
         bookingRepository.save(booking);
         swapRepository.save(swap);
+
+        // 🔔 Gửi realtime cập nhật 2 slot
+        sendRealtimeUpdate(slotForOut, "RETURNED");
+        sendRealtimeUpdate(slotForIn, "INSERTED");
 
         return Map.of(
                 "bookingId", bookingId,
@@ -141,14 +150,11 @@ public class SwapService {
         if (batteryInIds.size() != requiredCount)
             throw new IllegalArgumentException("Số lượng pin nhập không khớp với booking yêu cầu (" + requiredCount + ").");
 
-        // Kiểm tra model từng pinIn
         for (String batteryInId : batteryInIds) {
             Battery battery = batteryRepository.findById(batteryInId)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy pin #" + batteryInId));
-
             if (battery.getBatteryType() == null)
                 throw new IllegalStateException("Pin " + batteryInId + " chưa xác định loại model.");
-
             if (!battery.getBatteryType().name().equalsIgnoreCase(booking.getBatteryType()))
                 throw new IllegalStateException("Pin " + batteryInId + " khác model (" +
                         battery.getBatteryType().name() + " ≠ " + booking.getBatteryType() + ").");
@@ -195,7 +201,19 @@ public class SwapService {
         if (batteryIn.getBatteryStatus() == Battery.BatteryStatus.MAINTENANCE)
             throw new IllegalStateException("Pin " + batteryInId + " đang bảo trì.");
 
-        // 🔹 Tìm pinOut phù hợp
+        // ✅ Kiểm tra pinIn có thuộc trạm khác hay đang nằm trong slot khác
+        if (batteryIn.getStationId() != null && !batteryIn.getStationId().equals(stationId)) {
+            throw new IllegalStateException("Pin " + batteryIn.getBatteryId() +
+                    " hiện đang thuộc trạm khác (Station #" + batteryIn.getStationId() + ").");
+        }
+        if (batteryIn.getDockSlot() != null) {
+            DockSlot currentSlot = batteryIn.getDockSlot();
+            throw new IllegalStateException("Pin " + batteryIn.getBatteryId() +
+                    " đang nằm ở dock " + currentSlot.getDock().getDockName() +
+                    currentSlot.getSlotNumber() + ", không thể gắn vào slot khác.");
+        }
+
+        // 🔹 Tìm pinOut phù hợp trong trạm hiện tại
         List<DockSlot> availableSlots = dockSlotRepository
                 .findAllByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
                         stationId,
@@ -226,14 +244,12 @@ public class SwapService {
 
         batteryRepository.save(batteryOut);
         dockSlotRepository.save(dockOutSlot);
-        batteryRepository.flush();
-        dockSlotRepository.flush();
 
         // 🔔 Gửi realtime: pinOut bị lấy ra
         sendRealtimeUpdate(dockOutSlot, "REMOVED");
 
         // 2️⃣ Gắn pinIn vào slot (CHARGING)
-        batteryIn.setBatteryStatus(Battery.BatteryStatus.CHARGING);
+        batteryIn.setBatteryStatus(Battery.BatteryStatus.WAITING);
         batteryIn.setStationId(stationId);
         batteryIn.setDockSlot(dockOutSlot);
         if (batteryIn.getCurrentCapacity() == null || batteryIn.getCurrentCapacity() <= 0.0)
@@ -265,7 +281,7 @@ public class SwapService {
                 .build();
         swapRepository.save(swap);
 
-        // Gửi realtime tổng thể: trạng thái slot đã thay đổi
+        // 🔔 Gửi realtime tổng thể: trạng thái slot đã thay đổi
         sendRealtimeUpdate(dockOutSlot, "STATUS_CHANGED");
 
         return SwapResponseDTO.builder()
@@ -280,7 +296,35 @@ public class SwapService {
                 .dockInSlot(dockCode)
                 .build();
     }
-    // ====================== RESOLVE STAFF ID ======================
+
+
+    // ====================== REALTIME (raw WebSocket) ======================
+    private void sendRealtimeUpdate(DockSlot slot, String action) {
+        try {
+            var battery = slot.getBattery();
+            var dock = slot.getDock();
+            var station = dock.getStation();
+
+            BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
+                    .stationId(station.getStationId())
+                    .dockName(dock.getDockName())
+                    .slotNumber(slot.getSlotNumber())
+                    .batteryId(battery != null ? battery.getBatteryId() : null)
+                    .batteryStatus(battery != null ? battery.getBatteryStatus().name() : "EMPTY")
+                    .stateOfHealth(battery != null ? battery.getStateOfHealth() : null)
+                    .currentCapacity(battery != null ? battery.getCurrentCapacity() : null)
+                    .action(action)
+                    .timestamp(LocalDateTime.now().toString())
+                    .build();
+
+            String json = objectMapper.writeValueAsString(event);
+            batteryWebSocketHandler.broadcast(json); // ✅ raw WebSocket push
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ====================== UTILITIES ======================
     private String resolveStaffUserId(SwapRequest request) {
         Authentication auth = SecurityContextHolder.getContext() != null
                 ? SecurityContextHolder.getContext().getAuthentication()
@@ -315,25 +359,5 @@ public class SwapService {
                 .completedTime(s.getCompletedTime())
                 .description(s.getDescription())
                 .build();
-    }
-
-    private void sendRealtimeUpdate(DockSlot slot, String action) {
-        var battery = slot.getBattery();
-        var dock = slot.getDock();
-        var station = dock.getStation();
-
-        BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
-                .stationId(station.getStationId())
-                .dockName(dock.getDockName())
-                .slotNumber(slot.getSlotNumber())
-                .batteryId(battery != null ? battery.getBatteryId() : null)
-                .batteryStatus(battery != null ? battery.getBatteryStatus().name() : "EMPTY")
-                .stateOfHealth(battery != null ? battery.getStateOfHealth() : null)
-                .currentCapacity(battery != null ? battery.getCurrentCapacity() : null)
-                .action(action)
-                .timestamp(LocalDateTime.now().toString())
-                .build();
-
-        messagingTemplate.convertAndSend("/topic/station-" + station.getStationId(), event);
     }
 }

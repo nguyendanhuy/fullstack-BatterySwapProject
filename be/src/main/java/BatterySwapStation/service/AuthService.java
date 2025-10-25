@@ -24,8 +24,6 @@ public class AuthService {
     private final UserService userService;
     private final RoleRepository roleRepository;
     private final JwtService jwtService;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-
 
     // Đăng nhập
     public AuthResponse login(LoginRequest req) {

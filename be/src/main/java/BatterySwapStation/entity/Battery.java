@@ -71,7 +71,7 @@ public class Battery {
         IN_USE,
         CHARGING,
         MAINTENANCE,
-        WAITING_CHARGE
+        WAITING
     }
 
     // (Các trường cũ còn lại giữ nguyên)

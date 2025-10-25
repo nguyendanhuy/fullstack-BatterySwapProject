@@ -1,27 +1,34 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.dto.BatteryRealtimeEvent;
+import BatterySwapStation.websocket.BatteryWebSocketHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 
-import java.time.LocalDateTime;
+import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/realtime/battery")
 @RequiredArgsConstructor
+@Slf4j
 public class BatteryRealtimeController {
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private final BatteryWebSocketHandler batteryWebSocketHandler;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * API gửi realtime đến FE staff (topic theo stationId)
-     */
     @PostMapping("/notify")
-    public void notifyBatteryChange(@RequestBody BatteryRealtimeEvent event) {
-        if (event.getTimestamp() == null)
-            event.setTimestamp(LocalDateTime.now().toString());
+    public void notifyBatteryChange(@RequestBody Map<String, Object> payload) throws IOException {
+        String json = objectMapper.writeValueAsString(payload);
+        log.info("🚀 Broadcasting: {}", json);
 
-        messagingTemplate.convertAndSend("/topic/station-" + event.getStationId(), event);
+        for (WebSocketSession session : batteryWebSocketHandler.getSessions()) {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(json));
+            }
+        }
     }
 }

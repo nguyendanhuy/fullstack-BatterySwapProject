@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-import { Battery, Search, Edit, Trash, Plus, Grid3x3, List, RefreshCw, BarChart } from "lucide-react";
+import { Battery, Search, Edit, Trash, Plus, Grid3x3, List, RefreshCw, BarChart, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+// Converted to plain JSX (no TypeScript types)
 
 const BatteryInventory = () => {
   const { toast } = useToast();
@@ -20,109 +22,127 @@ const BatteryInventory = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingBattery, setEditingBattery] = useState(null);
-
-  // New states for grid view and detail panel
   const [viewMode, setViewMode] = useState("grid");
   const [selectedBattery, setSelectedBattery] = useState(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
+  const [selectedDock, setSelectedDock] = useState(1);
 
-  // Form states for adding battery
   const [newBattery, setNewBattery] = useState({
     id: "",
     type: "",
     status: "empty",
     soh: "100",
-    location: ""
+    location: "",
+    dockId: 1
   });
 
-  // Form states for editing battery
   const [editBattery, setEditBattery] = useState({
     id: "",
     type: "",
     status: "",
     soh: "",
-    location: ""
+    location: "",
+    dockId: 1
   });
 
-  const batteries = [
+  const [batteries, setBatteries] = useState([
+    // Dock 1 - Khu A (A1-C5)
+    { id: "BAT001", type: "Lithium-ion", status: "full", soh: "95%", location: "A1", charge: 95, lastUpdated: "15/12/2024 10:30", dockId: 1 },
+    { id: "BAT002", type: "Pin LFP", status: "charging", soh: "92%", location: "A2", charge: 92, lastUpdated: "15/12/2024 09:15", dockId: 1 },
+    { id: "BAT003", type: "Lithium-ion", status: "empty", soh: "88%", location: "A3", charge: 15, lastUpdated: "15/12/2024 14:45", dockId: 1 },
+    { id: "BAT004", type: "Pin LFP", status: "full", soh: "97%", location: "B1", charge: 97, lastUpdated: "15/12/2024 11:20", dockId: 1 },
+    { id: "BAT005", type: "Lithium-ion", status: "charging", soh: "91%", location: "B2", charge: 68, lastUpdated: "15/12/2024 13:10", dockId: 1 },
+
+    // Dock 2 - Khu B (D1-F5)
+    { id: "BAT006", type: "Lithium-ion", status: "full", soh: "94%", location: "D1", charge: 94, lastUpdated: "15/12/2024 10:15", dockId: 2 },
+    { id: "BAT007", type: "Pin LFP", status: "charging", soh: "89%", location: "D2", charge: 75, lastUpdated: "15/12/2024 11:30", dockId: 2 },
+    { id: "BAT008", type: "Lithium-ion", status: "full", soh: "96%", location: "D3", charge: 96, lastUpdated: "15/12/2024 09:45", dockId: 2 },
+    { id: "BAT009", type: "Pin LFP", status: "empty", soh: "85%", location: "E1", charge: 10, lastUpdated: "15/12/2024 14:20", dockId: 2 },
+    { id: "BAT010", type: "Lithium-ion", status: "charging", soh: "90%", location: "E2", charge: 60, lastUpdated: "15/12/2024 12:00", dockId: 2 },
+    { id: "BAT011", type: "Pin LFP", status: "full", soh: "93%", location: "E3", charge: 93, lastUpdated: "15/12/2024 10:50", dockId: 2 },
+    { id: "BAT012", type: "Lithium-ion", status: "charging", soh: "87%", location: "F1", charge: 45, lastUpdated: "15/12/2024 13:30", dockId: 2 },
+
+    // Dock 3 - Khu C (G1-I5)
+    { id: "BAT013", type: "Lithium-ion", status: "full", soh: "98%", location: "G1", charge: 98, lastUpdated: "15/12/2024 08:30", dockId: 3 },
+    { id: "BAT014", type: "Pin LFP", status: "charging", soh: "91%", location: "G2", charge: 80, lastUpdated: "15/12/2024 11:15", dockId: 3 },
+    { id: "BAT015", type: "Lithium-ion", status: "empty", soh: "86%", location: "H1", charge: 5, lastUpdated: "15/12/2024 14:00", dockId: 3 }
+  ]);
+
+  // Organize batteries into docks
+  const docks = [
     {
-      id: "BAT001",
-      type: "Lithium-ion",
-      status: "full",
-      soh: "95%",
-      location: "A1",
-      charge: 95,
-      lastUpdated: "15/12/2024 10:30"
+      id: 1,
+      name: "Dock 1 - Khu A",
+      capacity: 15,
+      batteries: batteries.filter(b => b.dockId === 1)
     },
     {
-      id: "BAT002",
-      type: "Pin LFP",
-      status: "charging",
-      soh: "92%",
-      location: "A2",
-      charge: 92,
-      lastUpdated: "15/12/2024 09:15"
+      id: 2,
+      name: "Dock 2 - Khu B",
+      capacity: 15,
+      batteries: batteries.filter(b => b.dockId === 2)
     },
     {
-      id: "BAT003",
-      type: "Lithium-ion",
-      status: "empty",
-      soh: "88%",
-      location: "A3",
-      charge: 15,
-      lastUpdated: "15/12/2024 14:45"
-    },
-    {
-      id: "BAT004",
-      type: "Pin LFP",
-      status: "full",
-      soh: "97%",
-      location: "A4",
-      charge: 97,
-      lastUpdated: "15/12/2024 11:20"
-    },
-    {
-      id: "BAT005",
-      type: "Lithium-ion",
-      status: "charging",
-      soh: "91%",
-      location: "A5",
-      charge: 68,
-      lastUpdated: "15/12/2024 13:10"
-    },
-    {
-      id: "BAT006",
-      type: "Lithium-ion",
-      status: "error",
-      soh: "45%",
-      location: "B1",
-      charge: 0,
-      lastUpdated: "15/12/2024 08:00"
-    },
-    {
-      id: "BAT007",
-      type: "Pin LFP",
-      status: "full",
-      soh: "93%",
-      location: "B2",
-      charge: 93,
-      lastUpdated: "15/12/2024 12:45"
+      id: 3,
+      name: "Dock 3 - Khu C",
+      capacity: 15,
+      batteries: batteries.filter(b => b.dockId === 3)
     }
   ];
 
-  // Generate slots for grid view (5 columns)
-  const totalSlots = Math.ceil(batteries.length / 5) * 5;
-  const slots = Array.from({ length: totalSlots }, (_, i) => {
-    const rowLetter = String.fromCharCode(65 + Math.floor(i / 5)); // A, B, C...
-    const colNumber = (i % 5) + 1; // 1-5
-    const slotId = `${rowLetter}${colNumber}`;
-    return batteries.find(b => b.location === slotId) || {
-      id: slotId,
-      location: slotId,
-      status: "empty",
-      isEmpty: true
+  // Get current dock batteries
+  const getCurrentDockBatteries = () => {
+    return docks.find(d => d.id === selectedDock)?.batteries || [];
+  };
+
+  // Get stats for a specific dock
+  const getDockStats = (dockId) => {
+    const dock = docks.find(d => d.id === dockId);
+    if (!dock) return null;
+
+    return {
+      total: dock.batteries.length,
+      capacity: dock.capacity,
+      full: dock.batteries.filter(b => b.status === "full").length,
+      charging: dock.batteries.filter(b => b.status === "charging").length,
+      empty: dock.batteries.filter(b => b.status === "empty").length,
+      utilization: Math.round((dock.batteries.length / dock.capacity) * 100)
     };
-  });
+  };
+
+  // Generate grid slots for selected dock (3 rows x 5 columns = 15 slots)
+  const generateDockSlots = (dockId) => {
+    const dock = docks.find(d => d.id === dockId);
+    if (!dock) return [];
+
+    // Calculate starting row based on dock ID
+    // Dock 1: A-C (65-67), Dock 2: D-F (68-70), Dock 3: G-I (71-73)
+    const startRow = 65 + ((dockId - 1) * 3);
+    const slots = [];
+
+    for (let i = 0; i < 15; i++) {
+      const rowLetter = String.fromCharCode(startRow + Math.floor(i / 5));
+      const colNumber = (i % 5) + 1;
+      const slotId = `${rowLetter}${colNumber}`;
+
+      const battery = dock.batteries.find((b) => b.location === slotId);
+      slots.push(
+        battery || {
+          id: slotId,
+          location: slotId,
+          status: "empty",
+          isEmpty: true,
+          dockId: dockId,
+          type: "",
+          soh: "",
+          charge: 0,
+          lastUpdated: ""
+        }
+      );
+    }
+
+    return slots;
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -161,11 +181,22 @@ const BatteryInventory = () => {
   };
 
   const handleAddBattery = () => {
+    const newBatt = {
+      id: newBattery.id,
+      type: newBattery.type,
+      status: newBattery.status,
+      soh: newBattery.soh + "%",
+      location: newBattery.location,
+      charge: parseInt(newBattery.soh),
+      lastUpdated: new Date().toLocaleString("vi-VN"),
+      dockId: newBattery.dockId
+    };
+    setBatteries([...batteries, newBatt]);
     toast({
       title: "Thêm pin thành công",
-      description: `Pin ${newBattery.id} đã được thêm vào kho`,
+      description: `Pin ${newBattery.id} đã được thêm vào ${docks.find(d => d.id === newBattery.dockId)?.name}`,
     });
-    setNewBattery({ id: "", type: "", status: "empty", soh: "100", location: "" });
+    setNewBattery({ id: "", type: "", status: "empty", soh: "100", location: "", dockId: selectedDock });
     setIsAddDialogOpen(false);
   };
 
@@ -176,7 +207,8 @@ const BatteryInventory = () => {
       type: battery.type,
       status: battery.status,
       soh: battery.soh.replace('%', ''),
-      location: battery.location
+      location: battery.location,
+      dockId: battery.dockId
     });
     setIsEditDialogOpen(true);
   };
@@ -197,6 +229,7 @@ const BatteryInventory = () => {
   };
 
   const handleRemoveBattery = (batteryId) => {
+    setBatteries(batteries.filter(b => b.id !== batteryId));
     toast({
       title: "Đã tháo pin",
       description: `Pin ${batteryId} đã được tháo khỏi trạm`,
@@ -219,6 +252,7 @@ const BatteryInventory = () => {
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Quản lý tồn kho pin</h1>
           <p className="text-gray-600 dark:text-gray-400">Theo dõi và quản lý tồn kho pin tại trạm</p>
         </div>
+
         {/* Enhanced Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-500 hover:-translate-y-1 animate-fade-in">
@@ -261,6 +295,80 @@ const BatteryInventory = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Dock Selector */}
+        <Card className="mb-6 border-0 shadow-lg bg-white">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4 overflow-x-auto">
+              {docks.map((dock) => {
+                const stats = getDockStats(dock.id);
+                const isActive = selectedDock === dock.id;
+
+                return (
+                  <button
+                    key={dock.id}
+                    onClick={() => setSelectedDock(dock.id)}
+                    className={cn(
+                      "flex-1 min-w-[200px] p-6 rounded-xl transition-all duration-300",
+                      "border-2 hover:scale-105 hover:shadow-lg",
+                      isActive
+                        ? "border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-md"
+                        : "border-gray-200 hover:border-gray-300"
+                    )}
+                  >
+                    <div className="text-center space-y-3">
+                      {/* Dock Header */}
+                      <div className="flex items-center justify-center gap-2">
+                        <Building2 className={cn(
+                          "h-5 w-5",
+                          isActive ? "text-indigo-600" : "text-gray-400"
+                        )} />
+                        <h3 className={cn(
+                          "font-bold text-lg",
+                          isActive ? "text-indigo-700" : "text-gray-600"
+                        )}>
+                          {dock.name}
+                        </h3>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="space-y-2">
+                        <p className={cn(
+                          "text-2xl font-bold",
+                          isActive ? "text-indigo-600" : "text-gray-500"
+                        )}>
+                          {stats?.total}/{stats?.capacity}
+                        </p>
+                        <p className="text-sm text-gray-500">pin đang hoạt động</p>
+
+                        {/* Mini Progress Bar */}
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={cn(
+                              "h-2 rounded-full transition-all",
+                              isActive ? "bg-gradient-to-r from-indigo-500 to-purple-500" : "bg-gray-400"
+                            )}
+                            style={{ width: `${stats?.utilization || 0}%` }}
+                          />
+                        </div>
+
+                        {/* Status Badges */}
+                        <div className="flex justify-center gap-2 text-xs">
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            ⚡ {stats?.full} đầy
+                          </Badge>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            🔋 {stats?.charging} sạc
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Enhanced Search and Actions */}
         <Card className="mb-6 border-0 shadow-lg bg-white animate-slide-up">
@@ -338,12 +446,26 @@ const BatteryInventory = () => {
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
+                      <Label htmlFor="dock-select">Dock</Label>
+                      <Select value={newBattery.dockId.toString()} onValueChange={(value) => setNewBattery({ ...newBattery, dockId: parseInt(value) })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {docks.map(dock => (
+                            <SelectItem key={dock.id} value={dock.id.toString()}>{dock.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="battery-id">Mã pin</Label>
                       <Input
                         id="battery-id"
                         value={newBattery.id}
                         onChange={(e) => setNewBattery({ ...newBattery, id: e.target.value })}
-                        placeholder="BAT006"
+                        placeholder="BAT016"
                       />
                     </div>
 
@@ -394,7 +516,7 @@ const BatteryInventory = () => {
                           id="battery-location"
                           value={newBattery.location}
                           onChange={(e) => setNewBattery({ ...newBattery, location: e.target.value })}
-                          placeholder="Slot C1"
+                          placeholder="VD: A1, D3, G2"
                         />
                       </div>
                     </div>
@@ -414,13 +536,15 @@ const BatteryInventory = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
-                Ma trận pin
-                <span className="text-lg font-normal text-gray-500 ml-2">({batteries.length} pin)</span>
+                Ma trận pin - {docks.find(d => d.id === selectedDock)?.name}
+                <span className="text-lg font-normal text-gray-500 ml-2">
+                  ({getCurrentDockBatteries().length} pin)
+                </span>
               </h2>
             </div>
 
             <div className="grid grid-cols-5 gap-4">
-              {slots.map((slot, index) => {
+              {generateDockSlots(selectedDock).map((slot, index) => {
                 const isOccupied = !slot.isEmpty;
                 const isSelected = selectedBattery?.id === slot.id;
 
@@ -494,13 +618,15 @@ const BatteryInventory = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
-                Danh sách pin
-                <span className="text-lg font-normal text-gray-500 ml-2">({batteries.length} pin)</span>
+                Danh sách pin - {docks.find(d => d.id === selectedDock)?.name}
+                <span className="text-lg font-normal text-gray-500 ml-2">
+                  ({getCurrentDockBatteries().length} pin)
+                </span>
               </h2>
             </div>
 
             <div className="grid gap-6">
-              {batteries.map((battery, index) => (
+              {getCurrentDockBatteries().map((battery, index) => (
                 <Card key={battery.id} className="border-0 shadow-md bg-white hover:shadow-lg transition-all duration-300 hover:scale-[1.02] animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
                   <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
@@ -584,6 +710,10 @@ const BatteryInventory = () => {
                     <span className="font-medium">{selectedBattery?.type}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Dock</span>
+                    <span className="font-medium">{docks.find(d => d.id === selectedBattery?.dockId)?.name}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Vị trí</span>
                     <span className="font-medium">{selectedBattery?.location}</span>
                   </div>
@@ -606,6 +736,16 @@ const BatteryInventory = () => {
                       {selectedBattery?.charge}%
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Charging Chart (placeholder) */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Biểu đồ sạc</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[200px] flex items-center justify-center bg-gray-50 rounded">
+                  <p className="text-gray-400">Biểu đồ sạc theo thời gian</p>
                 </CardContent>
               </Card>
 
@@ -706,8 +846,10 @@ const BatteryInventory = () => {
             </div>
           </DialogContent>
         </Dialog>
+        {/* Footer Action Bar */}
       </div>
     </TooltipProvider>
   );
 };
+
 export default BatteryInventory;

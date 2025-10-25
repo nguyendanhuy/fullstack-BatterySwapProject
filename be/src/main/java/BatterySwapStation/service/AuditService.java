@@ -53,7 +53,7 @@ public class AuditService {
         if (pushRealtime && !issues.isEmpty()) {
             try {
                 String json = new ObjectMapper().writeValueAsString(response);
-                batteryWebSocketHandler.broadcast(json);
+                batteryWebSocketHandler.broadcastToStation(stationFilter, json);
             } catch (Exception e) {
                 e.printStackTrace();
             }

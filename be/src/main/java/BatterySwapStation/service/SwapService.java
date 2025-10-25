@@ -318,7 +318,7 @@ public class SwapService {
                     .build();
 
             String json = objectMapper.writeValueAsString(event);
-            batteryWebSocketHandler.broadcast(json); // ✅ raw WebSocket push
+            batteryWebSocketHandler.broadcastToStation(event.getStationId(), json);
         } catch (Exception e) {
             e.printStackTrace();
         }

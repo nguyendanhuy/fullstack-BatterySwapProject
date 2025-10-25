@@ -176,7 +176,7 @@ public class BatteryService {
 
             // 🔹 gửi qua raw WebSocket
             String json = objectMapper.writeValueAsString(event);
-            batteryWebSocketHandler.broadcast(json);
+            batteryWebSocketHandler.broadcastToStation(event.getStationId(), json);
         } catch (Exception e) {
             e.printStackTrace();
         }

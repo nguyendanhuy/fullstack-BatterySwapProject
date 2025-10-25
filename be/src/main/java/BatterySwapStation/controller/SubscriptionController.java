@@ -1,5 +1,6 @@
 package BatterySwapStation.controller;
 
+import BatterySwapStation.dto.SubscriptionRequest;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.UserSubscription;
 import BatterySwapStation.service.SubscriptionService;
@@ -33,7 +34,7 @@ public class SubscriptionController {
     @PostMapping("/subscribe")
     @Operation(summary = "Đăng ký gói cước", description = "Tạo hóa đơn đăng ký gói cước mới cho user.")
     public ResponseEntity<Map<String, Object>> subscribeToPlan(
-            @RequestBody SubscribeRequest request // <-- DTO phải chứa userId
+            @RequestBody SubscriptionRequest request // <-- DTO phải chứa userId
             // [XÓA] @AuthenticationPrincipal UserDetails userDetails
     ) {
 
@@ -45,15 +46,16 @@ public class SubscriptionController {
                         .body(Map.of("success", false, "error", "userId là bắt buộc"));
             }
 
-            Invoice invoice = subscriptionService.createSubscriptionInvoice(userId, request.getPlanId());
+            // ✅ [SỬA LỖI] Truyền toàn bộ đối tượng 'request'
+            Invoice newInvoice = subscriptionService.createSubscriptionInvoice(request);
 
             // Trả về thông tin invoice để frontend xử lý thanh toán
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Hóa đơn cho gói cước đã được tạo. Vui lòng thanh toán.",
-                    "invoiceId", invoice.getInvoiceId(),
-                    "totalAmount", invoice.getTotalAmount(),
-                    "status", invoice.getInvoiceStatus()
+                    "invoiceId", newInvoice.getInvoiceId(),
+                    "totalAmount", newInvoice.getTotalAmount(),
+                    "status", newInvoice.getInvoiceStatus()
             ));
 
         } catch (Exception e) {
@@ -94,16 +96,6 @@ public class SubscriptionController {
                     "error", e.getMessage()
             ));
         }
-    }
-
-    /**
-     * DTO (Data Transfer Object) cho request đăng ký
-     */
-    @Data
-    public static class SubscribeRequest {
-        // (Sử dụng Integer hay Long tùy thuộc vào lỗi hôm qua bạn đã sửa)
-        private Integer planId; // ID của SubscriptionPlan
-        private String userId; // ID của User (thêm trường này)
     }
 
     /**

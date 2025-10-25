@@ -133,6 +133,21 @@ const changeUserPassword = (oldPassword, newPassword, confirmPassword) => {
     return axios.post("/users/profile/change-password", { oldPassword, newPassword, confirmPassword });
 }
 
+
+const createInvoiceForSubscription = (planId, userId) => {
+    const data = { planId, userId };
+    return axios.post("/plans/subscribe", data);
+}
+
+const createVNpayForSubscription = (invoiceId) => {
+    const data = {
+        invoiceId: invoiceId,
+        bankCode: "VNPAY",
+        orderType: "Subscription"
+    };
+    return axios.post("/payments/vnpay/create-subscription", data);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -165,5 +180,7 @@ export {
     getAllPlans,
     getDriverSubscription,
     changeUserPhoneNumber,
-    changeUserPassword
+    changeUserPassword,
+    createInvoiceForSubscription,
+    createVNpayForSubscription
 };

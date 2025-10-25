@@ -107,7 +107,7 @@ const Payment = () => {
 
   const redirectToVNPay = async (invoiceId) => {
     setLoadingStep("Đang tạo liên kết thanh toán...");
-    const vnpayResponse = await createVNPayUrl({ invoiceId, bankCode: "VNPAY", orderType: "other" });
+    const vnpayResponse = await createVNPayUrl({ invoiceId, bankCode: "VNPAY", orderType: "Bookings" });
     console.log("✅ VNPay response:", vnpayResponse);
 
     if (vnpayResponse.error || vnpayResponse.status === 400 || !vnpayResponse.paymentUrl) {

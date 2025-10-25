@@ -167,7 +167,7 @@ const Subscriptions = () => {
                     {new Date(currentSubscription.endDate).toLocaleDateString('vi-VN')}
                   </h3>
                   <p className="text-gray-600">Ngày hết hạn</p>
-                  <Button variant="outline" className="mt-2 text-sm">Gia hạn</Button>
+                  <Button variant="outline" className="mt-2 text-sm" onClick={() => toast.info("Chức năng gia hạn chưa khả dụng")}>Gia hạn</Button>
                 </div>
               </div>
             </CardContent>
@@ -269,7 +269,7 @@ const Subscriptions = () => {
               <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl mr-4">
                 <Battery className="h-6 w-6 text-white" />
               </div>
-              Lịch sử sử dụng gần đây
+              Lịch sử sử dụng gần đây (FE đang hard code)
             </CardTitle>
             <CardDescription className="text-gray-600">Theo dõi việc sử dụng dịch vụ đổi pin của bạn</CardDescription>
           </CardHeader>

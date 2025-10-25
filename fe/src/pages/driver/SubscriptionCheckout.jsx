@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { CreditCard, Zap, Shield, CheckCircle, ArrowLeft, Crown, Star, Battery } from "lucide-react";
-import { createVNPayUrl, checkVNPayPaymentStatus } from "@/services/axios.services";
+import { SystemContext } from "../../contexts/system.context";
+import {
+    createInvoiceForSubscription,
+    createVNpayForSubscription,
+    checkVNPayPaymentStatus
+} from "../../services/axios.services";
 
 const currencyVN = (n) => (Number(n || 0)).toLocaleString("vi-VN");
 
@@ -14,9 +18,12 @@ export default function SubscriptionCheckout() {
     const location = useLocation();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { userData } = useContext(SystemContext);
 
     // Receive selected plan via navigation state or query string
     const planFromState = location.state?.plan || null;
+    const pendingInvoice = location.state?.pendingInvoice || null;
+
     const planFromQuery = useMemo(() => {
         const params = new URLSearchParams(location.search);
         const id = params.get("plan");
@@ -30,13 +37,11 @@ export default function SubscriptionCheckout() {
     const plan = planFromState || planFromQuery;
 
     const [isProcessing, setIsProcessing] = useState(false);
-    const [promo, setPromo] = useState("");
-    const [discount, setDiscount] = useState(0);
+    const [loadingStep, setLoadingStep] = useState("");
 
     const priceNumber = useMemo(() => Number(String(plan?.price || "0").replace(/[^0-9]/g, "")), [plan]);
-    const total = Math.max(priceNumber - discount, 0);
 
-    // Handle VNPay return in the same page (unified)
+    // Handle VNPay return
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const vnpTxnRef = urlParams.get('vnp_TxnRef');
@@ -44,32 +49,71 @@ export default function SubscriptionCheckout() {
     }, []);
 
     const handleVNPayReturn = async (txnRef) => {
-        try {
-            const paymentStatus = await checkVNPayPaymentStatus(txnRef);
-            const isSuccess = paymentStatus?.paymentStatus === "SUCCESS" || paymentStatus?.vnpResponseCode === "00";
+        let retryCount = 0;
 
-            toast({
-                title: isSuccess ? "Thanh toán thành công!" : "Thanh toán thất bại!",
-                description: isSuccess
-                    ? `Đơn đăng ký gói đã được kích hoạt. Số tiền: ${currencyVN(paymentStatus?.amount)} VNĐ`
-                    : paymentStatus?.message || "Vui lòng thử lại hoặc liên hệ hỗ trợ",
-                className: isSuccess ? "bg-green-500 text-white" : undefined,
-                variant: isSuccess ? undefined : "destructive",
-                duration: 5000,
-            });
+        const checkStatus = async () => {
+            try {
+                const paymentStatus = await checkVNPayPaymentStatus(txnRef);
+                console.log("✅ VNPay payment status:", paymentStatus);
 
-            setTimeout(() => navigate("/driver/subscriptions"), isSuccess ? 2000 : 3000);
-        } catch (error) {
-            toast({ title: "Lỗi kiểm tra thanh toán", description: String(error?.message || error), variant: "destructive" });
-        }
+                // Retry if still pending
+                if (retryCount < 5 && paymentStatus.paymentStatus === "PENDING") {
+                    console.log(`⏳ Payment still pending, retry ${retryCount + 1}/5...`);
+                    retryCount++;
+                    setTimeout(checkStatus, 3000);
+                    return;
+                }
+
+                if (paymentStatus.paymentStatus === "SUCCESS" || paymentStatus.vnpResponseCode === "00") {
+                    toast({
+                        title: "Thanh toán thành công!",
+                        description: `Gói đã được kích hoạt. Số tiền: ${currencyVN(paymentStatus?.amount)} VNĐ`,
+                        className: "bg-green-500 text-white",
+                        duration: 5000,
+                    });
+                    setTimeout(() => navigate("/driver/subscriptions"), 2000);
+                } else {
+                    toast({
+                        title: "Thanh toán thất bại!",
+                        description: paymentStatus?.message || "Vui lòng thử lại hoặc liên hệ hỗ trợ",
+                        variant: "destructive",
+                        duration: 5000,
+                    });
+                    setTimeout(() => navigate("/driver/subscriptions"), 3000);
+                }
+            } catch (error) {
+                console.error("❌ VNPay status check error:", error);
+                toast({
+                    title: "Lỗi kiểm tra thanh toán",
+                    description: String(error?.message || error),
+                    variant: "destructive"
+                });
+            }
+        };
+
+        checkStatus();
     };
 
-    const applyPromo = () => {
-        // Simple local promo simulation (replace by API later)
-        if (!promo) return setDiscount(0);
-        if (promo.trim().toUpperCase() === "SAVE10") setDiscount(Math.round(priceNumber * 0.1));
-        else if (promo.trim().toUpperCase() === "SAVE50K") setDiscount(50000);
-        else setDiscount(0);
+    const showError = (title, description, duration = 5000) => {
+        setLoadingStep("");
+        toast({ title, description, variant: "destructive", duration });
+    };
+
+    const redirectToVNPay = async (invoiceId) => {
+        setLoadingStep("Đang tạo liên kết thanh toán...");
+        const vnpayResponse = await createVNpayForSubscription(invoiceId);
+        console.log("✅ VNPay response:", vnpayResponse);
+
+        if (vnpayResponse.error || vnpayResponse.status === 400 || !vnpayResponse.paymentUrl) {
+            throw new Error(vnpayResponse.messages?.business || vnpayResponse.error || "Lỗi tạo thanh toán");
+        }
+
+        toast({
+            title: "Chuyển đến trang thanh toán...",
+            className: "bg-blue-500 text-white",
+        });
+
+        setTimeout(() => window.location.href = vnpayResponse.paymentUrl, 1000);
     };
 
     const proceedVNPay = async () => {
@@ -78,30 +122,74 @@ export default function SubscriptionCheckout() {
             return navigate("/driver/subscriptions");
         }
 
+        if (!userData || !userData.userId) {
+            toast({ title: "Lỗi xác thực", description: "Vui lòng đăng nhập lại", variant: "destructive" });
+            return navigate("/login");
+        }
+
         try {
             setIsProcessing(true);
-            // For now, use generic VNPay create with amount and order info for subscription
-            const payload = {
-                amount: total,
-                orderType: "SUBSCRIPTION",
-                description: `Thanh toán gói ${plan.name} (${plan.id})`,
-                bankCode: "VNPAY",
-            };
-            const vnp = await createVNPayUrl(payload);
-            if (vnp?.error || vnp?.status === 400 || !vnp?.paymentUrl) {
-                throw new Error(vnp?.messages?.business || vnp?.error || "Không tạo được liên kết VNPay");
+
+            let invoiceId;
+
+            // Check if there's a pending invoice for subscription
+            if (pendingInvoice && pendingInvoice.invoiceId) {
+                invoiceId = pendingInvoice.invoiceId;
+                console.log("✅ Using existing pending invoice:", invoiceId);
+            } else {
+                // Step 1: Create new invoice for subscription
+                setLoadingStep("Đang tạo hóa đơn...");
+                const invoiceResponse = await createInvoiceForSubscription(plan.id, userData.userId);
+                console.log("✅ Invoice response:", invoiceResponse);
+
+                if (!invoiceResponse.success || !invoiceResponse.invoiceId) {
+                    throw new Error(invoiceResponse?.message || invoiceResponse?.error || "Không tạo được hóa đơn");
+                }
+                invoiceId = invoiceResponse.invoiceId;
             }
 
-            toast({ title: "Chuyển đến VNPay...", className: "bg-blue-600 text-white" });
-            setTimeout(() => { window.location.href = vnp.paymentUrl; }, 700);
+            // Step 2: Redirect to VNPay
+            await redirectToVNPay(invoiceId);
+
         } catch (err) {
-            toast({ title: "Không thể tạo thanh toán", description: String(err?.message || err), variant: "destructive" });
+            showError("Không thể tạo thanh toán", err?.message || String(err));
             setIsProcessing(false);
         }
     };
 
+    const LoadingStep = ({ step, label, active }) => (
+        <div className={`flex items-center space-x-3 p-3 rounded-lg transition-all ${active ? "bg-blue-50 border-2 border-blue-500" : "bg-gray-50"}`}>
+            <div className={`w-2 h-2 rounded-full ${active ? "bg-blue-600 animate-pulse" : "bg-gray-400"}`}></div>
+            <span className={`text-sm font-medium ${active ? "text-blue-600" : "text-gray-500"}`}>{label}</span>
+        </div>
+    );
+
     return (
         <div className="min-h-screen">
+            {/* Loading Overlay */}
+            {isProcessing && loadingStep && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+                        <div className="flex flex-col items-center space-y-6">
+                            <div className="relative">
+                                <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Zap className="h-8 w-8 text-blue-600 animate-pulse" />
+                                </div>
+                            </div>
+                            <div className="text-center space-y-2">
+                                <h3 className="text-xl font-bold text-gray-800">{loadingStep}</h3>
+                                <p className="text-sm text-gray-600">Quá trình này sẽ mất vài giây...</p>
+                            </div>
+                            <div className="w-full space-y-2">
+                                <LoadingStep label="Tạo hóa đơn" active={loadingStep.includes("hóa đơn")} />
+                                <LoadingStep label="Chuyển đến thanh toán" active={loadingStep.includes("liên kết") || loadingStep.includes("chuyển")} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Page Header */}
             <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 mb-6">
                 <div className="px-6 py-4 flex items-center gap-3">
@@ -194,31 +282,11 @@ export default function SubscriptionCheckout() {
                                     </div>
                                 )}
 
-                                {/* Promo */}
-                                <div className="space-y-2">
-                                    <label className="text-sm text-gray-700">Mã khuyến mãi</label>
-                                    <div className="flex gap-2">
-                                        <Input value={promo} onChange={(e) => setPromo(e.target.value)} placeholder="Nhập mã (VD: SAVE10)" className="rounded-xl" />
-                                        <Button variant="outline" onClick={applyPromo} className="rounded-xl">Áp dụng</Button>
-                                    </div>
-                                    {!!discount && (
-                                        <div className="text-sm text-emerald-700">Đã áp dụng giảm {currencyVN(discount)} VNĐ</div>
-                                    )}
-                                </div>
-
                                 {/* Totals */}
                                 <div className="border-t pt-4 space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-700">Giá gói:</span>
-                                        <span className="font-semibold">{currencyVN(priceNumber)} VNĐ</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-700">Giảm giá:</span>
-                                        <span className="font-semibold text-emerald-600">- {currencyVN(discount)} VNĐ</span>
-                                    </div>
                                     <div className="flex justify-between text-xl font-bold">
                                         <span>Tổng thanh toán:</span>
-                                        <span className="text-blue-600">{currencyVN(total)} VNĐ</span>
+                                        <span className="text-blue-600">{currencyVN(priceNumber)} VNĐ</span>
                                     </div>
                                 </div>
 

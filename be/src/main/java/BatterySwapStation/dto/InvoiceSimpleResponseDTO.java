@@ -24,6 +24,9 @@ public class InvoiceSimpleResponseDTO {
     private List<SimpleBookingInfo> bookings;
     private String invoiceStatus;
 
+    // Thông tin gói subscription (nếu có)
+    private SimplePlanInfo planToActivate;
+
 
     @Data
     @NoArgsConstructor
@@ -46,5 +49,18 @@ public class InvoiceSimpleResponseDTO {
         private Integer vehicleId;
         private String licensePlate;
         private String vehicleBatteryType;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SimplePlanInfo {
+        private Long planId;
+        private String planName;
+        private String description;
+        private Integer durationInDays;
+        private String priceType;
+        private Integer swapLimit;
     }
 }

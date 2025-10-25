@@ -106,15 +106,29 @@ public class PaymentController {
         String amount = (String) result.getOrDefault("vnp_Amount", "0");
         String message = (String) result.getOrDefault("message", "");
         String txnRef = (String) result.getOrDefault("vnp_TxnRef", "");
+        boolean isSubscription = Boolean.TRUE.equals(result.get("isSubscription"));
 
-        // FE
-        String redirectUrl = String.format(
-                "http://localhost:5173/driver/payment?status=%s&amount=%s&message=%s&vnp_TxnRef=%s",
-                status,
-                amount,
-                URLEncoder.encode(message, StandardCharsets.UTF_8),
-                URLEncoder.encode(txnRef, StandardCharsets.UTF_8)
-        );
+        // 🔹 Redirect dựa vào loại thanh toán
+        String redirectUrl;
+        if (isSubscription) {
+            // Thanh toán subscription → redirect về trang subscription checkout
+            redirectUrl = String.format(
+                    "http://localhost:5173/driver/subscriptions/checkout?status=%s&amount=%s&message=%s&vnp_TxnRef=%s",
+                    status,
+                    amount,
+                    URLEncoder.encode(message, StandardCharsets.UTF_8),
+                    URLEncoder.encode(txnRef, StandardCharsets.UTF_8)
+            );
+        } else {
+            // Thanh toán booking → redirect về trang payment hiện tại
+            redirectUrl = String.format(
+                    "http://localhost:5173/driver/payment?status=%s&amount=%s&message=%s&vnp_TxnRef=%s",
+                    status,
+                    amount,
+                    URLEncoder.encode(message, StandardCharsets.UTF_8),
+                    URLEncoder.encode(txnRef, StandardCharsets.UTF_8)
+            );
+        }
 
         response.sendRedirect(redirectUrl);
     }

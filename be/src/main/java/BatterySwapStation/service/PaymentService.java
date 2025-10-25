@@ -289,6 +289,15 @@ public class PaymentService {
         result.put("vnp_ResponseCode", respCode);
         result.put("message", message);
 
+        // 🔹 Kiểm tra xem có phải thanh toán subscription không
+        boolean isSubscription = false;
+        paymentRepository.findByVnpTxnRef(txnRef).ifPresent(payment -> {
+            Invoice invoice = payment.getInvoice();
+            if (invoice != null && invoice.getPlanToActivate() != null) {
+                result.put("isSubscription", true);
+            }
+        });
+
         log.info("📤 [RETURN RESULT] txnRef={} | success={} | message={}", txnRef, success, result.get("message"));
 
         return result;

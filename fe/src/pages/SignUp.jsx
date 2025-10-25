@@ -55,6 +55,16 @@ const SignUp = () => {
       });
       return;
     }
+
+    const nameRegex = /^[\p{L} ]+$/u;
+    if (!nameRegex.test(formData.fullName)) {
+      toast({
+        title: "Lỗi",
+        description: "Họ và tên chỉ được chứa chữ cái và khoảng trắng",
+        variant: "destructive",
+      });
+      return;
+    }
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {

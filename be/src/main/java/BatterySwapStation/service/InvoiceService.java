@@ -7,6 +7,7 @@ import BatterySwapStation.dto.BookingInfoDTO;
 import BatterySwapStation.dto.InvoiceSimpleResponseDTO;
 import BatterySwapStation.entity.Payment;
 import BatterySwapStation.entity.SystemPrice;
+import BatterySwapStation.entity.SubscriptionPlan;
 import BatterySwapStation.repository.InvoiceRepository;
 import BatterySwapStation.repository.BookingRepository;
 import BatterySwapStation.repository.PaymentRepository;
@@ -353,6 +354,20 @@ public class InvoiceService {
                 .build())
             .collect(Collectors.toList());
 
+        // Map thông tin planToActivate nếu có
+        InvoiceSimpleResponseDTO.SimplePlanInfo simplePlanInfo = null;
+        if (invoice.getPlanToActivate() != null) {
+            SubscriptionPlan plan = invoice.getPlanToActivate();
+            simplePlanInfo = InvoiceSimpleResponseDTO.SimplePlanInfo.builder()
+                    .planId(plan.getId())
+                    .planName(plan.getPlanName())
+                    .description(plan.getDescription())
+                    .durationInDays(plan.getDurationInDays())
+                    .priceType(plan.getPriceType() != null ? plan.getPriceType().toString() : null)
+                    .swapLimit(plan.getSwapLimit())
+                    .build();
+        }
+
         return InvoiceSimpleResponseDTO.builder()
                 .invoiceId(invoice.getInvoiceId())
                 .userId(invoice.getUserId())
@@ -361,8 +376,8 @@ public class InvoiceService {
                 .pricePerSwap(invoice.getPricePerSwap())
                 .numberOfSwaps(invoice.getNumberOfSwaps())
                 .bookings(simpleBookings)
-                // ✅ THÊM DÒNG NÀY (VÀ THÊM TRƯỜNG NÀY VÀO DTO CỦA BẠN)
                 .invoiceStatus(invoice.getInvoiceStatus().toString())
+                .planToActivate(simplePlanInfo)
                 .build();
     }
 

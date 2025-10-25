@@ -6,7 +6,7 @@ import BatterySwapStation.dto.SwapRequest;
 import BatterySwapStation.dto.SwapResponseDTO;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
-import BatterySwapStation.websocket.BatteryWebSocketHandler;
+import BatterySwapStation.websocket.BatterySocketController; // ✅ STOMP controller
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,9 +32,7 @@ public class SwapService {
     private final BatteryRepository batteryRepository;
     private final DockSlotRepository dockSlotRepository;
     private final StaffAssignRepository staffAssignRepository;
-
-    // ✅ Dùng raw WebSocket thay vì SimpMessagingTemplate
-    private final BatteryWebSocketHandler batteryWebSocketHandler;
+    private final BatterySocketController batterySocketController;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ====================== CANCEL SWAP ======================
@@ -120,7 +118,7 @@ public class SwapService {
         bookingRepository.save(booking);
         swapRepository.save(swap);
 
-        // 🔔 Gửi realtime cập nhật 2 slot
+        //  Gửi realtime cập nhật 2 slot (STOMP)
         sendRealtimeUpdate(slotForOut, "RETURNED");
         sendRealtimeUpdate(slotForIn, "INSERTED");
 
@@ -201,7 +199,6 @@ public class SwapService {
         if (batteryIn.getBatteryStatus() == Battery.BatteryStatus.MAINTENANCE)
             throw new IllegalStateException("Pin " + batteryInId + " đang bảo trì.");
 
-        // ✅ Kiểm tra pinIn có thuộc trạm khác hay đang nằm trong slot khác
         if (batteryIn.getStationId() != null && !batteryIn.getStationId().equals(stationId)) {
             throw new IllegalStateException("Pin " + batteryIn.getBatteryId() +
                     " hiện đang thuộc trạm khác (Station #" + batteryIn.getStationId() + ").");
@@ -213,7 +210,6 @@ public class SwapService {
                     currentSlot.getSlotNumber() + ", không thể gắn vào slot khác.");
         }
 
-        // 🔹 Tìm pinOut phù hợp trong trạm hiện tại
         List<DockSlot> availableSlots = dockSlotRepository
                 .findAllByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
                         stationId,
@@ -235,7 +231,6 @@ public class SwapService {
         Battery batteryOut = dockOutSlot.getBattery();
         String dockCode = dockOutSlot.getDock().getDockName() + dockOutSlot.getSlotNumber();
 
-        // 1️⃣ Nhả pinOut
         batteryOut.setBatteryStatus(Battery.BatteryStatus.IN_USE);
         batteryOut.setStationId(null);
         batteryOut.setDockSlot(null);
@@ -245,10 +240,9 @@ public class SwapService {
         batteryRepository.save(batteryOut);
         dockSlotRepository.save(dockOutSlot);
 
-        // 🔔 Gửi realtime: pinOut bị lấy ra
+        // Gửi realtime: pinOut bị lấy ra (STOMP)
         sendRealtimeUpdate(dockOutSlot, "REMOVED");
 
-        // 2️⃣ Gắn pinIn vào slot (CHARGING)
         batteryIn.setBatteryStatus(Battery.BatteryStatus.WAITING);
         batteryIn.setStationId(stationId);
         batteryIn.setDockSlot(dockOutSlot);
@@ -261,10 +255,9 @@ public class SwapService {
         batteryRepository.save(batteryIn);
         dockSlotRepository.save(dockOutSlot);
 
-        // 🔔 Gửi realtime: pinIn mới được đưa vào trạm
+        //  Gửi realtime: pinIn mới được đưa vào trạm (STOMP)
         sendRealtimeUpdate(dockOutSlot, "INSERTED");
 
-        // 3️⃣ Ghi swap record
         Swap swap = Swap.builder()
                 .booking(booking)
                 .dockId(dockOutSlot.getDock().getDockId())
@@ -281,7 +274,6 @@ public class SwapService {
                 .build();
         swapRepository.save(swap);
 
-        // 🔔 Gửi realtime tổng thể: trạng thái slot đã thay đổi
         sendRealtimeUpdate(dockOutSlot, "STATUS_CHANGED");
 
         return SwapResponseDTO.builder()
@@ -297,8 +289,7 @@ public class SwapService {
                 .build();
     }
 
-
-    // ====================== REALTIME (raw WebSocket) ======================
+    // ====================== REALTIME (STOMP) ======================
     private void sendRealtimeUpdate(DockSlot slot, String action) {
         try {
             var battery = slot.getBattery();
@@ -318,7 +309,7 @@ public class SwapService {
                     .build();
 
             String json = objectMapper.writeValueAsString(event);
-            batteryWebSocketHandler.broadcastToStation(event.getStationId(), json);
+            batterySocketController.broadcastToStation(event.getStationId(), json);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -29,4 +29,7 @@ public interface SwapRepository extends JpaRepository<Swap, Long> {
      * cho một Booking cụ thể.
      */
     Optional<Swap> findFirstByBookingOrderByCompletedTimeDesc(Booking booking);
+
+//    @Query("SELECT s FROM Swap s WHERE s.station.id = :stationId AND DATE(s.createdAt) = :date")
+//    List<Swap> findByStationAndDate(@Param("stationId") Integer stationId, @Param("date") LocalDate date);
 }

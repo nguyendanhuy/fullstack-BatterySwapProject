@@ -2,6 +2,7 @@ package BatterySwapStation.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,13 +14,22 @@ import java.time.LocalDateTime;
 @Builder
 public class Report {
 
+    public enum ReportType {
+        DAILY_REVENUE,
+        HOURLY_REVENUE,
+        DAILY_SWAP,
+        HOURLY_SWAP,
+        STATION_PERFORMANCE,
+        SUMMARY,
+        STATION_DETAIL
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ReportId")
-    private Long reportId;
+    private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "ReportType", nullable = false, length = 50)
+    @Column(name = "ReportType", nullable = false)
     private ReportType reportType;
 
     @Column(name = "StartDate")
@@ -29,26 +39,20 @@ public class Report {
     private LocalDateTime endDate;
 
     @Column(name = "GeneratedAt", nullable = false)
-    private LocalDateTime generatedAt = LocalDateTime.now();
+    private LocalDateTime generatedAt;
+
+    @Column(name = "GeneratedBy", length = 100)
+    private String generatedBy;
 
     @Lob
     @Column(name = "SummaryData", columnDefinition = "TEXT")
-    private String summaryData; // JSON summary (tổng doanh thu, lượt swap, hiệu suất...)
+    private String summaryData;
 
     @Lob
     @Column(name = "DetailedData", columnDefinition = "TEXT")
-    private String detailedData; // JSON raw data (chi tiết từng trạm, từng ngày,...)
+    private String detailedData;
 
-    @Column(name = "GeneratedBy", length = 100)
-    private String generatedBy; // optional: user email hoặc adminId
-
-    public enum ReportType {
-        STATION_PERFORMANCE,
-        DAILY_REVENUE,
-        HOURLY_REVENUE,
-        DAILY_SWAP,
-        HOURLY_SWAP,
-        SUMMARY
-    }
-
+    // ✅ (tuỳ chọn) thêm hash để đảm bảo toàn vẹn
+    @Column(name = "DataHash", length = 128)
+    private String dataHash;
 }

@@ -13,7 +13,7 @@ import { Battery, Search, Edit, Trash, Plus, Grid3x3, List, RefreshCw, BarChart,
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-// Converted to plain JSX (no TypeScript types)
+// Converted to JSX: removed TypeScript interfaces and annotations
 
 const BatteryInventory = () => {
   const { toast } = useToast();
@@ -214,11 +214,79 @@ const BatteryInventory = () => {
   };
 
   const handleUpdateBattery = () => {
+    // Validation
+    if (!editBattery.type || !editBattery.status || !editBattery.location) {
+      toast({
+        title: "Lỗi validation",
+        description: "Vui lòng điền đầy đủ thông tin",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const sohValue = parseInt(editBattery.soh);
+    if (isNaN(sohValue) || sohValue < 0 || sohValue > 100) {
+      toast({
+        title: "Lỗi SoH",
+        description: "SoH phải là số từ 0-100",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check duplicate location trong cùng dock (trừ vị trí hiện tại)
+    const duplicateLocation = batteries.find(
+      b => b.location === editBattery.location
+        && b.dockId === editBattery.dockId
+        && b.id !== editBattery.id
+    );
+
+    if (duplicateLocation) {
+      toast({
+        title: "Vị trí đã tồn tại",
+        description: `Vị trí ${editBattery.location} đã có pin ${duplicateLocation.id}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Cập nhật battery trong state
+    setBatteries(batteries.map(b =>
+      b.id === editBattery.id
+        ? {
+          ...b,
+          type: editBattery.type,
+          status: editBattery.status,
+          soh: editBattery.soh + '%',
+          location: editBattery.location,
+          charge: parseInt(editBattery.soh),
+          lastUpdated: new Date().toLocaleString('vi-VN'),
+          dockId: editBattery.dockId
+        }
+        : b
+    ));
+
+    // Update selected battery nếu đang mở detail panel
+    if (selectedBattery?.id === editBattery.id) {
+      setSelectedBattery({
+        ...selectedBattery,
+        type: editBattery.type,
+        status: editBattery.status,
+        soh: editBattery.soh + '%',
+        location: editBattery.location,
+        charge: parseInt(editBattery.soh),
+        lastUpdated: new Date().toLocaleString('vi-VN'),
+        dockId: editBattery.dockId
+      });
+    }
+
     toast({
       title: "Cập nhật pin thành công",
       description: `Thông tin pin ${editBattery.id} đã được cập nhật`,
     });
+
     setIsEditDialogOpen(false);
+    setEditingBattery(null);
   };
 
   const handleSlotClick = (slot) => {
@@ -594,6 +662,35 @@ const BatteryInventory = () => {
                           {slot.status === "error" && (
                             <div className="absolute top-2 right-2 w-3 h-3 bg-red-600 rounded-full animate-pulse" />
                           )}
+
+                          {/* Quick Actions Overlay */}
+                          {isOccupied && (
+                            <div className="absolute inset-0 bg-black/0 hover:bg-black/60 transition-all duration-300 opacity-0 hover:opacity-100 rounded-lg flex items-center justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditBattery(slot);
+                                }}
+                                className="bg-white/90 hover:bg-white text-gray-800"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveBattery(slot.id);
+                                  setIsDetailPanelOpen(false);
+                                }}
+                                className="bg-white/90 hover:bg-white text-gray-800"
+                              >
+                                <Trash className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </TooltipTrigger>
@@ -752,13 +849,29 @@ const BatteryInventory = () => {
               {/* Action Buttons */}
               <div className="flex gap-2">
                 <Button
+                  variant="default"
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500"
+                  onClick={() => {
+                    handleEditBattery(selectedBattery);
+                    setIsDetailPanelOpen(false);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Chỉnh sửa
+                </Button>
+
+                <Button
                   variant="destructive"
                   className="flex-1"
-                  onClick={() => handleRemoveBattery(selectedBattery?.id)}
+                  onClick={() => {
+                    handleRemoveBattery(selectedBattery?.id);
+                    setIsDetailPanelOpen(false);
+                  }}
                 >
                   <Trash className="h-4 w-4 mr-2" />
                   Tháo pin
                 </Button>
+
                 <Button
                   variant="outline"
                   onClick={() => setIsDetailPanelOpen(false)}
@@ -817,6 +930,25 @@ const BatteryInventory = () => {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="edit-dock-select">Dock</Label>
+                <Select
+                  value={editBattery.dockId?.toString()}
+                  onValueChange={(value) => setEditBattery({ ...editBattery, dockId: parseInt(value) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docks.map(dock => (
+                      <SelectItem key={dock.id} value={dock.id.toString()}>
+                        {dock.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-battery-soh">SoH (%)</Label>
@@ -846,7 +978,6 @@ const BatteryInventory = () => {
             </div>
           </DialogContent>
         </Dialog>
-        {/* Footer Action Bar */}
       </div>
     </TooltipProvider>
   );

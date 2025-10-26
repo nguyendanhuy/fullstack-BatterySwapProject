@@ -3,6 +3,8 @@ package BatterySwapStation.controller;
 import BatterySwapStation.dto.*;
 
 import BatterySwapStation.entity.*;
+import BatterySwapStation.repository.StaffAssignRepository;
+import BatterySwapStation.repository.UserSubscriptionRepository;
 import BatterySwapStation.service.*;
 import BatterySwapStation.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
@@ -30,6 +33,9 @@ public class AuthController {
     private final EmailService emailService;
     private final JwtService jwtService;
     private final GoogleService googleService;
+    private final StaffAssignRepository staffAssignRepository;
+    private final UserSubscriptionRepository userSubscriptionRepository;
+
 
     private static final String FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email";
 
@@ -80,14 +86,39 @@ public class AuthController {
             return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
 
+        Integer assignedStationId = null;
+        Long activeSubscriptionId = null;
+
+        // 🔹 Nếu là Staff
+        if (user.getRole().getRoleId() == 2) {
+            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            if (assign != null) assignedStationId = assign.getStationId();
+        }
+
+        // 🔹 Nếu là Driver
+        if (user.getRole().getRoleId() == 1) {
+            UserSubscription sub = userSubscriptionRepository
+                    .findFirstByUser_UserIdAndStatusAndEndDateAfter(
+                            user.getUserId(),
+                            UserSubscription.SubscriptionStatus.ACTIVE,
+                            LocalDateTime.now()
+                    );
+            if (sub != null && sub.getPlan() != null) {
+                activeSubscriptionId = sub.getPlan().getId();
+            }
+        }
+
         return ResponseEntity.ok(Map.of(
                 "userId", user.getUserId(),
                 "email", user.getEmail(),
                 "fullName", user.getFullName(),
                 "phone", user.getPhone(),
-                "role", user.getRole().getRoleName()
+                "role", user.getRole().getRoleName(),
+                "assignedStationId", assignedStationId,
+                "activeSubscriptionId", activeSubscriptionId
         ));
     }
+
 
 
     @GetMapping("/verify-email")

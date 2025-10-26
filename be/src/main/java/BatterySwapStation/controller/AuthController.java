@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -108,15 +109,17 @@ public class AuthController {
             }
         }
 
-        return ResponseEntity.ok(Map.of(
-                "userId", user.getUserId(),
-                "email", user.getEmail(),
-                "fullName", user.getFullName(),
-                "phone", user.getPhone(),
-                "role", user.getRole().getRoleName(),
-                "assignedStationId", assignedStationId,
-                "activeSubscriptionId", activeSubscriptionId
-        ));
+        // ✅ FIX: Dùng HashMap thay vì Map.of() để chấp nhận null
+        Map<String, Object> response = new HashMap<>();
+        response.put("userId", user.getUserId());
+        response.put("email", user.getEmail());
+        response.put("fullName", user.getFullName());
+        response.put("phone", user.getPhone());
+        response.put("role", user.getRole().getRoleName());
+        response.put("assignedStationId", assignedStationId);
+        response.put("activeSubscriptionId", activeSubscriptionId);
+
+        return ResponseEntity.ok(response);
     }
 
 

@@ -19,6 +19,7 @@ const AuthProvider = ({ children }) => {
 
             if (token) {
                 const res = await getInfoByToken();
+                console.log("Fetched user info AuthProvider:", res);
                 if (res) {
                     // Nếu là DRIVER, fetch song song userData và vehicles
                     if (res.role === "DRIVER") {

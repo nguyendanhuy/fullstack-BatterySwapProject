@@ -25,7 +25,6 @@ public class BatterySocketController {
         messagingTemplate.convertAndSend("/topic/station-" + stationId, message);
     }
 
-
     // Gửi realtime cho admin (nhận toàn bộ)
     public void broadcastToAdmin(Object message) {
         messagingTemplate.convertAndSend("/topic/admin", message);

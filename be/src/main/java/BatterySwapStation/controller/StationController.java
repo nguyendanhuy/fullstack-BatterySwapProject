@@ -112,4 +112,56 @@ public class StationController {
         return result;
     }
 
+    @GetMapping("/{stationId}/batteries/full")
+    public List<SlotBatteryDTO> getAllBatteriesInStation(@PathVariable Integer stationId) {
+
+        // 🔹 Lấy tất cả DockSlot (có thể chứa pin)
+        List<DockSlot> slots = dockSlotRepository.findAllByDock_Station_StationId(stationId);
+
+        List<SlotBatteryDTO> slotDtos = new ArrayList<>();
+
+        // 🔹 Map slot -> pin trong dock
+        for (DockSlot slot : slots) {
+            SlotBatteryDTO dto = new SlotBatteryDTO();
+            dto.setSlotId(slot.getDockSlotId());
+            dto.setSlotNumber(slot.getSlotNumber());
+            dto.setSlotCode(slot.getDock().getDockName() + slot.getSlotNumber());
+
+            if (slot.getBattery() != null) {
+                var b = slot.getBattery();
+                dto.setBatteryId(b.getBatteryId());
+                dto.setBatteryType(b.getBatteryType().name());
+                dto.setBatteryStatus(b.getBatteryStatus().name());
+                dto.setCurrentCapacity(b.getCurrentCapacity());
+                dto.setStateOfHealth(b.getStateOfHealth());
+            } else {
+                dto.setBatteryStatus("EMPTY");
+                dto.setCurrentCapacity(0.0);
+            }
+
+            slotDtos.add(dto);
+        }
+
+        // 🔹 Thêm các pin KHÔNG nằm trong slot (vẫn thuộc station)
+        var looseBatteries = stationService.getAllLooseBatteries(stationId);
+        for (var b : looseBatteries) {
+            SlotBatteryDTO dto = new SlotBatteryDTO();
+            dto.setSlotId(null);
+            dto.setSlotNumber(0);
+            dto.setSlotCode("UNASSIGNED");
+            dto.setBatteryId(b.getBatteryId());
+            dto.setBatteryType(b.getBatteryType().name());
+            dto.setBatteryStatus(b.getBatteryStatus().name());
+            dto.setCurrentCapacity(b.getCurrentCapacity());
+            dto.setStateOfHealth(b.getStateOfHealth());
+            slotDtos.add(dto);
+        }
+
+        // 🔹 Sắp xếp slot theo dock name + slotNumber (nếu có)
+        slotDtos.sort(Comparator.comparing(SlotBatteryDTO::getSlotCode));
+
+        return slotDtos;
+    }
+
+
 }

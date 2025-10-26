@@ -44,4 +44,11 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
     // 🔹 Lấy tất cả Battery trong 1 station cụ thể (cũng fetch full quan hệ)
     @EntityGraph(attributePaths = {"dockSlot", "dockSlot.dock", "dockSlot.dock.station"})
     List<Battery> findByStationId(Integer stationId);
+
+    @Query("SELECT b FROM Battery b " +
+            "WHERE b.stationId = :stationId " +
+            "AND (b.dockSlot IS NULL OR b.dockSlot.battery IS NULL)")
+    List<Battery> findAllLooseBatteriesByStation(@Param("stationId") Integer stationId);
+
+
 }

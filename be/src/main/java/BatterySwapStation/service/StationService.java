@@ -1,7 +1,9 @@
 package BatterySwapStation.service;
 
 import BatterySwapStation.dto.StationResponseDTO;
+import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.Vehicle;
+import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.StationRepository;
 import BatterySwapStation.utils.GeoUtils;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +18,7 @@ public class StationService {
 
     private final StationRepository stationRepository;
     private final VehicleService vehicleService; // 👈 thêm inject service này để lấy loại pin user
-
+    private final BatteryRepository batteryRepository;
     // ⚡ Lấy toàn bộ trạm với tổng hợp nhanh
     public List<StationResponseDTO> getAllStations() {
         List<Object[]> main = stationRepository.getStationSummary();
@@ -129,4 +131,9 @@ public class StationService {
         }
         return false;
     }
+
+    public List<Battery> getAllLooseBatteries(Integer stationId) {
+        return batteryRepository.findAllLooseBatteriesByStation(stationId);
+    }
+
 }

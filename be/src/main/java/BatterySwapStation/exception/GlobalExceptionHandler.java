@@ -1,5 +1,6 @@
 package BatterySwapStation.exception;
 
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import javax.naming.AuthenticationException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,5 +50,28 @@ public class GlobalExceptionHandler {
         body.put("status", 401); // 401 Unauthorized thay vì 403
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleException(Exception ex) {
+        if (ex instanceof AuthenticationException) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Authentication error"));
+        }
+        // Với các lỗi khác (DB, Transaction, ...), trả đúng mã lỗi 500
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                        "error", ex.getClass().getSimpleName(),
+                        "message", ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<?> handleDatabaseException(DataAccessException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                        "error", "Database error",
+                        "message", ex.getMostSpecificCause().getMessage()
+                ));
+    }
+
 
 }

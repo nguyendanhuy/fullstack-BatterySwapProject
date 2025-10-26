@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
 
-
+                        .requestMatchers("/ws-battery/**").permitAll()
                         // Các request khác đều cho phép truy cập (phải để cuối cùng)
                         .anyRequest().permitAll()
                 )
@@ -57,6 +57,7 @@ public class SecurityConfig {
                 "https://batteryswap.up.railway.app",
                 "https://batteryswap-be-production.up.railway.app"
         ));
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

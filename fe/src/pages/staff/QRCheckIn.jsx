@@ -6,14 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike, Loader2, ClipboardCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Divider, Space, Upload, Popconfirm } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { ReaderException } from "@zxing/library";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { checkBatteryModule, commitSwap, verifyQrBooking, cancelBooking } from "../../services/axios.services";
+import { checkBatteryModule, commitSwap, verifyQrBooking, cancelBooking, createInspectionAndDispute } from "../../services/axios.services";
 import dayjs from "dayjs";
 import { SystemContext } from "../../contexts/system.context";
 const QRCheckIn = () => {
@@ -31,6 +33,16 @@ const QRCheckIn = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isService, setIsService] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
+  const [inspectionData, setInspectionData] = useState({
+    batteryInId: "",
+    stateOfHealth: 0,
+    physicalNotes: "",
+    createDispute: false,
+    disputeTitle: "",
+    disputeDescription: ""
+  });
+  const [isSubmittingInspection, setIsSubmittingInspection] = useState(false);
   // revoke URL khi unmount
   useEffect(() => {
     return () => {
@@ -201,10 +213,90 @@ const QRCheckIn = () => {
     }
   };
 
+  // Handle battery inspection form
+  const handleInspectionSubmit = async () => {
+    if (!scannedCustomer?.bookingId) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy booking ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!inspectionData.batteryInId.trim()) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng nhập ID pin trả về",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (inspectionData.stateOfHealth < 0 || inspectionData.stateOfHealth > 100) {
+      toast({
+        title: "Lỗi",
+        description: "State of Health phải từ 0-100",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmittingInspection(true);
+    try {
+      const payload = {
+        batteryInId: inspectionData.batteryInId.trim(),
+        bookingId: scannedCustomer.bookingId,
+        stateOfHealth: inspectionData.stateOfHealth,
+        physicalNotes: inspectionData.physicalNotes.trim(),
+        createDispute: inspectionData.createDispute,
+        disputeTitle: inspectionData.createDispute ? inspectionData.disputeTitle.trim() : "",
+        disputeDescription: inspectionData.createDispute ? inspectionData.disputeDescription.trim() : "",
+        staffId: userData.userId
+      };
+
+      const res = await createInspectionAndDispute(payload);
+      console.log("Inspection submission response:", res);
+
+      if (res?.success) {
+        toast({
+          title: "Thành công",
+          description: res.message || "Đã lưu thông tin kiểm tra pin",
+          duration: 5000,
+        });
+        setIsInspectionDialogOpen(false);
+        // Reset form
+        setInspectionData({
+          batteryInId: "",
+          stateOfHealth: 0,
+          physicalNotes: "",
+          createDispute: false,
+          disputeTitle: "",
+          disputeDescription: ""
+        });
+      } else {
+        toast({
+          title: "Thất bại",
+          description: res?.message || "Không thể lưu thông tin kiểm tra",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi",
+        description: err?.message || "Đã xảy ra lỗi khi lưu thông tin",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingInspection(false);
+    }
+  };
+
   const handleScan = async () => {
     setIsScanning(true);
     try {
       const res = await verifyQrBooking(qrData);
+      console.log("QR scan response:", res);
       if (res) {
         setScannedCustomer(res.data);
         toast({
@@ -578,6 +670,19 @@ const QRCheckIn = () => {
                         </Button>
                       </Popconfirm>
                     </div>
+
+                    {/* Nút nhập trạng thái pin trả về */}
+                    <div className="mt-3">
+                      <Button
+                        onClick={() => setIsInspectionDialogOpen(true)}
+                        disabled={!scannedCustomer}
+                        variant="outline"
+                        className="w-full rounded-xl py-3 font-semibold border-2 border-blue-500 text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ClipboardCheck className="h-5 w-5 mr-2" />
+                        Nhập trạng thái pin trả về
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -593,6 +698,157 @@ const QRCheckIn = () => {
           </div>
         </div>
       </div>
+
+      {/* Battery Inspection Dialog */}
+      <Dialog open={isInspectionDialogOpen} onOpenChange={setIsInspectionDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
+                <ClipboardCheck className="h-6 w-6 text-white" />
+              </div>
+              Nhập trạng thái pin trả về
+            </DialogTitle>
+            <DialogDescription>
+              Nhập thông tin kiểm tra pin được trả lại từ khách hàng (Booking ID: {scannedCustomer?.bookingId})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Battery In ID */}
+            <div className="space-y-2">
+              <Label htmlFor="batteryInId" className="text-sm font-semibold">
+                ID Pin trả về <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="batteryInId"
+                placeholder="Nhập ID pin (VD: BAT001)"
+                value={inspectionData.batteryInId}
+                onChange={(e) => setInspectionData({ ...inspectionData, batteryInId: e.target.value })}
+                className="text-lg"
+              />
+            </div>
+
+            {/* State of Health */}
+            <div className="space-y-2">
+              <Label htmlFor="stateOfHealth" className="text-sm font-semibold">
+                Tình trạng sức khỏe pin (SOH %) <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="stateOfHealth"
+                type="number"
+                min="0"
+                max="100"
+                placeholder="Nhập 0-100"
+                value={inspectionData.stateOfHealth}
+                onChange={(e) => setInspectionData({ ...inspectionData, stateOfHealth: parseInt(e.target.value) || 0 })}
+                className="text-lg"
+              />
+            </div>
+
+            {/* Physical Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="physicalNotes" className="text-sm font-semibold">
+                Ghi chú về tình trạng vật lý
+              </Label>
+              <Textarea
+                id="physicalNotes"
+                placeholder="VD: Pin có vết trầy xước nhẹ ở góc..."
+                value={inspectionData.physicalNotes}
+                onChange={(e) => setInspectionData({ ...inspectionData, physicalNotes: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            {/* Create Dispute Switch */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="space-y-0.5">
+                <Label htmlFor="createDispute" className="text-sm font-semibold">
+                  Tạo tranh chấp
+                </Label>
+                <p className="text-xs text-gray-600">
+                  Bật nếu pin có vấn đề cần báo cáo
+                </p>
+              </div>
+              <Switch
+                id="createDispute"
+                checked={inspectionData.createDispute}
+                onCheckedChange={(checked) => setInspectionData({ ...inspectionData, createDispute: checked })}
+              />
+            </div>
+
+            {/* Dispute Fields - Only show if createDispute is true */}
+            {inspectionData.createDispute && (
+              <div className="space-y-4 p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
+                <div className="space-y-2">
+                  <Label htmlFor="disputeTitle" className="text-sm font-semibold text-orange-800">
+                    Tiêu đề tranh chấp <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="disputeTitle"
+                    placeholder="VD: Pin bị hư hỏng nghiêm trọng"
+                    value={inspectionData.disputeTitle}
+                    onChange={(e) => setInspectionData({ ...inspectionData, disputeTitle: e.target.value })}
+                    className="bg-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="disputeDescription" className="text-sm font-semibold text-orange-800">
+                    Mô tả tranh chấp <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="disputeDescription"
+                    placeholder="Mô tả chi tiết vấn đề..."
+                    value={inspectionData.disputeDescription}
+                    onChange={(e) => setInspectionData({ ...inspectionData, disputeDescription: e.target.value })}
+                    rows={3}
+                    className="bg-white"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsInspectionDialogOpen(false);
+                setInspectionData({
+                  batteryInId: "",
+                  stateOfHealth: 0,
+                  physicalNotes: "",
+                  createDispute: false,
+                  disputeTitle: "",
+                  disputeDescription: ""
+                });
+              }}
+              className="flex-1"
+              disabled={isSubmittingInspection}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={handleInspectionSubmit}
+              disabled={isSubmittingInspection}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              {isSubmittingInspection ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Lưu thông tin
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Battery Slot Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

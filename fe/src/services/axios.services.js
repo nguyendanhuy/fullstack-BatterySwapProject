@@ -148,6 +148,10 @@ const createVNpayForSubscription = (invoiceId) => {
     return axios.post("/payments/vnpay/create-subscription", data);
 }
 
+const createInspectionAndDispute = (data) => {
+    return axios.post("/inspections", data);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -182,5 +186,6 @@ export {
     changeUserPhoneNumber,
     changeUserPassword,
     createInvoiceForSubscription,
-    createVNpayForSubscription
+    createVNpayForSubscription,
+    createInspectionAndDispute
 };

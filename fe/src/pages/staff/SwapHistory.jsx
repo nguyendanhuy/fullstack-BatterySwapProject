@@ -44,7 +44,7 @@ const SwapHistory = () => {
 
     useEffect(() => {
         const fetchSwaps = async () => {
-            const stationId = userData?.stationId || 9;
+            const stationId = userData?.assignedStationId;
             if (!stationId) return;
 
             setLoading(true);
@@ -79,7 +79,6 @@ const SwapHistory = () => {
             swap.userId?.toString().includes(searchTerm) ||
             swap.staffUserId?.toString().includes(searchTerm);
         const matchesStatus = !filterStatus || filterStatus === "all" || swap.status?.toUpperCase() === filterStatus.toUpperCase();
-        console.log("matchesSearch:", matchesSearch, "matchesStatus:", matchesStatus);
         return matchesSearch && matchesStatus;
     });
 
@@ -88,7 +87,7 @@ const SwapHistory = () => {
             {/* Enhanced Header */}
             <header className="bg-white dark:bg-slate-900 border-b">
                 <div className="container mx-auto px-6 py-6">
-                    <h1 className="text-3xl font-bold text-foreground">Lịch sử đổi pin (Mặc định Station id 9, chờ BE)</h1>
+                    <h1 className="text-3xl font-bold text-foreground">Lịch sử đổi pin</h1>
                 </div>
             </header>
 

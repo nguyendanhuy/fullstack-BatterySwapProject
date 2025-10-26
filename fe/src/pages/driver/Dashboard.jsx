@@ -48,6 +48,7 @@ const DriverDashboard = () => {
 
       const pending = invoices.filter(inv => inv.invoiceStatus === "PENDING");
       setPendingInvoices(pending);
+      console.log("Pending invoices:", pending);
 
       // Auto show modal if there are pending invoices
       if (pending.length > 0) {

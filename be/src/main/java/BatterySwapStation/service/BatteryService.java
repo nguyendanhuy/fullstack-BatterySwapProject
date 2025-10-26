@@ -24,7 +24,7 @@ public class BatteryService {
 
     private final BatteryRepository batteryRepository;
     private final DockSlotRepository dockSlotRepository;
-    private final BatterySocketController batterySocketController; // ✅ STOMP thay thế
+    private final BatterySocketController batterySocketController;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ==================== TỰ ĐỘNG SẠC ====================
@@ -78,19 +78,13 @@ public class BatteryService {
 
         sendRealtimeUpdate(slot, "EJECTED", "EMPTY", battery);
 
-        String msg = String.format(
-                "Pin %s đã được rút khỏi Dock %s Slot %d (Station %d).",
-                batteryId, dock.getDockName(), slot.getSlotNumber(), station.getStationId()
-        );
-
         return Map.of(
                 "batteryId", batteryId,
                 "stationId", station.getStationId(),
                 "dockName", dock.getDockName(),
                 "slotNumber", slot.getSlotNumber(),
                 "batteryStatus", "EMPTY",
-                "action", "EJECTED",
-                "message", msg
+                "action", "EJECTED"
         );
     }
 
@@ -118,21 +112,11 @@ public class BatteryService {
         battery.setDockSlot(slot);
         batteryRepository.save(battery);
 
-        sendRealtimeUpdate(slot, "INSERTED", "WAITING_CHARGE", battery);
-
-        String msg = String.format(
-                "Pin %s đã được đút vào Dock %s Slot %d (Station %d), đang chờ sạc.",
-                batteryId, dock.getDockName(), slot.getSlotNumber(), station.getStationId()
-        );
-
+        sendRealtimeUpdate(slot, "INSERTED", "WAITING", battery);
         return Map.of(
                 "batteryId", batteryId,
                 "stationId", station.getStationId(),
-                "dockName", dock.getDockName(),
-                "slotNumber", slot.getSlotNumber(),
-                "batteryStatus", "WAITING_CHARGE",
-                "action", "INSERTED",
-                "message", msg
+                "action", "INSERTED"
         );
     }
 
@@ -152,8 +136,7 @@ public class BatteryService {
 
         return Map.of(
                 "batteryId", battery.getBatteryId(),
-                "newStatus", battery.getBatteryStatus(),
-                "message", "Cập nhật trạng thái pin thành công"
+                "newStatus", battery.getBatteryStatus()
         );
     }
 
@@ -172,7 +155,6 @@ public class BatteryService {
                     .timestamp(LocalDateTime.now().toString())
                     .build();
 
-            // ✅ Gửi dạng JSON string qua STOMP topic
             String json = objectMapper.writeValueAsString(event);
             batterySocketController.broadcastToStation(event.getStationId(), json);
         } catch (Exception e) {

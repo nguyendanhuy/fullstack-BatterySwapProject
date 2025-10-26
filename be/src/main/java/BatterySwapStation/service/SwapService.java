@@ -309,6 +309,7 @@ public class SwapService {
                     .build();
 
             String json = objectMapper.writeValueAsString(event);
+            // ✅ Gửi realtime grouped (bỏ grouped-full)
             batterySocketController.broadcastToStation(event.getStationId(), json);
         } catch (Exception e) {
             e.printStackTrace();

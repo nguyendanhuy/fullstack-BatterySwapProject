@@ -25,21 +25,22 @@ public class AuditService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
-    public Map<String, Object> checkDataDiscrepancy(Integer stationFilter, boolean pushRealtime) {
-        List<Battery> allBatteries = (stationFilter == null)
-                ? batteryRepository.findAll()
-                : batteryRepository.findByStationId(stationFilter);
+    public Map<String, Object> checkDataDiscrepancy(Integer stationId, boolean pushRealtime) {
 
-        List<DockSlot> allSlots = (stationFilter == null)
+        List<Battery> allBatteries = (stationId == null)
+                ? batteryRepository.findAll()
+                : batteryRepository.findByStationId(stationId);
+
+        List<DockSlot> allSlots = (stationId == null)
                 ? dockSlotRepository.findAll()
-                : dockSlotRepository.findAllByDock_Station_StationId(stationFilter);
+                : dockSlotRepository.findAllByDock_Station_StationId(stationId);
 
         List<AuditIssueDTO> issues = new ArrayList<>();
         String now = LocalDateTime.now().toString();
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("timestamp", now);
-        response.put("stationFilter", stationFilter);
+        response.put("stationId", stationId);
         response.put("totalBatteries", allBatteries.size());
         response.put("totalSlots", allSlots.size());
         response.put("totalIssues", issues.size());
@@ -47,10 +48,10 @@ public class AuditService {
                 .collect(Collectors.groupingBy(AuditIssueDTO::getIssueType, Collectors.counting())));
         response.put("issues", issues);
 
-        if (pushRealtime && !issues.isEmpty()) {
+        if (pushRealtime && !issues.isEmpty() && stationId != null) {
             try {
                 String json = objectMapper.writeValueAsString(response);
-                batterySocketController.broadcastToStation(stationFilter, json);
+                batterySocketController.broadcastToStation(stationId, json);
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -1,9 +1,13 @@
 package BatterySwapStation.service;
 
+import BatterySwapStation.dto.DockBatteryGroupDTO;
+import BatterySwapStation.dto.SlotBatteryDTO;
 import BatterySwapStation.dto.StationResponseDTO;
 import BatterySwapStation.entity.Battery;
+import BatterySwapStation.entity.DockSlot;
 import BatterySwapStation.entity.Vehicle;
 import BatterySwapStation.repository.BatteryRepository;
+import BatterySwapStation.repository.DockSlotRepository;
 import BatterySwapStation.repository.StationRepository;
 import BatterySwapStation.utils.GeoUtils;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +23,7 @@ public class StationService {
     private final StationRepository stationRepository;
     private final VehicleService vehicleService; // 👈 thêm inject service này để lấy loại pin user
     private final BatteryRepository batteryRepository;
+    private final DockSlotRepository DockSlotRepository;
     // ⚡ Lấy toàn bộ trạm với tổng hợp nhanh
     public List<StationResponseDTO> getAllStations() {
         List<Object[]> main = stationRepository.getStationSummary();
@@ -134,6 +139,115 @@ public class StationService {
 
     public List<Battery> getAllLooseBatteries(Integer stationId) {
         return batteryRepository.findAllLooseBatteriesByStation(stationId);
+    }
+
+
+    public List<DockBatteryGroupDTO> getGroupedBatteriesFull(Integer stationId) {
+        List<DockSlot> slots = DockSlotRepository.findAllByDock_Station_StationId(stationId);
+
+        Map<String, List<DockSlot>> grouped = slots.stream()
+                .collect(Collectors.groupingBy(s -> s.getDock().getDockName()));
+
+        List<DockBatteryGroupDTO> result = new ArrayList<>();
+
+        for (var entry : grouped.entrySet()) {
+            String dockName = entry.getKey();
+            List<DockSlot> dockSlots = entry.getValue();
+            dockSlots.sort(Comparator.comparing(DockSlot::getSlotNumber));
+
+            List<SlotBatteryDTO> slotDtos = new ArrayList<>();
+            for (DockSlot slot : dockSlots) {
+                SlotBatteryDTO dto = new SlotBatteryDTO();
+                dto.setSlotId(slot.getDockSlotId());
+                dto.setSlotNumber(slot.getSlotNumber());
+                dto.setSlotCode(dockName + slot.getSlotNumber());
+
+                if (slot.getBattery() != null) {
+                    var b = slot.getBattery();
+                    dto.setBatteryId(b.getBatteryId());
+                    dto.setBatteryType(b.getBatteryType().name());
+                    dto.setBatteryStatus(b.getBatteryStatus().name());
+                    dto.setCurrentCapacity(b.getCurrentCapacity());
+                    dto.setStateOfHealth(b.getStateOfHealth());
+                } else {
+                    dto.setBatteryStatus("EMPTY");
+                    dto.setCurrentCapacity(0.0);
+                }
+
+                slotDtos.add(dto);
+            }
+
+            DockBatteryGroupDTO dockDto = new DockBatteryGroupDTO();
+            dockDto.setDockName(dockName);
+            dockDto.setSlots(slotDtos);
+            result.add(dockDto);
+        }
+
+        // Pin không thuộc dock
+        var loose = getAllLooseBatteries(stationId);
+        if (!loose.isEmpty()) {
+            DockBatteryGroupDTO extra = new DockBatteryGroupDTO();
+            extra.setDockName("NO_DOCK");
+            extra.setSlots(loose.stream().map(b -> {
+                SlotBatteryDTO dto = new SlotBatteryDTO();
+                dto.setBatteryId(b.getBatteryId());
+                dto.setBatteryType(b.getBatteryType().name());
+                dto.setBatteryStatus(b.getBatteryStatus().name());
+                dto.setCurrentCapacity(b.getCurrentCapacity());
+                dto.setStateOfHealth(b.getStateOfHealth());
+                dto.setSlotCode("UNASSIGNED");
+                dto.setSlotNumber(0);
+                return dto;
+            }).toList());
+            result.add(extra);
+        }
+
+        result.sort(Comparator.comparing(DockBatteryGroupDTO::getDockName));
+        return result;
+    }
+
+    public List<DockBatteryGroupDTO> getGroupedBatteriesOnly(Integer stationId) {
+        List<DockSlot> slots = DockSlotRepository.findAllByDock_Station_StationId(stationId);
+
+        Map<String, List<DockSlot>> grouped = slots.stream()
+                .collect(Collectors.groupingBy(s -> s.getDock().getDockName()));
+
+        List<DockBatteryGroupDTO> result = new ArrayList<>();
+
+        for (var entry : grouped.entrySet()) {
+            String dockName = entry.getKey();
+            List<DockSlot> dockSlots = entry.getValue();
+            dockSlots.sort(Comparator.comparing(DockSlot::getSlotNumber));
+
+            List<SlotBatteryDTO> slotDtos = new ArrayList<>();
+            for (DockSlot slot : dockSlots) {
+                SlotBatteryDTO dto = new SlotBatteryDTO();
+                dto.setSlotId(slot.getDockSlotId());
+                dto.setSlotNumber(slot.getSlotNumber());
+                dto.setSlotCode(dockName + slot.getSlotNumber());
+
+                if (slot.getBattery() != null) {
+                    var b = slot.getBattery();
+                    dto.setBatteryId(b.getBatteryId());
+                    dto.setBatteryType(b.getBatteryType().name());
+                    dto.setBatteryStatus(b.getBatteryStatus().name());
+                    dto.setCurrentCapacity(b.getCurrentCapacity());
+                    dto.setStateOfHealth(b.getStateOfHealth());
+                } else {
+                    dto.setBatteryStatus("EMPTY");
+                    dto.setCurrentCapacity(0.0);
+                }
+                slotDtos.add(dto);
+            }
+
+            DockBatteryGroupDTO dockDto = new DockBatteryGroupDTO();
+            dockDto.setDockName(dockName);
+            dockDto.setSlots(slotDtos);
+            result.add(dockDto);
+        }
+
+        result.sort(Comparator.comparing(DockBatteryGroupDTO::getDockName));
+        return result;
     }
 
 }

@@ -148,13 +148,6 @@ const Payment = () => {
         return showError("Tạo booking thất bại!", response.message || "Có lỗi xảy ra", 10000);
       }
 
-      // Check booking một phần thất bại
-      if (!response.data.allSuccess) {
-        const failedErrors = response.data.failedBookings
-          ?.map(fb => `Xe ${fb.vehicleId}: ${fb.error}`)
-          .join("\n") || "Có lỗi xảy ra";
-        return showError(response.data.message || "Đặt lịch thất bại!", failedErrors, 10000);
-      }
 
       // Tạo invoice và payment
       setLoadingStep("Đang tạo hóa đơn...");

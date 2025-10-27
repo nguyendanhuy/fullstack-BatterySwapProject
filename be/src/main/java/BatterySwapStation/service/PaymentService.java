@@ -90,6 +90,7 @@ public class PaymentService {
                 .amount(amount)
                 .paymentMethod(Payment.PaymentMethod.VNPAY)
                 .paymentStatus(Payment.PaymentStatus.PENDING)
+                .transactionType(Payment.TransactionType.PAYMENT)
                 .gateway("VNPAY")
                 .vnpTxnRef(txnRef)
                 .createdAt(LocalDateTime.now(zone))
@@ -575,18 +576,19 @@ public class PaymentService {
         }
 
         // 5️⃣ Lưu Payment
-        Payment payment = Payment.builder()
+        Payment payment2 = Payment.builder()
                 .invoice(invoice)
                 .amount(amount)
                 .paymentMethod(Payment.PaymentMethod.VNPAY)
                 .paymentStatus(Payment.PaymentStatus.PENDING)
+                .transactionType(Payment.TransactionType.PAYMENT)
                 .gateway("VNPAY")
                 .vnpTxnRef(txnRef)
                 .message("Thanh toán gói: " + plan.getPlanName())
                 .createdAt(LocalDateTime.now(zone))
                 .build();
 
-        paymentRepository.save(payment);
+        paymentRepository.save(payment2);
 
         // 6️⃣ Build URL thanh toán
         String payUrl = VnPayUtils.buildPaymentUrl(props.getPayUrl(), params, props.getHashSecret());

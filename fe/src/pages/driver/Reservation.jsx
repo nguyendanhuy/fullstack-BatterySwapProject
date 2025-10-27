@@ -1,21 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { MapPin, Zap, Star, Clock, Calendar as CalendarIcon, Bike } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Steps } from "antd";
 import { UserOutlined, CalendarOutlined, ClockCircleOutlined, CreditCardOutlined, LoadingOutlined } from "@ant-design/icons";
-import { getSwapDefaultPrice } from "../../services/axios.services";
+import { getSwapDefaultPrice, createBookingForVehicles, createInvoiceForBookings } from "../../services/axios.services";
+import { SystemContext } from "../../contexts/system.context";
+import { useToast } from "@/hooks/use-toast";
 
 const Reservation = () => {
+  const { userData } = useContext(SystemContext);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   // lấy từ StationFinder
   const { selectBattery } = useLocation().state || {};
 
   // copy sang local state để có thể cập nhật trực tiếp date/time trong từng dòng
   const [sb, setSb] = useState(selectBattery || {});
+  const [paymentLoading, setPaymentLoading] = useState(false);
+
   useEffect(() => {
     if (selectBattery) setSb(selectBattery);
   }, [selectBattery]);
@@ -112,6 +120,82 @@ const Reservation = () => {
     status: idx < currentStep ? "finish" : idx === currentStep ? "process" : "wait",
     icon: idx === currentStep ? <LoadingOutlined /> : s.icon,
   }));
+
+  // Check if user has active subscription
+  const hasActiveSubscription = userData?.activeSubscriptionId && [1, 2, 3].includes(userData.activeSubscriptionId);
+
+  // Handle subscription payment
+  const handleSubscriptionPayment = async () => {
+    if (!anyTimePicked || paymentLoading) return;
+
+    setPaymentLoading(true);
+    try {
+      // Prepare booking data from reservation (same format as Payment.jsx)
+      const bookingData = {
+        bookings: lines.map((line, index) => {
+          const vehicleId = line.vehicleInfo.vehicleId;
+          const dateTime = sb[vehicleId];
+
+          return {
+            vehicleId: parseInt(vehicleId),
+            stationId: line.stationInfo.stationId,
+            bookingDate: format(dateTime.date, "yyyy-MM-dd"),
+            timeSlot: dateTime.time,
+            batteryType: line.batteryType,
+            batteryCount: Number(line.qty || 0),
+            notes: `Xe ${index + 1} - Trạm ${line.stationInfo?.stationName}`
+          };
+        })
+      };
+
+      console.log("Creating bookings with subscription:", bookingData);
+
+      // Step 1: Create bookings
+      const bookingRes = await createBookingForVehicles(bookingData);
+      console.log("Booking response:", bookingRes);
+
+      // Check lỗi từ booking API
+      if (!bookingRes.success || !bookingRes.data) {
+        throw new Error(bookingRes.message || "Không thể tạo booking");
+      }
+
+
+      // Get successful booking IDs
+      const bookingIds = bookingRes.data.successBookings.map(sb => sb.bookingId);
+
+      // Step 2: Create invoice
+      const invoiceRes = await createInvoiceForBookings(bookingIds);
+      console.log("Invoice response:", invoiceRes);
+
+      if (!invoiceRes.invoiceId) {
+        throw new Error("Không thể tạo hóa đơn");
+      }
+
+      // Clear session storage
+      sessionStorage.removeItem('battery-booking-selection');
+
+      toast({
+        title: "Đặt lịch thành công!",
+        description: "Booking đã được tạo bằng gói subscription của bạn.",
+        className: "bg-green-500 text-white",
+      });
+
+      // Navigate to booking history or dashboard
+      setTimeout(() => {
+        navigate("/driver/booking-history");
+      }, 1500);
+
+    } catch (error) {
+      console.error("Subscription payment error:", error);
+      toast({
+        title: "Đặt lịch thất bại!",
+        description: error?.message || "Có lỗi xảy ra khi đặt lịch",
+        variant: "destructive",
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -354,41 +438,83 @@ const Reservation = () => {
 
                 {/* Tổng cộng */}
                 <div className="border-t border-gray-200 pt-6">
-                  <div className="flex justify-between mb-3">
-                    <span className="text-gray-700">Phí đổi pin :</span>
-                    <span className="font-semibold text-gray-800">
-                      {defaultPrice ? `${defaultPrice.toLocaleString("vi-VN")} VNĐ` : "Đang tải..."}
-                    </span>
-                  </div>
-                  <div className="flex justify-between mb-3">
-                    <span className="text-gray-700">Tổng số pin:</span>
-                    <span className="font-semibold text-gray-800">x{totalBatteries}</span>
-                  </div>
-                  <div className="flex justify-between text-xl font-bold">
-                    <span className="text-gray-800">Tạm tính:</span>
-                    <span className="text-blue-600">
-                      {defaultPrice
-                        ? `${(totalBatteries * defaultPrice).toLocaleString("vi-VN")} VNĐ`
-                        : "Đang tải..."}
-                    </span>
-                  </div>
+                  {!hasActiveSubscription && (
+                    <>
+                      <div className="flex justify-between mb-3">
+                        <span className="text-gray-700">Phí đổi pin :</span>
+                        <span className="font-semibold text-gray-800">
+                          {defaultPrice ? `${defaultPrice.toLocaleString("vi-VN")} VNĐ` : "Đang tải..."}
+                        </span>
+                      </div>
+                      <div className="flex justify-between mb-3">
+                        <span className="text-gray-700">Tổng số pin:</span>
+                        <span className="font-semibold text-gray-800">x{totalBatteries}</span>
+                      </div>
+                      <div className="flex justify-between text-xl font-bold">
+                        <span className="text-gray-800">Tạm tính:</span>
+                        <span className="text-blue-600">
+                          {defaultPrice
+                            ? `${(totalBatteries * defaultPrice).toLocaleString("vi-VN")} VNĐ`
+                            : "Đang tải..."}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {hasActiveSubscription && (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Zap className="h-5 w-5 text-green-600" />
+                          <span className="font-bold text-green-700">Gói Subscription đang hoạt động</span>
+                        </div>
+                        <p className="text-sm text-gray-600">Bạn đang sử dụng gói subscription để thanh toán</p>
+                      </div>
+                      <div className="flex justify-between mb-3">
+                        <span className="text-gray-700">Tổng số pin:</span>
+                        <span className="font-semibold text-gray-800">x{totalBatteries}</span>
+                      </div>
+                      <div className="flex justify-between text-xl font-bold">
+                        <span className="text-gray-800">Giá trị:</span>
+                        <span className="text-green-600">MIỄN PHÍ</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Thanh toán */}
                 <div className="space-y-3 pt-6">
-                  <Link
-                    to="/driver/payment"
-                    state={{ reservationData: sb, totalPrice: totalBatteries * defaultPrice }}
-                    className={`block ${!anyTimePicked ? "pointer-events-none opacity-50" : ""}`}
-                  >
-                    <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
-                      <Zap className="h-5 w-5 mr-2" />
-                      Tiến hành thanh toán
-                    </Button>
-                  </Link>
-                  <p className="text-xs text-gray-500 text-center">
-                    💡 Bạn sẽ được chuyển qua trang thanh toán
-                  </p>
+                  {!hasActiveSubscription ? (
+                    <>
+                      <Link
+                        to="/driver/payment"
+                        state={{ reservationData: sb, totalPrice: totalBatteries * defaultPrice }}
+                        className={`block ${!anyTimePicked ? "pointer-events-none opacity-50" : ""}`}
+                      >
+                        <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
+                          <Zap className="h-5 w-5 mr-2" />
+                          Tiến hành thanh toán
+                        </Button>
+                      </Link>
+                      <p className="text-xs text-gray-500 text-center">
+                        💡 Bạn sẽ được chuyển qua trang thanh toán
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={handleSubscriptionPayment}
+                        disabled={!anyTimePicked || paymentLoading}
+                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      >
+                        <Zap className="h-5 w-5 mr-2" />
+                        {paymentLoading ? "Đang xử lý..." : "Thanh toán bằng Subscription"}
+                      </Button>
+                      <p className="text-xs text-gray-500 text-center">
+                        ✨ Sử dụng gói subscription để đặt lịch miễn phí
+                      </p>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -217,6 +217,24 @@ public class BookingService {
                 .notes("Đặt lịch qua API")
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
+
+        // ========== [THÊM MỚI] - CẬP NHẬT SỐ LƯỢT ĐÃ DÙNG (NẾU MIỄN PHÍ) ==========
+        if (isFreeSwap && activeSub.isPresent()) {
+            UserSubscription sub = activeSub.get();
+            sub.setUsedSwaps(sub.getUsedSwaps() + requestedBatteryCount);
+            userSubscriptionRepository.save(sub);
+
+            String limitStr = (sub.getPlan().getSwapLimit() == null || sub.getPlan().getSwapLimit() < 0)
+                    ? "Không giới hạn"
+                    : String.valueOf(sub.getPlan().getSwapLimit());
+
+            log.info("User {} đã sử dụng {}/{} lượt. (Booking #{})",
+                    user.getUserId(), sub.getUsedSwaps(),
+                    limitStr,
+                    savedBooking.getBookingId());
+        }
+        // =======================================================================
+
         // Tạo thông báo (Giữ nguyên)
         BookingResponse response = convertToResponse(savedBooking);
 
@@ -246,11 +264,10 @@ public class BookingService {
      */
     @Transactional(readOnly = true)
     public List<BookingResponse> getUserBookings(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
 
-        // Gọi hàm mới, chỉ dùng 1 câu query
-        List<Booking> bookings = bookingRepository.findByUserWithAllDetails(userId);
-
-        // (Phần còn lại giữ nguyên)
+        List<Booking> bookings = bookingRepository.findByUser(user);
         return bookings.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -459,7 +476,7 @@ public class BookingService {
      */
     public BookingResponse completeBookingWithInvoice(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đ��t pin v��i mã: " + bookingId));
 
         // Cập nhật trạng thái booking thành COMPLETED
         booking.setBookingStatus(Booking.BookingStatus.COMPLETED);
@@ -469,7 +486,7 @@ public class BookingService {
 
         // Tạo thông báo thành công
         String successMessage = String.format(
-            "Booking #%d được hoàn thành thành công. Tổng tiền: %.0f VND",
+            "Booking #%d được hoàn thành thành công. T����ng tiền: %.0f VND",
             booking.getBookingId(),
             booking.getAmount()
         );

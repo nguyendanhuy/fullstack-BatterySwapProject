@@ -1,5 +1,7 @@
 package BatterySwapStation.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // ✅ [THÊM IMPORT NÀY]
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // ✅ [THÊM IMPORT NÀY]
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,6 +18,7 @@ import java.util.Set;
 @AllArgsConstructor
 @ToString(exclude = {"docks"})
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // ✅ [THÊM DÒNG NÀY]
 public class Station {
 
     @Id
@@ -41,11 +44,13 @@ public class Station {
 
     // 1 Station có nhiều Dock
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference
+    @JsonManagedReference // (Bạn có thể giữ cái này, nhưng @JsonIgnore an toàn hơn cho lỗi này)
+    @JsonIgnore // ✅ [THÊM DÒNG NÀY]
     private Set<Dock> docks = new HashSet<>();
 
     // 1 Station có nhiều Booking
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore // ✅ [THÊM DÒNG NÀY]
     private Set<Booking> bookings = new HashSet<>();
 
 }

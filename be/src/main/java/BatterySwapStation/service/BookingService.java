@@ -210,13 +210,14 @@ public class BookingService {
                 .station(station)
                 .vehicle(vehicle)
                 .vehicleType(vehicleTypeStr)
-                .amount(finalBookingPrice) // ✅ [SỬA] Dùng giá cuối cùng (0đ hoặc 15k)
+                .amount(finalBookingPrice) // Giá tổng (đã tính gói tháng)
                 .bookingDate(request.getBookingDate())
                 .timeSlot(timeSlot)
                 .batteryType(batteryTypeStr)
                 .batteryCount(requestedBatteryCount)
                 .bookingStatus(Booking.BookingStatus.PENDINGPAYMENT)
                 .notes("Đặt lịch qua API")
+                .totalPrice(finalBookingPrice)
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
         // Tạo thông báo (Giữ nguyên)

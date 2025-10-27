@@ -1,5 +1,7 @@
 package BatterySwapStation.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,6 +19,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "Users")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) //dòng này để test, tránh lỗi liên quan đến lazy loading, sau này sẽ xóa
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -71,20 +74,24 @@ public class User implements UserDetails {
 
     // N-1: User thuộc về 1 Role
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "RoleId", nullable = false)
     private Role role;
 
 
     // 1 User có nhiều StaffAssign
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<StaffAssign> staffAssigns = new ArrayList<>();
 
     // 1 User có nhiều Vehicle
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Vehicle> vehicles = new ArrayList<>();
 
     // 1 User có nhiều Booking
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Booking> bookings = new ArrayList<>();
 
     @Column(name = "IsVerified", nullable = false, columnDefinition = "boolean default false")

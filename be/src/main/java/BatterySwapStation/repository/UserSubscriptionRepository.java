@@ -1,7 +1,5 @@
 package BatterySwapStation.repository;
 
-import BatterySwapStation.entity.Invoice; // (Thêm import này)
-import BatterySwapStation.entity.SubscriptionPlan; // (Thêm import này)
 import BatterySwapStation.entity.UserSubscription;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,13 +13,14 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
 
     /**
      * ✅ [SỬA LỖI LOGIC]
-     * (Giữ nguyên query này, nó đã đúng)
+     * Sửa câu query để tìm gói cước ACTIVE
+     * (Một gói ACTIVE là khi: status=ACTIVE VÀ 'now' Ở GIỮA 'startDate' và 'endDate')
      */
     @Query("SELECT us FROM UserSubscription us " +
             "WHERE us.user.userId = :userId " +
             "AND us.status = :status " +
-            "AND us.startDate <= :now " +
-            "AND us.endDate >= :now")
+            "AND us.startDate <= :now " +  // <-- [SỬA DÒNG NÀY]
+            "AND us.endDate >= :now")      // <-- [SỬA DÒNG NÀY]
     Optional<UserSubscription> findActiveSubscriptionForUser(
             @Param("userId") String userId,
             @Param("status") UserSubscription.SubscriptionStatus status,

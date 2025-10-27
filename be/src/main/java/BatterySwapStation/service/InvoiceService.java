@@ -188,23 +188,20 @@ public class InvoiceService {
      */
     @Transactional
     public Invoice linkBookingsToInvoice(Long invoiceId, List<Long> bookingIds) {
-        // 1. Kiểm tra invoice tồn tại
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
 
-        // 2. Lấy danh sách booking
         List<Booking> bookings = bookingRepository.findAllById(bookingIds);
 
         if (bookings.isEmpty()) {
             throw new RuntimeException("Không tìm thấy booking nào để link");
         }
 
-        // 3. Nếu invoice chưa có userId, lấy từ booking đầu tiên
         if (invoice.getUserId() == null && !bookings.isEmpty()) {
             invoice.setUserId(bookings.get(0).getUser().getUserId());
         }
 
-        // 4. Kiểm tra xem có booking nào đã có invoice chưa
+        // Kiểm tra booking đã có invoice
         List<Booking> alreadyLinked = bookings.stream()
                 .filter(b -> b.getInvoice() != null)
                 .collect(Collectors.toList());
@@ -216,7 +213,7 @@ public class InvoiceService {
             throw new RuntimeException("Các booking sau đã được link với invoice khác: " + bookingIdsStr);
         }
 
-        // 5. Link các booking vào invoice
+        // Link các booking vào invoice
         for (Booking booking : bookings) {
             booking.setInvoice(invoice);
 
@@ -224,25 +221,25 @@ public class InvoiceService {
             if (booking.getAmount() == null) {
                 booking.setAmount(invoice.getPricePerSwap());
             }
+
+            // ✅ Đặt totalPrice nếu chưa có (backward compatibility)
+            if (booking.getTotalPrice() == null) {
+                int batteries = booking.getBatteryCount() != null ? booking.getBatteryCount() : 0;
+                booking.setTotalPrice((double) (batteries * invoice.getPricePerSwap()));
+            }
         }
 
-        // 6. Lưu các booking
         bookingRepository.saveAll(bookings);
 
-        // 7. ✅ TÍNH TOÁN ĐÚNG LOGIC:
-        // - numberOfSwaps = số booking
-        // - totalAmount = tổng số pin từ tất cả booking × pricePerSwap
-
+        // ✅ SỬA LOGIC: Lấy tổng giá từ booking (đã tính gói tháng)
         invoice.setNumberOfSwaps(bookings.size());
 
-        // Tính tổng số pin từ tất cả các booking
-        int totalBatteries = bookings.stream()
-                .mapToInt(b -> b.getBatteryCount() != null ? b.getBatteryCount() : 0)
+        double totalAmount = bookings.stream()
+                .mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
                 .sum();
 
-        invoice.setTotalAmount(totalBatteries * invoice.getPricePerSwap());
+        invoice.setTotalAmount(totalAmount);
 
-        // 8. Lưu lại invoice
         return invoiceRepository.save(invoice);
     }
 

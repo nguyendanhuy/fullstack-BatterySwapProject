@@ -1,5 +1,7 @@
 package BatterySwapStation.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -11,6 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class DisputeTicket {
 
     @Id
@@ -20,21 +23,25 @@ public class DisputeTicket {
     // Liên kết với booking
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bookingid")
+    @JsonIgnore
     private Booking booking;
 
     // Khách hàng (người trả pin)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userid")
+    @JsonIgnore
     private User user;
 
     // Staff (người tạo ticket)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staffid")
+    @JsonIgnore
     private User createdByStaff;
 
     // Liên kết với bằng chứng kiểm tra
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inspectionid")
+    @JsonIgnore
     private BatteryInspection inspection;
 
     public enum TicketStatus {
@@ -63,5 +70,6 @@ public class DisputeTicket {
     // Liên kết Nhiều-1: Nhiều DisputeTicket có thể thuộc về 1 Station
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "StationId") // Tên cột khóa ngoại trong DB
+    @JsonIgnore
     private Station station;
 }

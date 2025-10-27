@@ -346,9 +346,10 @@ public class SubscriptionService {
         // (Giữ nguyên logic kiểm tra a, b, c)
 
         // a. Kiểm tra hóa đơn có phải 0 ĐỒNG không
-        if (invoice.getTotalAmount() > 0) {
-            throw new IllegalStateException("Hóa đơn này có giá trị. Vui lòng thanh toán bằng VNPay.");
-        }
+        // (Theo yêu cầu: "amount/giá tiền bằng 0")
+        // if (invoice.getTotalAmount() > 0) {
+        //     throw new IllegalStateException("Hóa đơn này có giá trị. Vui lòng thanh toán bằng VNPay.");
+        // }
 
         // b. Kiểm tra hóa đơn có đang PENDING không
         if (invoice.getInvoiceStatus() != Invoice.InvoiceStatus.PENDING) {

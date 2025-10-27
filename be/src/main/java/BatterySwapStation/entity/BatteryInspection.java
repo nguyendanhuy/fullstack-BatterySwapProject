@@ -1,5 +1,7 @@
 package BatterySwapStation.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // ✅ [THÊM IMPORT NÀY]
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // ✅ [THÊM IMPORT NÀY]
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -11,6 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // ✅ [THÊM DÒNG NÀY]
 public class BatteryInspection {
 
     @Id
@@ -18,20 +21,21 @@ public class BatteryInspection {
     private Long id;
 
     // Liên kết với booking
-    // ✅ [SỬA LỖI]
-    // Một Booking có thể có NHIỀU Inspection (Mỗi pin 1 cái)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bookingid", referencedColumnName = "bookingid")
+    @JsonIgnore // ✅ [THÊM DÒNG NÀY]
     private Booking booking;
 
     // Pin nào đã được trả về?
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batteryid")
+    @JsonIgnore // ✅ [THÊM DÒNG NÀY]
     private Battery battery;
 
     // Staff nào đã kiểm tra?
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staffid", referencedColumnName = "userid")
+    @JsonIgnore // ✅ [THÊM DÒNG NÀY]
     private User staff;
 
     @Column(name = "inspectiontime")

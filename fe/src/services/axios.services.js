@@ -152,6 +152,20 @@ const createInspectionAndDispute = (data) => {
     return axios.post("/inspections", data);
 }
 
+const insertBatteryInventory = (slotId, batteryId) => {
+    return axios.post(`/batteries/insert?slotId=${slotId}&batteryId=${batteryId}`);
+}
+const removeBatteryInventory = (batteryId) => {
+    return axios.post(`/batteries/eject/${batteryId}`);
+}
+const batteryStatusUpdate = (batteryId,newStatus) =>{
+    data={
+        batteryId:batteryId,
+        newStatus:newStatus
+    }
+    return axios.patch(`/batteries/status`,data);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -187,5 +201,8 @@ export {
     changeUserPassword,
     createInvoiceForSubscription,
     createVNpayForSubscription,
-    createInspectionAndDispute
+    createInspectionAndDispute,
+    insertBatteryInventory,
+    removeBatteryInventory,
+    batteryStatusUpdate
 };

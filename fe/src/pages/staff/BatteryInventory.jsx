@@ -13,7 +13,7 @@ import { Battery, Search, Edit, Trash, Plus, Grid3x3, List, RefreshCw, Building2
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useStompBattery } from "../../hooks/useStompBattery";
-
+import { insertBatteryInventory, removeBatteryInventory, batteryStatusUpdate } from "../../services/axios.services";
 // ======================
 // Map status BE ↔ UI
 // ======================
@@ -23,30 +23,30 @@ function mapBeStatusToUi(status) {
       return "full";
     case "CHARGING":
       return "charging";
+    case "WAITING":
+      return "waiting";
     case "MAINTENANCE":
-    case "UNAVAILABLE":
-    case "EMPTY":
+    case "IN_USE":
       return "empty";
-    case "ERROR":
-    case "FAULT":
-      return "error";
     default:
-      return "empty";
+      return "empty"; // fallback an toàn
   }
 }
 
 function mapUiStatusToBe(statusUi) {
-  switch (statusUi) {
+  switch ((statusUi || "").toLowerCase()) {
     case "full":
-      return "AVAILABLE";
+      return "AVAILABLE";     // pin đầy
     case "charging":
-      return "CHARGING";
+      return "CHARGING";      // đang sạc
+    case "waiting":
+      return "WAITING";       // thêm case mới
     case "empty":
-      return "MAINTENANCE";
+      return "MAINTENANCE";   // slot trống hoặc đang bảo trì
     case "error":
-      return "ERROR";
+      return "MAINTENANCE";   // BE không có ERROR
     default:
-      return "MAINTENANCE";
+      return "MAINTENANCE";   // fallback an toàn
   }
 }
 
@@ -93,12 +93,8 @@ const BatteryInventory = () => {
 
   // Form Add / Edit — map về UI cũ cho dễ dùng
   const [newBattery, setNewBattery] = useState({
-    id: "",
-    type: "",
-    status: "empty", // UI status
-    soh: "100",
-    location: "", // slotCode
-    dockIndex: 0,
+    batteryId: "",
+    slotId: "",
   });
 
   const [editBattery, setEditBattery] = useState({
@@ -113,6 +109,7 @@ const BatteryInventory = () => {
   // ====================
   // Chay real time
   // ====================
+
   // Áp dụng snapshot ban đầu
   const applySnapshot = (grouped) => {
     // grouped: [{ dockName: "A"|"B"|"C", slots: [{ slotId, slotNumber, slotCode, batteryId, batteryType, batteryStatus, currentCapacity, stateOfHealth }]}]
@@ -123,6 +120,7 @@ const BatteryInventory = () => {
 
   // Xử lý event realtime
   const applyRealtimeEvent = (evt) => {
+    console.log("Received battery event:", evt);
     if (!evt || Number(evt.stationId) !== Number(STATION_ID)) return;
 
     setDocksData((prev) => {
@@ -165,7 +163,7 @@ const BatteryInventory = () => {
       if (idx === -1) {
         // slot chưa có trong list → tạo mới
         slots.push({
-          slotId: Date.now(),
+          slotId: evt.slotId ?? Date.now(),
           slotNumber: Number(evt.slotNumber),
           slotCode: `${String(evt.dockName).toUpperCase()}${evt.slotNumber}`,
           ...patch
@@ -308,6 +306,10 @@ const BatteryInventory = () => {
         return <Badge className="bg-success text-white">Pin đầy</Badge>;
       case "charging":
         return <Badge className="bg-charging text-white">Đang sạc</Badge>;
+      case "waiting":
+        return (
+          <Badge className="bg-yellow-500 text-white">Đang chờ</Badge>
+        ); // 🌟 badge cho WAITING
       case "empty":
         return <Badge variant="secondary">Pin đang bảo trì</Badge>;
       case "error":
@@ -325,6 +327,8 @@ const BatteryInventory = () => {
         return "from-green-400 to-emerald-500";
       case "charging":
         return "from-blue-400 to-indigo-500";
+      case "waiting":
+        return "from-yellow-400 to-amber-500";
       case "empty":
         return "from-gray-300 to-gray-400";
       case "error":
@@ -337,77 +341,45 @@ const BatteryInventory = () => {
   // ============
   // Handlers CRUD
   // ============
-  const handleAddBattery = () => {
-    const dockIdx = Number(newBattery.dockIndex) || 0;
-    const uiDock = docks[dockIdx];
-    const beDock = docksData[dockIdx];
-    if (!uiDock || !beDock) return;
+  const handleAddBattery = async () => {
+    const batteryId = (newBattery.batteryId || "").trim();
+    const slotIdNum = Number(newBattery.slotId);
 
-    const beStatus = mapUiStatusToBe(newBattery.status);
-    const slotCode = newBattery.location?.toUpperCase().trim();
-
-    if (!slotCode || !newBattery.id || !newBattery.type) {
+    if (!batteryId || !Number.isInteger(slotIdNum) || slotIdNum <= 0) {
       toast({
-        title: "Lỗi validation",
-        description: "Vui lòng nhập Mã pin, Loại pin và Vị trí.",
+        title: "Thiếu hoặc sai dữ liệu",
+        description: "Vui lòng nhập batteryId (chuỗi) và slotId (số nguyên dương).",
         variant: "destructive",
       });
       return;
     }
 
-    // Kiểm tra hợp lệ theo dock & capacity cố định
-    if (!isValidSlotCodeForDock(slotCode, uiDock.code)) {
+    try {
+      const res = await insertBatteryInventory(slotIdNum, batteryId);
+
+      if (res.messages?.business || res?.error || res?.status >= 400) {
+        toast({
+          title: "Thêm pin thất bại",
+          description: res?.messages?.business || res?.error || "Đã xảy ra lỗi.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Thêm pin thành công",
+          description: `Đã gắn pin ${batteryId} vào slotId ${slotIdNum}.`,
+        });
+        setNewBattery({ batteryId: "", slotId: "" });
+        setIsAddDialogOpen(false);
+      }
+    } catch (err) {
       toast({
-        title: "Vị trí không hợp lệ",
-        description: `Vị trí phải thuộc ${uiDock.name} và trong khoảng ${uiDock.code}1..${uiDock.code}${uiDock.capacity}`,
+        title: "Thêm pin thất bại",
+        description: "Đã xảy ra lỗi.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsAddDialogOpen(false);
     }
-
-    const updated = structuredClone(docksData);
-    const curSlots = updated[dockIdx].slots || [];
-
-    // Kiểm tra trùng vị trí
-    const dup = curSlots.find((s) => s.slotCode === slotCode);
-    const nextSoH = Math.max(0, Math.min(100, parseInt(newBattery.soh || "0", 10)));
-
-    if (dup) {
-      dup.batteryId = newBattery.id;
-      dup.batteryType = (newBattery.type || "").toUpperCase().replaceAll(" ", "_");
-      dup.batteryStatus = beStatus;
-      dup.currentCapacity = nextSoH;
-      dup.stateOfHealth = nextSoH;
-    } else {
-      curSlots.push({
-        slotId: Date.now(), // tạm id local
-        slotNumber: Number(slotCode.replace(/^[A-Z]+/, "")),
-        slotCode,
-        batteryId: newBattery.id,
-        batteryType: (newBattery.type || "").toUpperCase().replaceAll(" ", "_"),
-        batteryStatus: beStatus,
-        currentCapacity: nextSoH,
-        stateOfHealth: nextSoH,
-      });
-    }
-
-    updated[dockIdx].slots = curSlots;
-    setDocksData(updated);
-
-    toast({
-      title: "Thêm/Cập nhật pin thành công",
-      description: `Pin ${newBattery.id} tại vị trí ${slotCode} (${updated[dockIdx].dockName})`,
-    });
-
-    setNewBattery({
-      id: "",
-      type: "",
-      status: "empty",
-      soh: "100",
-      location: "",
-      dockIndex: dockIdx,
-    });
-    setIsAddDialogOpen(false);
   };
 
   const handleEditBattery = (slot) => {
@@ -516,40 +488,40 @@ const BatteryInventory = () => {
     setEditingBattery(null);
   };
 
-  const handleRemoveBattery = (slotIdOrBatteryId) => {
-    const updated = structuredClone(docksData);
-    let removed = null;
-
-    for (let i = 0; i < updated.length; i++) {
-      const slots = updated[i].slots || [];
-      const idxById = slots.findIndex((s) => s.slotId === slotIdOrBatteryId);
-      const idxByBattery =
-        idxById === -1 ? slots.findIndex((s) => s.batteryId === slotIdOrBatteryId) : idxById;
-
-      if (idxByBattery !== -1) {
-        removed = slots[idxByBattery];
-        // set thành ô trống thay vì xóa hoàn toàn để giữ layout slot
-        slots[idxByBattery] = {
-          ...slots[idxByBattery],
-          batteryId: null,
-          batteryType: null,
-          batteryStatus: "MAINTENANCE",
-          currentCapacity: 0,
-          stateOfHealth: 0,
-        };
-        break;
-      }
+  const handleRemoveBattery = async (batteryId) => {
+    if (!batteryId?.trim()) {
+      toast({
+        title: "Thiếu mã pin",
+        description: "Vui lòng nhập batteryId hợp lệ.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    setDocksData(updated);
-    toast({
-      title: "Đã tháo pin",
-      description: removed
-        ? `Pin ${removed.batteryId || ""} đã được tháo khỏi vị trí ${removed.slotCode}`
-        : "Đã tháo pin",
-    });
-    setSelectedBattery(null);
-    setIsDetailPanelOpen(false);
+    try {
+      const res = await removeBatteryInventory(batteryId);
+      // BE trả 200 nhưng vẫn có lỗi nghiệp vụ
+      if (res?.messages?.business || res?.error || res?.status >= 400) {
+        toast({
+          title: "Tháo pin thất bại",
+          description: (res?.messages?.business || res?.error || "Đã xảy ra lỗi."),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Tháo pin thành công",
+          description: `Đã tháo pin ${batteryId} khỏi slot.`,
+        });
+        setSelectedBattery(null);
+        setIsDetailPanelOpen(false);
+      }
+    } catch (err) {
+      toast({
+        title: "Tháo pin thất bại",
+        description: "Đã xảy ra lỗi.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSlotClick = (slot) => {
@@ -796,124 +768,38 @@ const BatteryInventory = () => {
                   <DialogHeader>
                     <DialogTitle>Thêm pin mới</DialogTitle>
                     <DialogDescription>
-                      Nhập thông tin chi tiết của pin mới để thêm vào kho
+                      Nhập <b>batteryId</b> và <b>slotId</b> để gắn pin vào vị trí.
                     </DialogDescription>
                   </DialogHeader>
+
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                      <Label>Dock</Label>
-                      <Select
-                        value={String(newBattery.dockIndex)}
-                        onValueChange={(v) =>
-                          setNewBattery({ ...newBattery, dockIndex: Number(v) })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {docks.map((d, i) => (
-                            <SelectItem key={i} value={String(i)}>
-                              {d.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Mã pin</Label>
+                      <Label>Battery ID</Label>
                       <Input
-                        value={newBattery.id}
-                        onChange={(e) =>
-                          setNewBattery({ ...newBattery, id: e.target.value })
-                        }
-                        placeholder="BAT016"
+                        value={newBattery.batteryId}
+                        onChange={(e) => setNewBattery({ ...newBattery, batteryId: e.target.value })}
+                        placeholder="VD: BAT016"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Loại pin</Label>
-                      <Select
-                        value={newBattery.type}
-                        onValueChange={(value) =>
-                          setNewBattery({ ...newBattery, type: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn loại pin" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="LITHIUM ION">Lithium-ion</SelectItem>
-                          <SelectItem value="NICKEL METAL HYDRIDE">
-                            Nickel Metal Hydride
-                          </SelectItem>
-                          <SelectItem value="LEAD ACID">Lead Acid</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Trạng thái</Label>
-                      <Select
-                        value={newBattery.status}
-                        onValueChange={(value) =>
-                          setNewBattery({ ...newBattery, status: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="full">Pin đầy</SelectItem>
-                          <SelectItem value="charging">Đang sạc</SelectItem>
-                          <SelectItem value="empty">Bảo trì</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>SoH (%)</Label>
-                        <Input
-                          type="number"
-                          value={newBattery.soh}
-                          onChange={(e) =>
-                            setNewBattery({ ...newBattery, soh: e.target.value })
-                          }
-                          placeholder="100"
-                          min="0"
-                          max="100"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Vị trí (slotCode)</Label>
-                        <Input
-                          value={newBattery.location}
-                          onChange={(e) =>
-                            setNewBattery({
-                              ...newBattery,
-                              location: e.target.value.toUpperCase(),
-                            })
-                          }
-                          placeholder={`VD: ${docks[newBattery.dockIndex]?.code || "A"
-                            }1 .. ${docks[newBattery.dockIndex]?.code || "A"
-                            }${docks[newBattery.dockIndex]?.capacity || 10}`}
-                        />
-                      </div>
+                      <Label>Slot ID</Label>
+                      <Input
+                        type="number"
+                        value={newBattery.slotId}
+                        onChange={(e) => setNewBattery({ ...newBattery, slotId: e.target.value })}
+                        placeholder="VD: 57"
+                        min="1"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Gợi ý: xem <i>SlotID</i> trên ô lưới (label góc dưới bên trái).
+                      </p>
                     </div>
                   </div>
+
                   <div className="flex gap-2">
-                    <Button onClick={handleAddBattery} className="flex-1">
-                      Thêm pin
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsAddDialogOpen(false)}
-                    >
-                      Hủy
-                    </Button>
+                    <Button onClick={handleAddBattery} className="flex-1">Thêm pin</Button>
+                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Hủy</Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -973,6 +859,9 @@ const BatteryInventory = () => {
                               {slot.charge}%
                             </div>
                           )}
+                          <div className="absolute bottom-2 left-2 text-[10px] px-1.5 py-0.5 rounded bg-black/35 text-white/90 backdrop-blur-sm">
+                            SlotID: {String(slot.slotId)}
+                          </div>
                           {slot.status === "charging" && (
                             <div className="absolute top-2 right-2 w-3 h-3 bg-yellow-300 rounded-full animate-ping" />
                           )}
@@ -998,7 +887,7 @@ const BatteryInventory = () => {
                                 variant="secondary"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleRemoveBattery(slot.slotId ?? slot.id);
+                                  handleRemoveBattery(slot.id);
                                   setIsDetailPanelOpen(false);
                                 }}
                                 className="bg-white/90 hover:bg-white text-gray-800"
@@ -1092,7 +981,7 @@ const BatteryInventory = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleRemoveBattery(slot.slotId ?? slot.id)}
+                          onClick={() => handleRemoveBattery(slot.id)}
                           className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors"
                           disabled={!slot.id} // ô trống thì disable
                         >
@@ -1185,7 +1074,7 @@ const BatteryInventory = () => {
                   className="flex-1"
                   onClick={() => {
                     if (selectedBattery)
-                      handleRemoveBattery(selectedBattery.slotId ?? selectedBattery.id);
+                      handleRemoveBattery(selectedBattery.id);
                     setIsDetailPanelOpen(false);
                   }}
                 >

@@ -20,34 +20,6 @@ public class BatteryController {
     private final BatteryRepository batteryRepository;
     private final BatteryService batteryService;
 
-    @Schema (description = "KHONG SU DUNG - Cập nhật thông tin pin")
-    @PatchMapping("/{id}")
-    public ResponseEntity<BatteryUpdateResponseDTO> updateBattery(
-            @PathVariable String id,
-            @RequestBody BatteryUpdateRequestDTO request) {
-
-        Battery battery = batteryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy pin: " + id));
-
-        if (request.getBatteryStatus() != null) {
-            battery.setBatteryStatus(Battery.BatteryStatus.valueOf(request.getBatteryStatus().toUpperCase()));
-        }
-
-        if (request.getStateOfHealth() != null) {
-            battery.setStateOfHealth(request.getStateOfHealth());
-        }
-
-        batteryRepository.save(battery);
-
-        BatteryUpdateResponseDTO response = BatteryUpdateResponseDTO.builder()
-                .batteryId(battery.getBatteryId())
-                .batteryStatus(battery.getBatteryStatus().name())
-                .stateOfHealth(battery.getStateOfHealth())
-                .message("Cập nhật pin thành công")
-                .build();
-
-        return ResponseEntity.ok(response);
-    }
 
     @Schema (description = "Cập nhật trạng thái pin")
     @PatchMapping("/status")

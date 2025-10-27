@@ -280,7 +280,7 @@ public class SwapService {
                 .swapId(swap.getSwapId())
                 .status("SUCCESS")
                 .message("Swap thành công: " + batteryOut.getBatteryId() + " đã giao, " +
-                        batteryIn.getBatteryId() + " đang sạc tại trạm.")
+                        batteryIn.getBatteryId() + " đang chờ kiểm tra.")
                 .bookingId(booking.getBookingId())
                 .batteryOutId(batteryOut.getBatteryId())
                 .batteryInId(batteryIn.getBatteryId())
@@ -298,6 +298,7 @@ public class SwapService {
 
             BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
                     .stationId(station.getStationId())
+                    .dockId(slot.getDockSlotId())
                     .dockName(dock.getDockName())
                     .slotNumber(slot.getSlotNumber())
                     .batteryId(battery != null ? battery.getBatteryId() : null)

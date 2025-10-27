@@ -77,7 +77,7 @@ public class ReportController {
                     .body(excelBytes);
 
         } catch (Exception e) {
-            log.error("❌ Export report failed: {}", e.getMessage());
+            log.error("Export report failed: {}", e.getMessage());
             return ResponseEntity.status(500)
                     .body(("Error exporting report: " + e.getMessage()).getBytes());
         }

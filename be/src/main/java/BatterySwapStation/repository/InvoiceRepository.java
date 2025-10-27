@@ -39,4 +39,14 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             SubscriptionPlan planToActivate,
             Invoice.InvoiceStatus invoiceStatus
     );
+
+    @Query("""
+    SELECT i
+    FROM Invoice i
+    JOIN i.bookings b
+    WHERE b.bookingId = :bookingId
+""")
+    Optional<Invoice> findByBookingId(@Param("bookingId") Long bookingId);
+
+
 }

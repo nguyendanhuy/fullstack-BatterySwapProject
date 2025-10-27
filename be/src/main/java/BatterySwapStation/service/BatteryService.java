@@ -145,6 +145,7 @@ public class BatteryService {
         try {
             BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
                     .stationId(slot.getDock().getStation().getStationId())
+                    .dockId(slot.getDockSlotId())
                     .dockName(slot.getDock().getDockName())
                     .slotNumber(slot.getSlotNumber())
                     .batteryId(battery != null ? battery.getBatteryId() : null)

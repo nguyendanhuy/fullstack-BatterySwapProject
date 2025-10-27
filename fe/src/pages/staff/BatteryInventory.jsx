@@ -97,19 +97,10 @@ const BatteryInventory = () => {
     slotId: "",
   });
 
-  const [detailForm, setDetailForm] = useState({
-    batteryId: "",
-    statusUi: "empty"
+  const [editBattery, setEditBattery] = useState({
+    id: "",
+    status: "empty", // "full" | "charging" | "waiting" | "empty"
   });
-
-  useEffect(() => {
-    if (isEditDialogOpen && selectedBattery) {
-      setDetailForm({
-        batteryId: selectedBattery.id || "",
-        statusUi: selectedBattery.status || "empty",
-      });
-    }
-  }, [isEditDialogOpen, selectedBattery]);
 
   // ====================
   // Chay real time
@@ -388,110 +379,56 @@ const BatteryInventory = () => {
   };
 
   const handleEditBattery = (slot) => {
-    setEditingBattery(slot);
     setEditBattery({
-      id: slot.id,
-      type: slot.type,
-      status: slot.status,
-      soh: String(parseInt(slot.soh || "0")),
-      location: slot.location, // slotCode
-      dockIndex: selectedDockIndex,
-      slotId: slot.slotId,
+      id: slot.id || "",
+      status: slot.status || "empty",
     });
     setIsEditDialogOpen(true);
   };
+  // Cập nhật trạng thái pin
 
-  const handleUpdateBattery = () => {
-    if (!editBattery.type || !editBattery.status || !editBattery.location) {
+  const handleUpdateBattery = async (batteryId, statusUi) => {
+
+    const newStatus = mapUiStatusToBe(statusUi);
+
+    if (!batteryId?.trim() || !newStatus) {
       toast({
-        title: "Lỗi validation",
-        description: "Vui lòng điền đầy đủ thông tin",
-        variant: "destructive",
-      });
-      return;
-    }
-    const sohValue = parseInt(editBattery.soh);
-    if (isNaN(sohValue) || sohValue < 0 || sohValue > 100) {
-      toast({
-        title: "Lỗi SoH",
-        description: "SoH phải là số từ 0-100",
+        title: "Thiếu dữ liệu",
+        description: "Cần batteryId và trạng thái hợp lệ.",
         variant: "destructive",
       });
       return;
     }
 
-    const di = Number(editBattery.dockIndex) || 0;
-    const uiDock = docks[di];
-    if (!uiDock) return;
-
-    const newLoc = editBattery.location.toUpperCase().trim();
-
-    // Kiểm tra hợp lệ vị trí theo dock & capacity cố định
-    if (!isValidSlotCodeForDock(newLoc, uiDock.code)) {
+    try {
+      const res = await batteryStatusUpdate(batteryId, newStatus);
+      if (res?.messages?.business || res?.error || res?.status >= 400) {
+        toast({
+          title: "Cập nhật thất bại",
+          description: data?.messages?.business || data?.error || "Đã xảy ra lỗi.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Cập nhật trạng thái thành công",
+          description: `Pin ${batteryId} → ${statusUi}`,
+        });
+        setSelectedBattery((cur) =>
+          cur && cur.id === batteryId ? { ...cur, status: statusUi } : cur
+        );
+        setIsEditDialogOpen(false)
+      }
+    } catch (err) {
       toast({
-        title: "Vị trí không hợp lệ",
-        description: `Vị trí phải thuộc ${uiDock.name} và trong khoảng ${uiDock.code}1..${uiDock.code}${uiDock.capacity}`,
+        title: "Cập nhật thất bại",
+        description: "Đã xảy ra lỗi.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsEditDialogOpen(false);
     }
-
-    const updated = structuredClone(docksData);
-    const curSlots = updated[di]?.slots || [];
-    const slotIdx = curSlots.findIndex((s) => s.slotId === editBattery.slotId);
-    if (slotIdx === -1) {
-      toast({ title: "Không tìm thấy slot", variant: "destructive" });
-      return;
-    }
-
-    // Check duplicate location trong dock (trừ slot hiện tại)
-    const dupLoc = curSlots.find(
-      (s) => s.slotCode === newLoc && s.slotId !== editBattery.slotId
-    );
-    if (dupLoc) {
-      toast({
-        title: "Vị trí đã tồn tại",
-        description: `Vị trí ${newLoc} đã có pin ${dupLoc.batteryId}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const beStatus = mapUiStatusToBe(editBattery.status);
-
-    curSlots[slotIdx] = {
-      ...curSlots[slotIdx],
-      batteryId: editBattery.id,
-      batteryType: (editBattery.type || "").toUpperCase().replaceAll(" ", "_"),
-      batteryStatus: beStatus,
-      currentCapacity: sohValue,
-      stateOfHealth: sohValue,
-      slotCode: newLoc,
-      slotNumber: Number(newLoc.replace(/^[A-Z]+/, "")) || curSlots[slotIdx].slotNumber,
-    };
-
-    setDocksData(updated);
-
-    if (selectedBattery?.slotId === editBattery.slotId) {
-      setSelectedBattery({
-        ...selectedBattery,
-        id: editBattery.id,
-        type: editBattery.type,
-        status: editBattery.status,
-        soh: `${sohValue}%`,
-        location: newLoc,
-        charge: sohValue,
-      });
-    }
-
-    toast({
-      title: "Cập nhật pin thành công",
-      description: `Thông tin pin ${editBattery.id} đã được cập nhật`,
-    });
-
-    setIsEditDialogOpen(false);
-    setEditingBattery(null);
   };
+
 
   const handleRemoveBattery = async (batteryId) => {
     if (!batteryId?.trim()) {
@@ -1098,8 +1035,11 @@ const BatteryInventory = () => {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Cập nhật thông tin pin</DialogTitle>
-              <DialogDescription>Chỉnh sửa thông tin trạng thái của pin {editBattery.id}</DialogDescription>
+              <DialogDescription>
+                Chỉnh sửa trạng thái cho pin {editBattery.id}
+              </DialogDescription>
             </DialogHeader>
+
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label>Mã pin</Label>
@@ -1107,89 +1047,27 @@ const BatteryInventory = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Loại pin</Label>
-                <Select
-                  value={editBattery.type}
-                  onValueChange={(value) => setEditBattery({ ...editBattery, type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LITHIUM ION">Lithium-ion</SelectItem>
-                    <SelectItem value="NICKEL METAL HYDRIDE">Nickel Metal Hydride</SelectItem>
-                    <SelectItem value="LEAD ACID">Lead Acid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label>Trạng thái</Label>
                 <Select
                   value={editBattery.status}
-                  onValueChange={(value) => setEditBattery({ ...editBattery, status: value })}
+                  onValueChange={(value) => setEditBattery((s) => ({ ...s, status: value }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Chọn trạng thái" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="full">Pin đầy</SelectItem>
                     <SelectItem value="charging">Đang sạc</SelectItem>
+                    <SelectItem value="waiting">Đang chờ</SelectItem>
                     <SelectItem value="empty">Bảo trì</SelectItem>
-                    <SelectItem value="error">Lỗi</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Dock</Label>
-                <Select
-                  value={String(editBattery.dockIndex)}
-                  onValueChange={(value) =>
-                    setEditBattery({ ...editBattery, dockIndex: Number(value) })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {docks.map((d, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>SoH (%)</Label>
-                  <Input
-                    type="number"
-                    value={editBattery.soh}
-                    onChange={(e) => setEditBattery({ ...editBattery, soh: e.target.value })}
-                    min="0"
-                    max="100"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Vị trí (slotCode)</Label>
-                  <Input
-                    value={editBattery.location}
-                    onChange={(e) =>
-                      setEditBattery({ ...editBattery, location: e.target.value.toUpperCase() })
-                    }
-                    placeholder={`VD: ${docks[editBattery.dockIndex]?.code || "A"
-                      }1 .. ${docks[editBattery.dockIndex]?.code || "A"
-                      }${docks[editBattery.dockIndex]?.capacity || 10}`}
-                  />
-                </div>
               </div>
             </div>
+
             <div className="flex gap-2">
-              <Button onClick={handleUpdateBattery} className="flex-1">
+              <Button
+                className="flex-1"
+                onClick={() => handleUpdateBattery(editBattery.id, editBattery.status)}
+              >
                 Cập nhật
               </Button>
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
@@ -1198,6 +1076,7 @@ const BatteryInventory = () => {
             </div>
           </DialogContent>
         </Dialog>
+
       </div>
     </TooltipProvider>
   );

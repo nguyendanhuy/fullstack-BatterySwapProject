@@ -152,10 +152,20 @@ const createInspectionAndDispute = (data) => {
     return axios.post("/inspections", data);
 }
 
+const forgotPasswordAPI = (email) => {
+    return axios.post("/auth/forgot-password", { email });
+}
+
+const resetPasswordAPI = (token, newPassword, confirmPassword) => {
+    return axios.post("/auth/reset-password", { token, newPassword, confirmPassword });
+}
+
 export {
     registerAPI,
     loginAPI,
     loginByGoogleAPI,
+    forgotPasswordAPI,
+    resetPasswordAPI,
     getInfoByToken,
     registerVehicleByVin,
     getVehicleInfoByVin,

@@ -35,9 +35,13 @@ public class AuthController {
     private final GoogleService googleService;
     private final StaffAssignRepository staffAssignRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
+    private final ForgotPasswordService forgotPasswordService;
+
 
 
     private static final String FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email";
+    //private static final String RESET_URL = "http://localhost:5173/reset-password?token=";
+
 
 
     @PostMapping("/register")
@@ -206,6 +210,33 @@ public class AuthController {
                     ));
         }
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req) {
+        String resetLink = forgotPasswordService.sendResetPasswordLink(req.getEmail());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", "Yêu cầu đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra email.",
+                "email", req.getEmail(),
+                "resetLink", resetLink
+        ));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest req) {
+        forgotPasswordService.resetPassword(
+                req.getToken(),
+                req.getNewPassword(),
+                req.getConfirmPassword()
+        );
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Mật khẩu của bạn đã được cập nhật thành công."
+        ));
+    }
+
+
 
 
 }

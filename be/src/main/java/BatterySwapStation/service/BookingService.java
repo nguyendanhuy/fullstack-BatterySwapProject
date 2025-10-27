@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import BatterySwapStation.repository.InvoiceRepository;
 import BatterySwapStation.repository.UserSubscriptionRepository;
-import BatterySwapStation.entity.UserSubscription; // ✅ THÊM IMPORT NÀY
-import BatterySwapStation.entity.SubscriptionPlan; // ✅ THÊM IMPORT NÀY
+import BatterySwapStation.entity.UserSubscription;
+import BatterySwapStation.entity.SubscriptionPlan;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.User;
+import org.springframework.context.event.EventListener;
+import BatterySwapStation.service.InvoicePaidEvent;
 
 import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDate;
@@ -217,24 +219,6 @@ public class BookingService {
                 .notes("Đặt lịch qua API")
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
-
-        // ========== [THÊM MỚI] - CẬP NHẬT SỐ LƯỢT ĐÃ DÙNG (NẾU MIỄN PHÍ) ==========
-        if (isFreeSwap && activeSub.isPresent()) {
-            UserSubscription sub = activeSub.get();
-            sub.setUsedSwaps(sub.getUsedSwaps() + requestedBatteryCount);
-            userSubscriptionRepository.save(sub);
-
-            String limitStr = (sub.getPlan().getSwapLimit() == null || sub.getPlan().getSwapLimit() < 0)
-                    ? "Không giới hạn"
-                    : String.valueOf(sub.getPlan().getSwapLimit());
-
-            log.info("User {} đã sử dụng {}/{} lượt. (Booking #{})",
-                    user.getUserId(), sub.getUsedSwaps(),
-                    limitStr,
-                    savedBooking.getBookingId());
-        }
-        // =======================================================================
-
         // Tạo thông báo (Giữ nguyên)
         BookingResponse response = convertToResponse(savedBooking);
 
@@ -264,10 +248,11 @@ public class BookingService {
      */
     @Transactional(readOnly = true)
     public List<BookingResponse> getUserBookings(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + userId));
 
-        List<Booking> bookings = bookingRepository.findByUser(user);
+        // Gọi hàm mới, chỉ dùng 1 câu query
+        List<Booking> bookings = bookingRepository.findByUserWithAllDetails(userId);
+
+        // (Phần còn lại giữ nguyên)
         return bookings.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
@@ -476,7 +461,7 @@ public class BookingService {
      */
     public BookingResponse completeBookingWithInvoice(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đ��t pin v��i mã: " + bookingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + bookingId));
 
         // Cập nhật trạng thái booking thành COMPLETED
         booking.setBookingStatus(Booking.BookingStatus.COMPLETED);
@@ -486,7 +471,7 @@ public class BookingService {
 
         // Tạo thông báo thành công
         String successMessage = String.format(
-            "Booking #%d được hoàn thành thành công. T����ng tiền: %.0f VND",
+            "Booking #%d được hoàn thành thành công. Tổng tiền: %.0f VND",
             booking.getBookingId(),
             booking.getAmount()
         );
@@ -1332,5 +1317,33 @@ public class BookingService {
         }
     }
 
+    /**
+     * [SỬA LỖI VÒNG LẶP]
+     * Hàm này LẮNG NGHE sự kiện 'InvoicePaidEvent' (được bắn ra từ SubscriptionService HOẶC PaymentService).
+     * Khi nó nghe thấy, nó sẽ tự động kích hoạt Booking.
+     */
+    @EventListener
+    public void handleInvoicePaidEvent(InvoicePaidEvent event) {
+            Invoice invoice = event.getInvoice();
+            log.info("BookingService đã nhận được InvoicePaidEvent cho Invoice #{}", invoice.getInvoiceId());
 
+        // Tìm các booking liên quan đến hóa đơn này
+        List<Booking> bookings = bookingRepository.findByInvoice(invoice);
+        if (bookings.isEmpty()) {
+            // (Nếu đây là Invoice Gói tháng, nó sẽ không có booking nào, đây là việc bình thường)
+            log.info("Sự kiện Invoice PAID, không tìm thấy Booking nào liên kết (có thể là HĐ Gói tháng). Bỏ qua.");
+            return;
+        }
+
+        for (Booking booking : bookings) {
+            // Chỉ kích hoạt các booking đang chờ thanh toán
+            if (booking.getBookingStatus() == Booking.BookingStatus.PENDINGPAYMENT) {
+                log.info("Kích hoạt Booking #{} (từ sự kiện) sang PENDINGSWAPPING", booking.getBookingId());
+
+                // Gọi hàm confirmPayment (Dòng 307 trong file này)
+                confirmPayment(booking.getBookingId());
+            }
+        }
+    }
 }
+

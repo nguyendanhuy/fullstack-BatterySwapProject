@@ -1,11 +1,13 @@
 package BatterySwapStation.controller;
 
 import BatterySwapStation.dto.SubscriptionRequest;
+import BatterySwapStation.dto.UseSwapRequest;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.UserSubscription;
 import BatterySwapStation.service.SubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.Data; // Cần import Lombok
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -184,6 +186,33 @@ public class SubscriptionController {
                     "message", "Lấy danh sách gói thành công.",
                     "plans", plans
             ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/use-swap")
+    @Operation(summary = "Thanh toán Booking bằng Gói tháng (dùng 1 lượt)",
+            description = "User gọi API này để 'thanh toán' cho Invoice 0 ĐỒNG, sử dụng 1 lượt trong gói cước.")
+    public ResponseEntity<Map<String, Object>> useSwapForBooking(
+            @Valid @RequestBody UseSwapRequest request
+    ) {
+        try {
+            UserSubscription updatedSub = subscriptionService.useSwapForBooking(request);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Thanh toán bằng gói cước thành công. Booking đã được kích hoạt.",
+                    "updatedSubscription", Map.of(
+                            "userSubscriptionId", updatedSub.getId(),
+                            "usedSwaps", updatedSub.getUsedSwaps(),
+                            "swapLimit", updatedSub.getPlan().getSwapLimit()
+                    )
+            ));
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,

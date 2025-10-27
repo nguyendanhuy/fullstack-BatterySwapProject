@@ -13,6 +13,7 @@ import java.util.Optional;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
+
     @Query("SELECT i FROM Invoice i WHERE i.invoiceId = :id")
     Optional<Invoice> findByIdWithoutBookings(@Param("id") Long id);
 
@@ -30,7 +31,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     );
 
     /**
-     * ✅ [THÊM MỚI] Dùng cho Scheduler (Phase 5)
+     * ✅ [GIỮ LẠI HÀM NÀY]
      * Kiểm tra xem User đã có Hóa đơn GIA HẠN (Pending)
      * cho một Gói cước cụ thể hay chưa.
      */
@@ -47,6 +48,4 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     WHERE b.bookingId = :bookingId
 """)
     Optional<Invoice> findByBookingId(@Param("bookingId") Long bookingId);
-
-
 }

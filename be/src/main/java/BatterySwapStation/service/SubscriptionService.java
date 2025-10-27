@@ -1,9 +1,11 @@
 package BatterySwapStation.service;
 
 import BatterySwapStation.dto.SubscriptionRequest;
+import BatterySwapStation.dto.UseSwapRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
-import lombok.RequiredArgsConstructor; // ✅ [THÊM MỚI]
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor // ✅ [SỬA 1] Dùng Constructor Injection
+@RequiredArgsConstructor
 public class SubscriptionService {
 
 
@@ -26,7 +28,9 @@ public class SubscriptionService {
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final InvoiceRepository invoiceRepository;
     private final SystemPriceService systemPriceService;
-    private final SubscriptionPlanRepository subscriptionPlanRepository; // Giữ lại tên đầy đủ
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final BookingRepository bookingRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * ✅ [SỬA 2] Cập nhật hàm này để dùng DTO (SubscribeRequest)
@@ -315,4 +319,67 @@ public class SubscriptionService {
                 })
                 .collect(Collectors.toList());
     }
+
+
+    /**
+     * Sửa lại hàm này để gọi 'bookingService.confirmPayment()'
+     * thay vì tự ý 'setStatus'
+     */
+    @Transactional
+    public UserSubscription useSwapForBooking(UseSwapRequest request) {
+        log.info("User {} đang sử dụng Gói tháng để thanh toán Invoice #{}", request.getUserId(), request.getInvoiceId());
+
+        // 1. Tìm Hóa đơn (Invoice)
+        Invoice invoice = invoiceRepository.findById(request.getInvoiceId())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hóa đơn: " + request.getInvoiceId()));
+
+        // 2. Tìm Gói cước (Subscription) ĐANG HOẠT ĐỘNG
+        UserSubscription activeSub = userSubscriptionRepository
+                .findActiveSubscriptionForUser(
+                        request.getUserId(),
+                        UserSubscription.SubscriptionStatus.ACTIVE,
+                        LocalDateTime.now()
+                )
+                .orElseThrow(() -> new IllegalStateException("Bạn không có gói cước nào đang hoạt động."));
+
+        // --- 3. KIỂM TRA (VALIDATION) ---
+        // (Giữ nguyên logic kiểm tra a, b, c)
+
+        // a. Kiểm tra hóa đơn có phải 0 ĐỒNG không
+        if (invoice.getTotalAmount() > 0) {
+            throw new IllegalStateException("Hóa đơn này có giá trị. Vui lòng thanh toán bằng VNPay.");
+        }
+
+        // b. Kiểm tra hóa đơn có đang PENDING không
+        if (invoice.getInvoiceStatus() != Invoice.InvoiceStatus.PENDING) {
+            throw new IllegalStateException("Hóa đơn này đã được xử lý (trạng thái: " + invoice.getInvoiceStatus() + ").");
+        }
+
+        // c. Kiểm tra lượt đổi pin (Swap Limit)
+        int limit = activeSub.getPlan().getSwapLimit();
+        int used = activeSub.getUsedSwaps();
+        if (limit != -1 && used >= limit) {
+            throw new IllegalStateException("Bạn đã hết lượt đổi pin của gói cước này (" + used + "/" + limit + ").");
+        }
+
+        // --- 4. THỰC THI (EXECUTION) ---
+
+        // a. Trừ 1 lượt: Tăng 'usedSwaps' (Giữ nguyên)
+        activeSub.setUsedSwaps(activeSub.getUsedSwaps() + 1);
+        UserSubscription updatedSub = userSubscriptionRepository.save(activeSub);
+        log.info("User {} đã dùng 1 lượt. (Còn lại: {}/{}).", request.getUserId(), (activeSub.getUsedSwaps()), activeSub.getPlan().getSwapLimit());
+
+        // b. Chuyển Invoice sang PAID (Giữ nguyên)
+        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+        Invoice savedInvoice = invoiceRepository.save(invoice); // <-- Lấy Hóa đơn đã lưu
+        log.info("Invoice #{} đã được chuyển sang PAID.", savedInvoice.getInvoiceId());
+
+        // c. Bắn (Publish) Sự kiện
+        log.info("Phát sự kiện InvoicePaidEvent cho Invoice #{}", savedInvoice.getInvoiceId());
+        eventPublisher.publishEvent(new InvoicePaidEvent(this, savedInvoice));
+        // --- (Hết code mới) ---
+
+        return updatedSub; // Trả về thông tin gói cước đã cập nhật
+    }
+
 }

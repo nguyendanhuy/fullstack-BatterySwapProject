@@ -59,4 +59,9 @@ public class DisputeTicket {
 
     @Column(name = "resolvedat")
     private LocalDateTime resolvedAt;
+
+    // Liên kết Nhiều-1: Nhiều DisputeTicket có thể thuộc về 1 Station
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "StationId") // Tên cột khóa ngoại trong DB
+    private Station station;
 }

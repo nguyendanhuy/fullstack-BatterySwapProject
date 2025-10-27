@@ -1,6 +1,8 @@
 package BatterySwapStation.repository;
 
 import BatterySwapStation.entity.Battery;
+import BatterySwapStation.entity.Booking;
+import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Vehicle;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -61,5 +63,4 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
       AND ds.isActive = true
 """)
     List<Battery> findWaitingBatteriesByStation(@Param("stationId") Integer stationId);
-
 }

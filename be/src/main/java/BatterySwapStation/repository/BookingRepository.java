@@ -20,6 +20,22 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm tất cả booking của user
     List<Booking> findByUser(User user);
 
+    /**
+     * ✅ [THÊM MỚI] - SỬA LỖI HIỆU NĂNG (N+1)
+     * Dùng 'JOIN FETCH' để tải tất cả dữ liệu liên quan
+     * (User, Station, Vehicle, Invoice, Payments) trong 1 CÂU QUERY DUY NHẤT.
+     */
+    @Query("SELECT DISTINCT b FROM Booking b " +
+            "LEFT JOIN FETCH b.user " +
+            "LEFT JOIN FETCH b.station " +
+            "LEFT JOIN FETCH b.vehicle " +
+            "LEFT JOIN FETCH b.invoice i " +
+            "LEFT JOIN FETCH i.payments " + // Lấy luôn payment của invoice
+            "WHERE b.user.userId = :userId " + // Query bằng userId
+            "ORDER BY b.bookingDate DESC, b.timeSlot DESC") // Sắp xếp luôn
+    List<Booking> findByUserWithAllDetails(@Param("userId") String userId);
+
+
     // Tìm booking của user theo status (sử dụng enum)
     List<Booking> findByUserAndBookingStatus(User user, Booking.BookingStatus status);
 
@@ -28,6 +44,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     // Tìm tất cả booking theo invoice
     List<Booking> findAllByInvoice(Invoice invoice);
+
+    // Tìm booking theo invoice
+    List<Booking> findByInvoice(Invoice invoice);
+
+    // (Các hàm còn lại giữ nguyên...)
 
     // Kiểm tra xem user đã có booking PENDINGPAYMENT hoặc PENDINGSWAPPING chưa (theo ngày)
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.user = :user " +

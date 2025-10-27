@@ -1,6 +1,7 @@
 package BatterySwapStation.service;
 
 import BatterySwapStation.dto.SubscriptionRequest;
+import BatterySwapStation.dto.UseSwapRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
 import lombok.RequiredArgsConstructor; // ✅ [THÊM MỚI]
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor // ✅ [SỬA 1] Dùng Constructor Injection
+@RequiredArgsConstructor
 public class SubscriptionService {
 
 
@@ -26,7 +27,9 @@ public class SubscriptionService {
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final InvoiceRepository invoiceRepository;
     private final SystemPriceService systemPriceService;
-    private final SubscriptionPlanRepository subscriptionPlanRepository; // Giữ lại tên đầy đủ
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final BookingRepository bookingRepository;
+    private final BookingService bookingService;
 
     /**
      * ✅ [SỬA 2] Cập nhật hàm này để dùng DTO (SubscribeRequest)
@@ -315,4 +318,77 @@ public class SubscriptionService {
                 })
                 .collect(Collectors.toList());
     }
+
+
+    /**
+     * Sửa lại hàm này để gọi 'bookingService.confirmPayment()'
+     * thay vì tự ý 'setStatus'
+     */
+    @Transactional
+    public UserSubscription useSwapForBooking(UseSwapRequest request) {
+        log.info("User {} đang sử dụng Gói tháng để thanh toán Invoice #{}", request.getUserId(), request.getInvoiceId());
+
+        // 1. Tìm Hóa đơn (Invoice)
+        Invoice invoice = invoiceRepository.findById(request.getInvoiceId())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hóa đơn: " + request.getInvoiceId()));
+
+        // 2. Tìm Gói cước (Subscription) ĐANG HOẠT ĐỘNG
+        UserSubscription activeSub = userSubscriptionRepository
+                .findActiveSubscriptionForUser(
+                        request.getUserId(),
+                        UserSubscription.SubscriptionStatus.ACTIVE,
+                        LocalDateTime.now()
+                )
+                .orElseThrow(() -> new IllegalStateException("Bạn không có gói cước nào đang hoạt động."));
+
+        // --- 3. KIỂM TRA (VALIDATION) ---
+        // (Giữ nguyên logic kiểm tra a, b, c)
+
+        // a. Kiểm tra hóa đơn có phải 0 ĐỒNG không
+        if (invoice.getTotalAmount() > 0) {
+            throw new IllegalStateException("Hóa đơn này có giá trị. Vui lòng thanh toán bằng VNPay.");
+        }
+
+        // b. Kiểm tra hóa đơn có đang PENDING không
+        if (invoice.getInvoiceStatus() != Invoice.InvoiceStatus.PENDING) {
+            throw new IllegalStateException("Hóa đơn này đã được xử lý (trạng thái: " + invoice.getInvoiceStatus() + ").");
+        }
+
+        // c. Kiểm tra lượt đổi pin (Swap Limit)
+        int limit = activeSub.getPlan().getSwapLimit();
+        int used = activeSub.getUsedSwaps();
+        if (limit != -1 && used >= limit) {
+            throw new IllegalStateException("Bạn đã hết lượt đổi pin của gói cước này (" + used + "/" + limit + ").");
+        }
+
+        // --- 4. THỰC THI (EXECUTION) ---
+
+        // a. Trừ 1 lượt: Tăng 'usedSwaps' (Logic ĐÚNG nằm ở đây)
+        activeSub.setUsedSwaps(used + 1);
+        UserSubscription updatedSub = userSubscriptionRepository.save(activeSub);
+        log.info("User {} đã dùng 1 lượt. (Còn lại: {}/{}).", request.getUserId(), (used + 1), limit);
+
+        // b. Chuyển Invoice sang PAID
+        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+        invoiceRepository.save(invoice);
+        log.info("Invoice #{} đã được chuyển sang PAID.", invoice.getInvoiceId());
+
+        // c. Kích hoạt Booking sang PENDINGSWAPPING
+        // ✅ [SỬA LỖI 2]
+        List<Booking> bookings = bookingRepository.findByInvoice(invoice);
+        if (bookings.isEmpty()) {
+            log.warn("Invoice #{} đã được thanh toán, nhưng không tìm thấy Booking nào liên kết với nó.", invoice.getInvoiceId());
+        } else {
+            for (Booking booking : bookings) {
+                // Gọi hàm 'confirmPayment' (từ BookingService)
+                // để chuyển trạng thái sang PENDINGSWAPPING một cách an toàn
+                log.info("Gọi BookingService.confirmPayment cho Booking #{}", booking.getBookingId());
+                bookingService.confirmPayment(booking.getBookingId());
+            }
+            log.info("Đã kích hoạt {} booking (của Invoice #{}) sang PENDINGSWAPPING.", bookings.size(), invoice.getInvoiceId());
+        }
+
+        return updatedSub; // Trả về thông tin gói cước đã cập nhật
+    }
+
 }

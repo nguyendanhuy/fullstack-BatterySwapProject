@@ -29,16 +29,21 @@ public class Payment {
     @Column(name = "PaymentStatus", nullable = false, length = 20)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
+    // 🆕 Thêm loại giao dịch: PAYMENT hoặc REFUND
+    @Enumerated(EnumType.STRING)
+    @Column(name = "TransactionType", nullable = false, length = 20)
+    private TransactionType transactionType = TransactionType.PAYMENT;
+
     @Column(name = "CreatedAt", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToOne(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true)
     private CreditCardPayment creditCardInfo;
+
     @Column(name = "Message")
     private String message;
 
-
-    // 🆕 --- Bổ sung cho VNPAY ---
+    // 🆕 --- Bổ sung cho VNPAY / Refund ---
     @Column(name = "Gateway", length = 50)
     private String gateway; // VNPAY, MOMO, PAYPAL,...
 
@@ -63,14 +68,16 @@ public class Payment {
     @Column(name = "ChecksumOk")
     private Boolean checksumOk;
 
-    // NEW: link tới Invoice (mỗi payment theo hóa đơn)
-    @ManyToOne(fetch = FetchType.LAZY)              // hoặc @OneToOne nếu bạn chắc 1-1
-    @JoinColumn(name = "invoiceid", nullable = true)
+    // Liên kết tới Invoice (1 invoice có thể có nhiều payment, ví dụ payment + refund)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "InvoiceId", nullable = true)
     private Invoice invoice;
+
+    // ===================== ENUMS =====================
 
     public enum PaymentMethod {
         CREDIT_CARD,
-        E_WALLET,
+        WALLET,
         QR_BANKING,
         VNPAY
     }
@@ -82,4 +89,8 @@ public class Payment {
         REFUNDED
     }
 
+    public enum TransactionType {
+        PAYMENT,
+        REFUND
+    }
 }

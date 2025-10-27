@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -112,16 +113,19 @@ public class AuthController {
             }
         }
 
-        return ResponseEntity.ok(Map.of(
-                "userId", user.getUserId(),
-                "email", user.getEmail(),
-                "fullName", user.getFullName(),
-                "phone", user.getPhone(),
-                "role", user.getRole().getRoleName(),
-                "assignedStationId", assignedStationId,
-                "activeSubscriptionId", activeSubscriptionId
-        ));
+        // ✅ Sử dụng HashMap để cho phép null value (tránh NPE)
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", user.getUserId());
+        result.put("email", user.getEmail());
+        result.put("fullName", user.getFullName());
+        result.put("phone", user.getPhone());
+        result.put("role", user.getRole().getRoleName());
+        result.put("assignedStationId", assignedStationId);
+        result.put("activeSubscriptionId", activeSubscriptionId); // 💰 Cho phép null
+
+        return ResponseEntity.ok(result);
     }
+
 
 
 

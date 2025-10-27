@@ -59,6 +59,10 @@ public class User implements UserDetails {
         this.updateAt = LocalDateTime.now();
     }
 
+    @Column(name = "WalletBalance", nullable = false)
+    private Double walletBalance = 0.0;
+
+
     @PreUpdate
     protected void onUpdate() {
         this.updateAt = LocalDateTime.now();

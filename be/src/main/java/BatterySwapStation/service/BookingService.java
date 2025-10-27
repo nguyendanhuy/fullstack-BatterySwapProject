@@ -40,6 +40,7 @@ public class BookingService {
     private final ObjectMapper objectMapper;
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final PaymentService paymentService;
+    private final PaymentRepository paymentRepository;
 
 
     /**
@@ -323,6 +324,7 @@ public class BookingService {
     /**
      * Hủy đặt chỗ
      */
+    @Transactional
     public BookingResponse cancelBooking(CancelBookingRequest request) {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với mã: " + request.getUserId()));
@@ -334,59 +336,70 @@ public class BookingService {
         if (Booking.BookingStatus.CANCELLED.equals(booking.getBookingStatus())) {
             throw new IllegalStateException("Lượt đặt pin này đã bị hủy trước đó.");
         }
-
         if (Booking.BookingStatus.COMPLETED.equals(booking.getBookingStatus())) {
             throw new IllegalStateException("Không thể hủy lượt đặt pin đã hoàn thành.");
         }
 
-        // Kiểm tra thời gian hủy: phải trước 1 tiếng so với thời gian đặt lịch
+        // Kiểm tra thời gian hủy
         LocalDateTime scheduledDateTime = LocalDateTime.of(booking.getBookingDate(), booking.getTimeSlot());
         LocalDateTime currentDateTime = LocalDateTime.now();
         LocalDateTime minimumCancelTime = scheduledDateTime.minusHours(1);
-
         if (currentDateTime.isAfter(minimumCancelTime)) {
-            throw new IllegalStateException(
-                String.format("Không thể hủy booking. Chỉ có thể hủy trước ít nhất 1 tiếng so với thời gian đặt lịch (%s %s). " +
-                             "Thời gian giới hạn hủy là: %s",
-                    booking.getBookingDate(),
-                    booking.getTimeSlot(),
-                    minimumCancelTime)
-            );
+            throw new IllegalStateException(String.format(
+                    "Không thể hủy booking. Chỉ có thể hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
+                    booking.getBookingDate(), booking.getTimeSlot(), minimumCancelTime));
         }
 
-        // Hủy đặt chỗ và lưu lý do hủy
+        // ✅ Hủy và lưu lý do
         booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
-        booking.setCancellationReason(request.getCancelReason()); // Lưu lý do hủy
+        booking.setCancellationReason(request.getCancelReason());
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Tạo response với message
+        // ✅ Tự động hoàn tiền về ví nếu booking có hóa đơn và payment thành công
+        Invoice invoice = booking.getInvoice();
+        if (invoice != null && invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
+
+            // Lấy payment thành công gần nhất
+            Payment successfulPayment = invoice.getPayments().stream()
+                    .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS)
+                    .max(Comparator.comparing(Payment::getCreatedAt))
+                    .orElse(null);
+
+            if (successfulPayment != null) {
+                double refundAmount = booking.getAmount();
+
+                // ✅ Tạo bản ghi Payment REFUND
+                Payment refund = Payment.builder()
+                        .amount(refundAmount)
+                        .paymentMethod(Payment.PaymentMethod.WALLET)
+                        .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                        .transactionType(Payment.TransactionType.REFUND)
+                        .gateway("INTERNAL_WALLET")
+                        .invoice(invoice)
+                        .message("Hoàn tiền cho booking #" + booking.getBookingId() + " về ví trung gian")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                paymentRepository.save(refund);
+
+                // ✅ Cộng tiền ví người dùng
+                user.setWalletBalance(user.getWalletBalance() + refundAmount);
+                userRepository.save(user);
+            }
+        }
+
+        // ✅ Trả về response
         BookingResponse response = convertToResponse(savedBooking);
         String cancelMessage = String.format(
-            "Booking #%d đã được hủy thành công! Lý do: %s",
-            savedBooking.getBookingId(),
-            request.getCancelReason() != null ? request.getCancelReason() : "Không có lý do"
+                "Booking #%d đã được hủy thành công! Lý do: %s",
+                savedBooking.getBookingId(),
+                request.getCancelReason() != null ? request.getCancelReason() : "Không có lý do"
         );
         response.setMessage(cancelMessage);
 
         return response;
     }
 
-    /**
-     * Lấy danh sách đặt chỗ theo trạng thái
-     */
-    @Transactional(readOnly = true)
-    public List<BookingResponse> getBookingsByStatus(String status) {
-        // Chuyển đổi String sang enum
-        try {
-            Booking.BookingStatus bookingStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
-            List<Booking> bookings = bookingRepository.findByBookingStatus(bookingStatus);
-            return bookings.stream()
-                    .map(this::convertToResponse)
-                    .collect(Collectors.toList());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status + ". Các trạng thái hợp lệ: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED");
-        }
-    }
 
     /**
      * Lấy danh sách đặt chỗ của trạm
@@ -1302,6 +1315,22 @@ public class BookingService {
     }
 
 
+    /**
+     * Lấy danh sách booking theo trạng thái
+     */
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getBookingsByStatus(String status) {
+        // Chuyển đổi String sang enum
+        try {
+            Booking.BookingStatus bookingStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
+            List<Booking> bookings = bookingRepository.findByBookingStatus(bookingStatus);
+            return bookings.stream()
+                    .map(this::convertToResponse)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status + ". Các trạng thái hợp lệ: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED");
+        }
+    }
 
 
 }

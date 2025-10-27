@@ -8,6 +8,7 @@ import lombok.*;
 @Builder
 public class BatteryRealtimeEvent {
     private Integer stationId;
+    private Integer dockId;
     private String dockName;
     private Integer slotNumber;
     private String batteryId;

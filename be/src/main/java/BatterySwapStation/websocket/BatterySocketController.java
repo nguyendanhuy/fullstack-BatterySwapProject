@@ -24,7 +24,7 @@ public class BatterySocketController {
         Integer stationId = extractStationId(payload);
         if (stationId == null) return;
 
-        System.out.println("⚡ Client joined station " + stationId);
+        System.out.println("Client joined station " + stationId);
 
         // Gửi snapshot grouped pin theo dock
         List<DockBatteryGroupDTO> data = stationService.getGroupedBatteriesOnly(stationId);

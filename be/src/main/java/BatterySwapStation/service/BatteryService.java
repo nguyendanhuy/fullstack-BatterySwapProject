@@ -145,6 +145,7 @@ public class BatteryService {
         try {
             BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
                     .stationId(slot.getDock().getStation().getStationId())
+                    .dockId(slot.getDockSlotId())
                     .dockName(slot.getDock().getDockName())
                     .slotNumber(slot.getSlotNumber())
                     .batteryId(battery != null ? battery.getBatteryId() : null)
@@ -161,4 +162,55 @@ public class BatteryService {
             e.printStackTrace();
         }
     }
+    // ==================== PIN ĐANG CHỜ TẠI TRẠM ====================
+    @Transactional
+    public List<Map<String, Object>> getWaitingBatteriesByStation(Integer stationId) {
+        List<Battery> list = batteryRepository.findWaitingBatteriesByStation(stationId);
+
+        return list.stream()
+                .map(battery -> {
+                    Map<String, Object> result = new java.util.HashMap<>();
+
+                    DockSlot slot = battery.getDockSlot();
+                    result.put("batteryId", battery.getBatteryId());
+                    result.put("batteryType", battery.getBatteryType());
+                    result.put("stateOfHealth", battery.getStateOfHealth());
+
+                    if (slot != null && slot.getDock() != null) {
+                        result.put("dockName", slot.getDock().getDockName());
+                        result.put("slotNumber", slot.getSlotNumber());
+                    } else {
+                        result.put("dockName", null);
+                        result.put("slotNumber", null);
+                    }
+
+                    return result;
+                })
+                .toList();
+    }
+
+
+    // ==================== PIN RỜI TRONG TRẠM (KHÔNG TRONG DOCKSLOT) ====================
+    @Transactional
+    public List<Map<String, Object>> getLooseBatteriesByStation(Integer stationId) {
+        List<Battery> list = batteryRepository.findAllLooseBatteriesByStation(stationId);
+
+        return list.stream()
+                .map(b -> {
+                    Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("batteryId", b.getBatteryId());
+                    map.put("batteryType", b.getBatteryType());
+                    map.put("batteryStatus", b.getBatteryStatus());
+                    map.put("stateOfHealth", b.getStateOfHealth());
+                    map.put("currentCapacity", b.getCurrentCapacity());
+                    map.put("stationId", b.getStationId());
+                    return map;
+                })
+                .toList();
+    }
+
+
+
+
+
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +31,16 @@ public interface SwapRepository extends JpaRepository<Swap, Long> {
      */
     Optional<Swap> findFirstByBookingOrderByCompletedTimeDesc(Booking booking);
 
-//    @Query("SELECT s FROM Swap s WHERE s.station.id = :stationId AND DATE(s.createdAt) = :date")
-//    List<Swap> findByStationAndDate(@Param("stationId") Integer stationId, @Param("date") LocalDate date);
+    @Query("""
+        SELECT s
+        FROM Swap s
+        WHERE s.dockId IN (
+            SELECT d.dockId
+            FROM Dock d
+            WHERE d.station.stationId = :stationId
+        )
+        AND DATE(s.completedTime) = :date
+    """)
+    List<Swap> findByStationAndDate(@Param("stationId") Integer stationId,
+                                    @Param("date") LocalDate date);
 }

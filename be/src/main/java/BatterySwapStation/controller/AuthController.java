@@ -36,9 +36,13 @@ public class AuthController {
     private final GoogleService googleService;
     private final StaffAssignRepository staffAssignRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
+    private final ForgotPasswordService forgotPasswordService;
+
 
 
     private static final String FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email";
+    //private static final String RESET_URL = "http://localhost:5173/reset-password?token=";
+
 
 
     @PostMapping("/register")
@@ -109,18 +113,19 @@ public class AuthController {
             }
         }
 
-        // ✅ FIX: Dùng HashMap thay vì Map.of() để chấp nhận null
-        Map<String, Object> response = new HashMap<>();
-        response.put("userId", user.getUserId());
-        response.put("email", user.getEmail());
-        response.put("fullName", user.getFullName());
-        response.put("phone", user.getPhone());
-        response.put("role", user.getRole().getRoleName());
-        response.put("assignedStationId", assignedStationId);
-        response.put("activeSubscriptionId", activeSubscriptionId);
+        // ✅ Sử dụng HashMap để cho phép null value (tránh NPE)
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", user.getUserId());
+        result.put("email", user.getEmail());
+        result.put("fullName", user.getFullName());
+        result.put("phone", user.getPhone());
+        result.put("role", user.getRole().getRoleName());
+        result.put("assignedStationId", assignedStationId);
+        result.put("activeSubscriptionId", activeSubscriptionId); // 💰 Cho phép null
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(result);
     }
+
 
 
 
@@ -209,6 +214,33 @@ public class AuthController {
                     ));
         }
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req) {
+        String resetLink = forgotPasswordService.sendResetPasswordLink(req.getEmail());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", "Yêu cầu đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra email.",
+                "email", req.getEmail(),
+                "resetLink", resetLink
+        ));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest req) {
+        forgotPasswordService.resetPassword(
+                req.getToken(),
+                req.getNewPassword(),
+                req.getConfirmPassword()
+        );
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Mật khẩu của bạn đã được cập nhật thành công."
+        ));
+    }
+
+
 
 
 }

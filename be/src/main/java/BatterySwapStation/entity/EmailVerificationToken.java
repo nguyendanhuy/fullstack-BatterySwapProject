@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+
 @Entity
 @Table(name = "email_verification_tokens")
 @Getter @Setter
@@ -21,6 +22,12 @@ public class EmailVerificationToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+
+    @Column(nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    private TokenType tokenType = TokenType.VERIFY_EMAIL;
+
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -29,4 +36,9 @@ public class EmailVerificationToken {
 
     @Column(nullable = false)
     private boolean isUsed = false;
+
+    public enum TokenType {
+        VERIFY_EMAIL,
+        RESET_PASSWORD
+    }
 }

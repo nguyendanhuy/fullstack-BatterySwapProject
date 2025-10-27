@@ -29,6 +29,7 @@ public class EmailVerificationService {
         EmailVerificationToken verificationToken = EmailVerificationToken.builder()
                 .user(user)
                 .token(uuidToken)
+                .tokenType(EmailVerificationToken.TokenType.VERIFY_EMAIL)
                 .createdAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusMinutes(30))
                 .isUsed(false)

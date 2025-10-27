@@ -79,7 +79,7 @@ public class InvoiceService {
             invoice.setPricePerSwap(systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP));
         }
         if (invoice.getCreatedDate() == null) {
-            invoice.setCreatedDate(LocalDateTime.now());
+            invoice.setCreatedDate(LocalDateTime.now().now());
         }
         if (invoice.getInvoiceStatus() == null) {
             invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
@@ -437,6 +437,8 @@ public class InvoiceService {
         }
 
         // 3. Cập nhật Invoice status
+        // (Chúng ta sẽ dùng status PAYMENTFAILED của scheduler,
+        // hoặc bạn có thể tạo status mới là 'CANCELLED')
         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
 
         // 4. Cập nhật Booking status (liên kết)
@@ -445,17 +447,18 @@ public class InvoiceService {
             booking.setBookingStatus(Booking.BookingStatus.FAILED);
         }
 
-        // 5. Cập nhật Payment status (liên kết) - dùng JPQL tường minh
-        List<Payment> payments = paymentRepository.findAllByInvoiceJPQL(invoice);
-        if (payments != null && !payments.isEmpty()) {
-            for (Payment p : payments) {
-                p.setPaymentStatus(Payment.PaymentStatus.FAILED);
-            }
-            paymentRepository.saveAll(payments);
+        // 5. Cập nhật Payment status (liên kết)
+        Payment payment = paymentRepository.findByInvoice(invoice);
+        if (payment != null) {
+            payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
+            paymentRepository.save(payment);
         }
 
         // 6. Lưu thay đổi
         invoiceRepository.save(invoice);
         bookingRepository.saveAll(bookings);
+
+        // (Ghi log nếu cần)
+        // logger.info("Người dùng đã chủ động hủy Invoice #{}", invoice.getInvoiceId());
     }
 }

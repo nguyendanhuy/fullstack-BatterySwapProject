@@ -5,6 +5,7 @@ import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.text.StringEscapeUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +20,6 @@ public class EmailService {
 
     @Value("${SPRING_MAIL_FROM}")
     private String fromEmail;
-
 
 
     //
@@ -57,23 +57,37 @@ public class EmailService {
 
     // HTML Template
     private String getHtmlTemplate(String fullName, String verifyUrl) {
-        return """
-                <div style="font-family:Arial,sans-serif;line-height:1.6">
-                    <h2 style="color:#007bff;">Xin chào, %s 👋</h2>
-                    <p>Cảm ơn bạn đã đăng ký tài khoản tại <b>Battery Swap Station</b>.</p>
-                    <p>Vui lòng nhấp vào nút bên dưới để xác minh email của bạn:</p>
-                    <p>
-                        <a href="%s" style="background-color:#28a745;color:white;
-                            padding:10px 20px;text-decoration:none;border-radius:5px;">
-                            Xác minh ngay
-                        </a>
-                    </p>
-                    <p>Nếu bạn không đăng ký tài khoản này, vui lòng bỏ qua email này.</p>
-                    <hr>
-                    <p style="font-size:12px;color:gray;">
-                        © 2025 Battery Swap Station Team
-                    </p>
-                </div>
-                """.formatted(fullName, verifyUrl);
+        String safeFullName = StringEscapeUtils.escapeHtml4(fullName);
+        String safeUrl = StringEscapeUtils.escapeHtml4(verifyUrl);
+
+        String htmlContent = """
+                    <div style="font-family:Arial,sans-serif;line-height:1.6">
+                        <h2 style="color:#007bff;">Xin chào, %s 👋</h2>
+                        <p>Cảm ơn bạn đã đăng ký tài khoản tại <b>Battery Swap Station</b>.</p>
+                        <p>Vui lòng nhấp vào nút bên dưới để xác minh email của bạn:</p>
+                        <p>
+                            <a href="%s" style="background-color:#28a745;color:white;
+                                padding:10px 20px;text-decoration:none;border-radius:5px;">
+                                Xác minh ngay
+                            </a>
+                        </p>
+                        <p>Nếu bạn không đăng ký tài khoản này, vui lòng bỏ qua email này.</p>
+                        <hr>
+                        <p style="font-size:12px;color:gray;">
+                            © 2025 Battery Swap Station Team
+                        </p>
+                    </div>
+                """.formatted(safeFullName, safeUrl);
+        return htmlContent;
+
     }
+
+    public void sendEmail(String to, String subject, String htmlContent) {
+        Email from = new Email(fromEmail);
+        Email recipient = new Email(to);
+        Content content = new Content("text/html", htmlContent);
+        Mail mail = new Mail(from, subject, recipient, content);
+        sendMail(mail);
+    }
+
 }

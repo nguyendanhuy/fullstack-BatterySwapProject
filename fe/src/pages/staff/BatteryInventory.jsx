@@ -97,15 +97,20 @@ const BatteryInventory = () => {
     slotId: "",
   });
 
-  const [editBattery, setEditBattery] = useState({
-    id: "",
-    type: "",
-    status: "",
-    soh: "",
-    location: "",
-    dockIndex: 0,
-    slotId: null,
+  const [detailForm, setDetailForm] = useState({
+    batteryId: "",
+    statusUi: "empty"
   });
+
+  useEffect(() => {
+    if (isEditDialogOpen && selectedBattery) {
+      setDetailForm({
+        batteryId: selectedBattery.id || "",
+        statusUi: selectedBattery.status || "empty",
+      });
+    }
+  }, [isEditDialogOpen, selectedBattery]);
+
   // ====================
   // Chay real time
   // ====================
@@ -497,10 +502,8 @@ const BatteryInventory = () => {
       });
       return;
     }
-
     try {
       const res = await removeBatteryInventory(batteryId);
-      // BE trả 200 nhưng vẫn có lỗi nghiệp vụ
       if (res?.messages?.business || res?.error || res?.status >= 400) {
         toast({
           title: "Tháo pin thất bại",
@@ -1095,7 +1098,7 @@ const BatteryInventory = () => {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Cập nhật thông tin pin</DialogTitle>
-              <DialogDescription>Chỉnh sửa thông tin chi tiết của pin {editBattery.id}</DialogDescription>
+              <DialogDescription>Chỉnh sửa thông tin trạng thái của pin {editBattery.id}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">

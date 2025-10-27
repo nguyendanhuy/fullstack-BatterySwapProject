@@ -50,5 +50,16 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
             "AND (b.dockSlot IS NULL OR b.dockSlot.battery IS NULL)")
     List<Battery> findAllLooseBatteriesByStation(@Param("stationId") Integer stationId);
 
+    @Query("""
+    SELECT b
+    FROM Battery b
+    JOIN b.dockSlot ds
+    JOIN ds.dock d
+    WHERE d.station.stationId = :stationId
+      AND b.batteryStatus = 'WAITING'
+      AND ds.slotStatus = 'OCCUPIED'
+      AND ds.isActive = true
+""")
+    List<Battery> findWaitingBatteriesByStation(@Param("stationId") Integer stationId);
 
 }

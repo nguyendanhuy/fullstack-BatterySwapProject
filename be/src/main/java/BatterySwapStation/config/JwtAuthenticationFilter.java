@@ -39,6 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
 
+
         String path = request.getRequestURI();
         if (path.startsWith("/ws-battery")) {
             filterChain.doFilter(request, response);

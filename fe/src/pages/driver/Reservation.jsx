@@ -315,19 +315,28 @@ const Reservation = () => {
                     <Calendar
                       mode="single"
                       selected={sb[activeId]?.date}
-                      onSelect={(date) => setDateTime(activeId, { date: date, time: "" })}
-                      className="rounded-xl border shadow-sm bg-white"
+                      onSelect={(date) => setDateTime(activeId, { date, time: "" })}
                       locale={vi}
+                      className="rounded-xl border shadow-sm bg-white [&_.avail]:text-blue-700 [&_.avail]:font-bold [&_.avail]:bg-transparenthover:[&_.avail]:text-blue-900"
                       disabled={(date) => {
-                        const d = new Date(date);
-                        d.setHours(0, 0, 0, 0);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const maxDate = new Date(today);
-                        maxDate.setDate(today.getDate() + 7);
+                        const d = new Date(date); d.setHours(0, 0, 0, 0);
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        const maxDate = new Date(today); maxDate.setDate(today.getDate() + 7);
                         return d < today || d > maxDate;
                       }}
+                      modifiers={{
+                        available: (date) => {
+                          const d = new Date(date); d.setHours(0, 0, 0, 0);
+                          const today = new Date(); today.setHours(0, 0, 0, 0);
+                          const maxDate = new Date(today); maxDate.setDate(today.getDate() + 7);
+                          return d >= today && d <= maxDate;
+                        },
+                      }}
+                      modifiersClassNames={{ available: "avail" }}
                     />
+
+
+
                   </div>
                 </CardContent>
               </Card>

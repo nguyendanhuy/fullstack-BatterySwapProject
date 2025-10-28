@@ -26,7 +26,10 @@ export const useStompBattery = () => {
         console.log("✅ STOMP Connected");
         setConnected(true)}
         ,
-      onDisconnect: () => setConnected(false),
+      onDisconnect: () => {
+        console.log("✅ STOMP Connected");
+        setConnected(false);
+      },
       onStompError: () => setConnected(false),
       onWebSocketClose: () => setConnected(false),
     });

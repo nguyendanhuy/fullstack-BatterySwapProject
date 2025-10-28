@@ -37,6 +37,7 @@ import StaffPrivateRoute from "./pages/StaffPrivateRouter";
 import AdminPrivateRoute from "./pages/AdminPrivateRouter";
 import AuthProvider from "./components/AuthProvider";
 import { StaffLayout } from "./components/StaffLayout";
+import { AdminLayout } from "./components/AdminLayout";
 import Invoices from "./pages/driver/Invoice";
 const queryClient = new QueryClient();
 const App = () => (<QueryClientProvider client={queryClient}>
@@ -89,11 +90,20 @@ const App = () => (<QueryClientProvider client={queryClient}>
               <Route path="battery-inspection" element={<BatteryInspection />} />
             </Route>
 
-            {/* Admin routes */}
-            <Route path="/admin" element={<AdminPrivateRoute><AdminDashboard /></AdminPrivateRoute>} />
-            <Route path="/admin/reports" element={<AdminPrivateRoute><Reports /></AdminPrivateRoute>} />
-            <Route path="/admin/battery-dispatch" element={<AdminPrivateRoute><BatteryDispatch /></AdminPrivateRoute>} />
-            <Route path="/admin/staff-management" element={<AdminPrivateRoute><StaffManagement /></AdminPrivateRoute>} />
+            {/* Admin routes (nested with sidebar layout) */}
+            <Route
+              path="/admin"
+              element={
+                <AdminPrivateRoute>
+                  <AdminLayout />
+                </AdminPrivateRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="battery-dispatch" element={<BatteryDispatch />} />
+              <Route path="staff-management" element={<StaffManagement />} />
+            </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>

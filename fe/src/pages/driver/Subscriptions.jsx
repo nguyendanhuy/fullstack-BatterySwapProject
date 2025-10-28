@@ -167,7 +167,9 @@ const Subscriptions = () => {
                     {new Date(currentSubscription.endDate).toLocaleDateString('vi-VN')}
                   </h3>
                   <p className="text-gray-600">Ngày hết hạn</p>
-                  <Button variant="outline" className="mt-2 text-sm" onClick={() => toast.info("Chức năng gia hạn chưa khả dụng")}>Gia hạn</Button>
+                  <Button variant="outline" className="mt-2 text-sm" onClick={() => toast.info("Chức năng gia hạn chưa khả dụng")}>Gia hạn</Button>{' '}
+                  <Button variant="outline" className="mt-2 text-sm" onClick={() => toast.info("Chức năng hủy gia hạn chưa khả dụng")}>Hủy gia hạn</Button>
+
                 </div>
               </div>
             </CardContent>

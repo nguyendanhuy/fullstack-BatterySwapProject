@@ -158,12 +158,12 @@ const insertBatteryInventory = (slotId, batteryId) => {
 const removeBatteryInventory = (batteryId) => {
     return axios.post(`/batteries/eject/${batteryId}`);
 }
-const batteryStatusUpdate = (batteryId,newStatus) =>{
-    data={
-        batteryId:batteryId,
-        newStatus:newStatus
+const batteryStatusUpdate = (batteryId, newStatus) => {
+    data = {
+        batteryId: batteryId,
+        newStatus: newStatus
     }
-    return axios.patch(`/batteries/status`,data);
+    return axios.patch(`/batteries/status`, data);
 }
 const forgotPasswordAPI = (email) => {
     return axios.post("/auth/forgot-password", { email });
@@ -171,6 +171,10 @@ const forgotPasswordAPI = (email) => {
 
 const resetPasswordAPI = (token, newPassword, confirmPassword) => {
     return axios.post("/auth/reset-password", { token, newPassword, confirmPassword });
+}
+
+const getAllStaff = () => {
+    return axios.get("/admin/staff");
 }
 
 export {
@@ -213,5 +217,6 @@ export {
     createInspectionAndDispute,
     insertBatteryInventory,
     removeBatteryInventory,
-    batteryStatusUpdate
+    batteryStatusUpdate,
+    getAllStaff
 };

@@ -50,7 +50,6 @@ const Login = () => {
     'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
 
   const isErrorResponse = (res) =>
-    (typeof res?.status === 'number' && res?.status >= 400) ||
     !!res?.error ||
     !!res?.messages?.auth ||
     !!res?.messages?.business;
@@ -77,7 +76,7 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const res = await loginAPI(formData.email.trim(), formData.password);
+      const res = await loginAPI(formData.email.trim(), formData.password.trim());
 
       console.log("Login response:", res);
 
@@ -104,7 +103,7 @@ const Login = () => {
     } catch (err) {
       toast({
         title: 'Đăng nhập thất bại!',
-        description: err?.message || 'Không thể kết nối máy chủ.',
+        description: 'Vui lòng thử lại sau',
         variant: 'destructive',
       });
     } finally {

@@ -176,7 +176,7 @@ const SignUp = () => {
       console.error("Register error:", error);
       toast({
         title: "Đăng ký thất bại!",
-        description: error?.message || "Có lỗi xảy ra, vui lòng thử lại",
+        description: "Có lỗi xảy ra, vui lòng thử lại",
         variant: "destructive"
       });
     } finally {

@@ -57,23 +57,27 @@ public class StaffService {
 
         userRepository.save(staff);
 
-        // 6️⃣ Gán staff vào station
-        Station station = stationRepository.findById(req.getStationId())
-                .orElseThrow(() -> new RuntimeException("Station not found: " + req.getStationId()));
+        // 6️⃣ Gán staff vào station (nếu có stationId)
+        Station station = null;
+        if (req.getStationId() != null) {
+            station = stationRepository.findById(req.getStationId())
+                    .orElseThrow(() -> new RuntimeException("Station not found: " + req.getStationId()));
 
-        StaffAssign assign = new StaffAssign();
-        assign.setUser(staff);
-        assign.setStationId(station.getStationId());
-        assign.setAssignDate(LocalDateTime.now());
-        staffAssignRepository.save(assign);
+            StaffAssign assign = new StaffAssign();
+            assign.setUser(staff);
+            assign.setStationId(station.getStationId());
+            assign.setAssignDate(LocalDateTime.now());
+            assign.setActive(true);
+            staffAssignRepository.save(assign);
+        }
 
         return new CreateStaffResponse(
                 staff.getUserId(),
                 staff.getFullName(),
                 staff.getEmail(),
                 staff.getRole().getRoleName(),
-                station.getStationId(),
-                station.getStationName(),
+                station != null ? station.getStationId() : null,
+                station != null ? station.getStationName() : null,
                 staff.isActive()
         );
     }

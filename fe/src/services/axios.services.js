@@ -1,4 +1,6 @@
+import { data } from "autoprefixer";
 import axios from "./axios.config";
+import { act } from "react";
 
 const registerAPI = (fullName, email, phone, address, password, confirmPassword) => {
     const data = {
@@ -177,6 +179,20 @@ const getAllStaff = () => {
     return axios.get("/admin/staff");
 }
 
+const createStaffAccount = (name, email, password, stationId) => {
+    const data = { name, email, password, stationId };
+    return axios.post("/admin/staff", data);
+}
+
+const cancelStaffAssign = (staffId) => {
+    return axios.delete(`/admin/staff/${staffId}/unassign`);
+}
+
+const assignOrActivateStaff = (staffId, stationId, active) => {
+    const data = { stationId, active };
+    return axios.put(`/admin/staff/${staffId}`, data);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -218,5 +234,8 @@ export {
     insertBatteryInventory,
     removeBatteryInventory,
     batteryStatusUpdate,
-    getAllStaff
+    getAllStaff,
+    createStaffAccount,
+    cancelStaffAssign,
+    assignOrActivateStaff
 };

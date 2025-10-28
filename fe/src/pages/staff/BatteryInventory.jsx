@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useStompBattery } from "../../hooks/useStompBattery";
 import { insertBatteryInventory, removeBatteryInventory, batteryStatusUpdate } from "../../services/axios.services";
+import { SystemContext } from "../../contexts/system.context";
 // ======================
 // Map status BE ↔ UI
 // ======================
@@ -58,17 +59,6 @@ function getDockCapacity(dockName) {
   const key = String(dockName || "").toUpperCase();
   return DOCK_CAPACITY[key] ?? 0;
 }
-
-function isValidSlotCodeForDock(slotCode, dockName) {
-  if (!slotCode) return false;
-  const prefix = String(dockName || "").toUpperCase(); // "A" | "B" | "C"
-  const code = slotCode.toUpperCase().trim();
-  if (!code.startsWith(prefix)) return false;
-  const num = Number(code.replace(/^[A-Z]+/, ""));
-  const cap = getDockCapacity(prefix);
-  return Number.isInteger(num) && num >= 1 && num <= cap;
-}
-
 // ===============
 // Component chính
 // ===============
@@ -83,15 +73,15 @@ const BatteryInventory = () => {
   const [selectedBattery, setSelectedBattery] = useState(null);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [selectedDockIndex, setSelectedDockIndex] = useState(0);
+  const { userData } = useContext(SystemContext);
+  userData.assignedStationId;
   const STATION_ID = 1;
-  // WebSocket hooks (để sẵn nếu bạn muốn dùng)
+  // WebSocket hooks
   const { connected, connect, disconnect, subscribeStation, subscribeStationGrouped, sendJoinStation } = useStompBattery();
   const unsubRef = useRef(null);
 
-  // DỮ LIỆU CHÍNH LẤY TỪ BE
   const [docksData, setDocksData] = useState([]);
 
-  // Form Add / Edit — map về UI cũ cho dễ dùng
   const [newBattery, setNewBattery] = useState({
     batteryId: "",
     slotId: "",
@@ -390,7 +380,6 @@ const BatteryInventory = () => {
   const handleUpdateBattery = async (batteryId, statusUi) => {
 
     const newStatus = mapUiStatusToBe(statusUi);
-
     if (!batteryId?.trim() || !newStatus) {
       toast({
         title: "Thiếu dữ liệu",
@@ -399,7 +388,6 @@ const BatteryInventory = () => {
       });
       return;
     }
-
     try {
       const res = await batteryStatusUpdate(batteryId, newStatus);
       if (res?.messages?.business || res?.error || res?.status >= 400) {
@@ -418,7 +406,8 @@ const BatteryInventory = () => {
         );
         setIsEditDialogOpen(false)
       }
-    } catch (err) {
+    }
+    catch (err) {
       toast({
         title: "Cập nhật thất bại",
         description: "Đã xảy ra lỗi.",

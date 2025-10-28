@@ -159,7 +159,7 @@ const removeBatteryInventory = (batteryId) => {
     return axios.post(`/batteries/eject/${batteryId}`);
 }
 const batteryStatusUpdate = (batteryId, newStatus) => {
-    data = {
+    const data = {
         batteryId: batteryId,
         newStatus: newStatus
     }

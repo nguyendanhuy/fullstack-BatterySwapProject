@@ -93,6 +93,8 @@ public class AuthController {
 
         Integer assignedStationId = null;
         Long activeSubscriptionId = null;
+        Integer usedSwaps = null;
+        String planName = null;
 
         // 🔹 Nếu là Staff
         if (user.getRole().getRoleId() == 2) {
@@ -108,24 +110,28 @@ public class AuthController {
                             UserSubscription.SubscriptionStatus.ACTIVE,
                             LocalDateTime.now()
                     );
+
             if (sub != null && sub.getPlan() != null) {
                 activeSubscriptionId = sub.getPlan().getId();
+                planName = sub.getPlan().getPlanName();
+                usedSwaps = sub.getUsedSwaps();
             }
         }
 
-        // ✅ Sử dụng HashMap để cho phép null value (tránh NPE)
-        Map<String, Object> result = new HashMap<>();
+        // ✅ Dùng LinkedHashMap để giữ thứ tự khi serialize ra JSON
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("userId", user.getUserId());
-        result.put("email", user.getEmail());
         result.put("fullName", user.getFullName());
+        result.put("email", user.getEmail());
         result.put("phone", user.getPhone());
         result.put("role", user.getRole().getRoleName());
         result.put("assignedStationId", assignedStationId);
-        result.put("activeSubscriptionId", activeSubscriptionId); // 💰 Cho phép null
+        result.put("activeSubscriptionId", activeSubscriptionId);
+        result.put("planName", planName);
+        result.put("usedSwaps", usedSwaps);
 
         return ResponseEntity.ok(result);
     }
-
 
 
 

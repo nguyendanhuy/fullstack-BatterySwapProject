@@ -49,4 +49,17 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
     UserSubscription findFirstByUser_UserIdAndStatusAndEndDateAfter(
             String userId, UserSubscription.SubscriptionStatus status, LocalDateTime now);
 
+    // ✅ [THÊM MỚI]
+    // Hàm này dùng ngày cụ thể - dùng cho API GET (lấy booking cũ)
+    @Query("SELECT us FROM UserSubscription us " +
+            "WHERE us.user.userId = :userId " +
+            "AND us.status = :status " +
+            "AND us.startDate <= :checkDate " +  // <-- Dùng ngày được cung cấp
+            "AND us.endDate >= :checkDate")      // <-- Dùng ngày được cung cấp
+    Optional<UserSubscription> findActiveSubscriptionForUserOnDate(
+            @Param("userId") String userId,
+            @Param("status") UserSubscription.SubscriptionStatus status,
+            @Param("checkDate") LocalDateTime checkDate
+    );
+
 }

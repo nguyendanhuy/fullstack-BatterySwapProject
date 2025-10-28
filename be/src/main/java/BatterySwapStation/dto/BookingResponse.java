@@ -56,6 +56,12 @@ public class BookingResponse {
     // Message động cho batch booking
     private String message;
 
+    // ✅ THÊM: Thông tin gói cước
+    private Boolean isFreeSwap;              // Có phải booking miễn phí không
+    private String subscriptionPlanName;      // Tên gói cước đang dùng
+    private Integer remainingSwaps;           // Số lượt còn lại (-1 = không giới hạn)
+    private Integer totalSwapLimit;           // Tổng số lượt của gói (-1 = không giới hạn)
+
     // Thông tin thanh toán (nested object)
     private PaymentInfo payment;
 
@@ -67,7 +73,6 @@ public class BookingResponse {
         private String paymentMethod;
         private Double amount;
         private String paymentStatus;
-
 
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime paymentDate;

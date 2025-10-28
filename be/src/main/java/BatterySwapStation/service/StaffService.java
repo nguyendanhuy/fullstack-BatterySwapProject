@@ -114,34 +114,28 @@ public class StaffService {
 
     @Transactional
     public StaffListItemDTO updateStaffAssign(String staffId, UpdateStaffAssignRequest req) {
-        // 1️⃣ Lấy user
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy staff: " + staffId));
 
-        // 2️⃣ Cập nhật trạng thái Active (nếu có)
         if (req.getActive() != null) {
             staff.setActive(req.getActive());
             userRepository.save(staff);
         }
 
-        // 3️⃣ Tìm bản ghi assign hiện tại (nếu có)
         StaffAssign currentAssign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(staffId);
 
-        // 4️⃣ Nếu có stationId mới
         if (req.getStationId() != null) {
-            // Nếu staff chưa có assign, tạo mới
             if (currentAssign == null) {
                 currentAssign = new StaffAssign();
                 currentAssign.setUser(staff);
+                currentAssign.setAssignDate(LocalDateTime.now());
             }
 
-            // Gán trạm mới
             currentAssign.setStationId(req.getStationId());
             currentAssign.setActive(true);
             staffAssignRepository.save(currentAssign);
         }
 
-        // 5️⃣ Trả về DTO kết quả
         Station station = null;
         if (req.getStationId() != null) {
             station = stationRepository.findById(req.getStationId()).orElse(null);
@@ -158,6 +152,7 @@ public class StaffService {
                 staff.isActive()
         );
     }
+
 
     @Transactional
     public void unassignStaff(String staffId) {

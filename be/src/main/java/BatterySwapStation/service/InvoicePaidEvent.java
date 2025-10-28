@@ -20,7 +20,3 @@ public class InvoicePaidEvent extends ApplicationEvent {
         return invoice;
     }
 }
-
-
-
-//dòng này để test push github

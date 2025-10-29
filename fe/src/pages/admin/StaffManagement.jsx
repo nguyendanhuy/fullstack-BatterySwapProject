@@ -1,15 +1,30 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Users, Plus, Edit, UserPlus, Home, MapPin, Loader2 } from "lucide-react";
@@ -19,247 +34,175 @@ import {
   getAllStaff,
   createStaffAccount,
   cancelStaffAssign,
-  assignOrActivateStaff,
+  assignStaff,
+  getStationsAndStaff,
 } from "../../services/axios.services";
 
-// 👇 Thêm Select của shadcn/ui
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-
 const StaffManagement = () => {
+  // data
   const [staffList, setStaffList] = useState([]);
+  const [stationsData, setStationsData] = useState([]); // from getStationsAndStaff
 
-  // DEMO station cứng (không ảnh hưởng nhập tay stationId)
-  const [stations] = useState([
-    { id: 1, name: "Trạm Bình Thạnh", address: "789 Xô Viết Nghệ Tĩnh", maxStaff: 2 },
-    { id: 2, name: "Trạm Quận 1", address: "123 Lê Lợi", maxStaff: 2 },
-    { id: 3, name: "Trạm Thủ Đức", address: "456 Võ Văn Ngân", maxStaff: 2 },
-    { id: 4, name: "Trạm Tân Bình", address: "321 Cộng Hòa", maxStaff: 2 },
-  ]);
+  // Filters for staff list (independent from station overview)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // all | active | inactive
 
-  // Helpers – interceptor đã trả về .data
-  const pickApiMessage = (data) =>
-    data?.messages?.auth ||
-    data?.messages?.business ||
-    data?.error ||
-    "Có lỗi xảy ra. Vui lòng thử lại.";
-
-  const isErrorResponse = (data) =>
-    !!data?.error || !!data?.messages?.auth || !!data?.messages?.business;
-
+  // UI state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [loading, setLoading] = useState({});
 
   const [selectedStaff, setSelectedStaff] = useState(null);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    stationId: "", // nhập tay, có thể rỗng => null
-  });
-
-  const [addLoading, setAddLoading] = useState(false);
-
-  // Assign dialog: chỉ nhập stationId, staffId giữ trong state ẩn
-  const [pendingAssignStaffId, setPendingAssignStaffId] = useState(null);
+  const [formData, setFormData] = useState({ name: "", email: "", password: "", stationId: "" });
   const [assignStationId, setAssignStationId] = useState("");
 
-  // loading theo từng dòng khi thao tác
-  const [rowLoading, setRowLoading] = useState({}); // { [staffId]: boolean }
 
-  // ---- Fetch staff (mount & khi cần) ----
-  const fetchStaff = useCallback(async () => {
+  const pickApiMessage = (data) => data?.messages?.auth || data?.messages?.business || data?.error || "Có lỗi xảy ra.";
+  const isErrorResponse = (data) => !!data?.error || !!data?.messages?.auth || !!data?.messages?.business;
+
+  // fetchers
+  const fetchStaff = async () => {
     try {
-      const response = await getAllStaff(); // array
-      const normalized = (response ?? []).map((s) => ({
-        staffId: s.staffId ?? s.id ?? "",
-        fullName: s.fullName ?? s.name ?? "",
-        email: s.email ?? "",
-        active: typeof s.active === "boolean" ? s.active : !!s.stationId,
-        stationId:
-          s.stationId === undefined || s.stationId === null || s.stationId === ""
-            ? null
-            : s.stationId,
-        stationName: s.stationName ?? null,
-      }));
-      setStaffList(normalized);
-    } catch (error) {
-      console.error("❌ Error fetching staff data:", error);
+      const data = await getAllStaff();
+      console.log("✅ Fetch All Staff:", data);
+      setStaffList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Fetch Staff:", err);
       toast.error("Không thể tải danh sách nhân viên");
     }
-  }, []);
+  };
+
+  const fetchStations = async () => {
+    try {
+      const data = await getStationsAndStaff();
+      console.log("✅ Fetch Stations:", data);
+      setStationsData(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Fetch Stations:", err);
+      toast.error("Không thể tải trạng thái trạm");
+    }
+  };
 
   useEffect(() => {
     fetchStaff();
-  }, [fetchStaff]);
+    fetchStations();
+  }, []);
 
-  // Stats
+  // stats
   const totalStaff = staffList.length;
-  const assignedStaff = staffList.filter((s) => s.stationId !== null).length;
+  const assignedStaff = staffList.filter((s) => s.stationId !== null && s.stationId !== undefined).length;
   const unassignedStaff = totalStaff - assignedStaff;
 
-  // Map stationId -> count
-  const stationStaffCounts = useMemo(() => {
-    const counts = new Map();
-    for (const st of stations) counts.set(st.id, 0);
-    for (const s of staffList) {
-      const sid =
-        s.stationId === null || s.stationId === undefined || s.stationId === ""
-          ? null
-          : Number(s.stationId);
-      if (sid && counts.has(sid)) counts.set(sid, counts.get(sid) + 1);
-    }
-    return counts;
-  }, [staffList, stations]);
-
-  // ---- Actions (API). Thành công => fetchStaff() ----
+  // actions
   const handleAddStaff = async () => {
     if (!formData.name || !formData.email || !formData.password) {
-      toast.error("Vui lòng nhập đầy đủ tên, email và mật khẩu");
+      toast.error("Vui lòng nhập tên, email và mật khẩu");
+      return;
+    }
+    const stationId = formData.stationId ? Number(formData.stationId) : null;
+    if (formData.stationId && Number.isNaN(stationId)) {
+      toast.error("Station ID phải là số");
       return;
     }
 
-    let stationIdMapped = null;
-    if (formData.stationId.trim() !== "") {
-      const parsed = Number(formData.stationId);
-      if (Number.isNaN(parsed)) {
-        toast.error("Station ID phải là số hoặc để trống");
-        return;
-      }
-      stationIdMapped = parsed;
-    }
-
-    setAddLoading(true);
+    setLoading({ add: true });
     try {
-      const data = await createStaffAccount(
-        formData.name,
-        formData.email,
-        formData.password,
-        stationIdMapped
-      );
+      const data = await createStaffAccount(formData.name, formData.email, formData.password, stationId);
+      console.log("✅ Create Staff Response:", data);
       if (isErrorResponse(data)) {
         toast.error(pickApiMessage(data));
         return;
       }
-      toast.success("Tạo tài khoản nhân viên thành công");
+      toast.success("Tạo nhân viên thành công");
       setIsAddDialogOpen(false);
       setFormData({ name: "", email: "", password: "", stationId: "" });
       await fetchStaff();
-    } catch (error) {
-      console.error("Create staff error:", error);
-      toast.error("Không thể tạo tài khoản. Vui lòng thử lại.");
+      await fetchStations();
+    } catch (err) {
+      console.error("❌ Handle Add Staff:", err);
+      toast.error("Không thể tạo nhân viên");
     } finally {
-      setAddLoading(false);
+      setLoading({});
     }
   };
 
-  // Assign: gửi { stationId, active: null }
   const handleAssignConfirm = async () => {
-    const parsed = Number(assignStationId);
-    if (!pendingAssignStaffId) return toast.error("Thiếu staffId");
-    if (!assignStationId || Number.isNaN(parsed)) {
-      return toast.error("Station ID phải là số");
-    }
+    if (!selectedStaff) return toast.error("Thiếu nhân viên để phân công");
+    const sid = Number(assignStationId);
+    if (!assignStationId || Number.isNaN(sid)) return toast.error("Station ID phải là số");
 
-    const sid = pendingAssignStaffId;
-    setRowLoading((m) => ({ ...m, [sid]: true }));
+    setLoading({ [selectedStaff.staffId]: true });
     try {
-      const res = await assignOrActivateStaff(sid, parsed, null);
-      if (isErrorResponse(res)) {
-        toast.error(pickApiMessage(res));
+      const data = await assignStaff(selectedStaff.staffId, sid);
+      console.log("✅ Assign Staff Response:", data);
+      if (isErrorResponse(data)) {
+        toast.error(pickApiMessage(data));
         return;
       }
-      toast.success("Đã phân công nhân viên");
+      toast.success("Phân công thành công");
       setIsAssignDialogOpen(false);
-      setPendingAssignStaffId(null);
       setAssignStationId("");
+      setSelectedStaff(null);
       await fetchStaff();
+      await fetchStations();
     } catch (err) {
-      console.error("Assign error:", err);
-      toast.error("Không thể phân công. Vui lòng thử lại.");
+      console.error("❌ Handle Assign Confirm:", err);
+      toast.error("Không thể phân công");
     } finally {
-      setRowLoading((m) => ({ ...m, [sid]: false }));
+      setLoading({});
     }
   };
 
-  // Hủy assign: POST /unassign
   const handleUnassignStaff = async (staffId) => {
-    setRowLoading((m) => ({ ...m, [staffId]: true }));
+    setLoading({ [staffId]: true });
     try {
-      const res = await cancelStaffAssign(staffId);
-      if (isErrorResponse(res)) {
-        toast.error(pickApiMessage(res));
+      const data = await cancelStaffAssign(staffId);
+      console.log("✅ Unassign Staff Response:", data);
+      if (isErrorResponse(data)) {
+        toast.error(pickApiMessage(data));
         return;
       }
-      toast.success("Đã hủy phân công nhân viên");
+      toast.success("Hủy phân công thành công");
       await fetchStaff();
+      await fetchStations();
     } catch (err) {
-      console.error("Unassign error:", err);
-      toast.error("Không thể hủy phân công. Vui lòng thử lại.");
+      console.error("❌ Handle Unassign Staff:", err);
+      toast.error("Không thể hủy phân công");
     } finally {
-      setRowLoading((m) => ({ ...m, [staffId]: false }));
+      setLoading({});
     }
   };
 
-  // ✅ Đổi trạng thái bằng Select: gửi { stationId: null, active: nextActive }
-  const handleChangeActive = async (staff, nextActive) => {
-    const sid = staff.staffId;
-    setRowLoading((m) => ({ ...m, [sid]: true }));
-
-    try {
-      const res = await assignOrActivateStaff(sid, null, nextActive);
-      if (isErrorResponse(res)) {
-        toast.error(pickApiMessage(res));
-        // rollback UI (fetch lại dữ liệu chính xác từ BE)
-        await fetchStaff();
-        return;
-      }
-      toast.success(nextActive ? "Đã đặt Hoạt động" : "Đã đặt Không hoạt động");
-      await fetchStaff();
-    } catch (err) {
-      console.error("Change active error:", err);
-      toast.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
-      await fetchStaff();
-    } finally {
-      setRowLoading((m) => ({ ...m, [sid]: false }));
-    }
+  // UI helpers
+  const getStationDisplay = (station) => {
+    if (!station) return { id: null, name: "Unassigned", address: "-", staffList: [], active: false };
+    return {
+      id: station.stationId,
+      name: station.stationName || (station.stationId === null ? "Unassigned" : String(station.stationId)),
+      address: station.address || "-",
+      staffList: station.staffList || [],
+      active: typeof station.active === "boolean" ? station.active : (station.staffList || []).some((s) => s.active),
+    };
   };
 
-  // --- Open dialogs ---
-  const openEditDialog = (staff) => {
-    setSelectedStaff(staff);
-    setFormData({
-      name: staff.fullName ?? "",
-      email: staff.email ?? "",
-      password: "",
-      stationId:
-        staff.stationId === null || staff.stationId === undefined
-          ? ""
-          : String(staff.stationId),
-    });
-    setIsEditDialogOpen(true);
-  };
+  // Filter staff list (independent logic)
+  const filteredStaffList = staffList.filter((staff) => {
+    const matchesSearch = staff.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      staff.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      staff.staffId?.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const openAssignDialog = (staff) => {
-    setPendingAssignStaffId(staff.staffId);
-    setAssignStationId("");
-    setIsAssignDialogOpen(true);
-  };
+    const matchesStatus = statusFilter === "all"
+      ? true
+      : statusFilter === "active"
+        ? staff.active
+        : !staff.active;
 
-  // Helper: suy ra stationName từ hardcode khi BE chưa trả
-  const getStationDisplay = (sid, sname) => {
-    if (sid === null || sid === undefined) return null;
-    const byId = stations.find((st) => st.id === Number(sid));
-    const name = sname ?? byId?.name ?? "—";
-    return { id: Number(sid), name };
-  };
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -273,37 +216,37 @@ const StaffManagement = () => {
           </div>
           <Link to="/admin">
             <Button variant="ghost" className="text-white hover:bg-white/20">
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
+              <Home className="h-4 w-4 mr-2" /> Dashboard
             </Button>
           </Link>
         </div>
       </header>
 
       <div className="container mx-auto p-6">
-        {/* Statistics */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all">
             <CardContent className="p-6 text-center">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-md">
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Users className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-2xl font-bold">{totalStaff}</h3>
               <p className="text-muted-foreground">Tổng nhân viên</p>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
+
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all">
             <CardContent className="p-6 text-center">
-              <div className="bg-gradient-to-r from-green-500 to-green-600 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-md">
+              <div className="bg-gradient-to-r from-green-500 to-green-600 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <UserPlus className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-2xl font-bold">{assignedStaff}</h3>
               <p className="text-muted-foreground">Đã phân công</p>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
+
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all">
             <CardContent className="p-6 text-center">
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 shadow-md">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Users className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-2xl font-bold">{unassignedStaff}</h3>
@@ -312,181 +255,191 @@ const StaffManagement = () => {
           </Card>
         </div>
 
-        {/* Station Status Overview (DEMO) */}
-        <Card className="border-0 shadow-lg bg-white overflow-hidden hover:shadow-xl transition-all duration-300 mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <div className="bg-gradient-to-r from-teal-500 to-teal-600 w-10 h-10 rounded-lg flex items-center justify-center mr-3 shadow-md">
-                <MapPin className="h-5 w-5 text-white" />
+        {/* Station Overview (from API) - Independent from staff list */}
+        <Card className="border-0 shadow-lg mb-8">
+          <CardHeader className="bg-gradient-to-r from-teal-50 to-emerald-50 border-b">
+            <CardTitle className="flex items-center text-xl">
+              <div className="bg-gradient-to-r from-teal-500 to-teal-600 w-12 h-12 rounded-xl flex items-center justify-center mr-3 shadow-md">
+                <MapPin className="h-6 w-6 text-white" />
               </div>
               Tình trạng trạm làm việc
             </CardTitle>
-            <CardDescription>Số lượng nhân viên hiện tại tại mỗi trạm</CardDescription>
+            <CardDescription className="text-base">
+              Theo dõi nhân viên tại các trạm đổi pin
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {stations.map((station) => {
-                const count = stationStaffCounts.get(station.id) ?? 0;
-                const isFullyStaffed = count >= station.maxStaff;
-                const isEmpty = count === 0;
+          <CardContent className="p-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {stationsData.filter((st) => st.stationId !== null).length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <MapPin className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500 text-lg">Chưa có trạm nào hoạt động</p>
+                </div>
+              ) : (
+                stationsData
+                  .filter((st) => st.stationId !== null)
+                  .map((st) => {
+                    const count = st.staffList?.length || 0;
+                    const isEmpty = count === 0;
 
-                const staffsAtStation = staffList.filter((s) => {
-                  const sid =
-                    s.stationId === null || s.stationId === undefined || s.stationId === ""
-                      ? null
-                      : Number(s.stationId);
-                  return sid === station.id;
-                });
+                    return (
+                      <Card
+                        key={st.stationId}
+                        className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isEmpty
+                          ? "border-red-200 bg-gradient-to-br from-red-50 to-orange-50"
+                          : st.active
+                            ? "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
+                            : "border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50"
+                          }`}>
+                        {/* Top colored bar */}
+                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${isEmpty ? "bg-gradient-to-r from-red-400 to-orange-400" : st.active ? "bg-gradient-to-r from-green-400 to-emerald-400" : "bg-gradient-to-r from-gray-400 to-slate-400"}`} />
 
-                return (
-                  <Card
-                    key={station.id}
-                    className={`border-l-4 transition-all duration-300 hover:scale-105 ${isEmpty
-                      ? "border-l-red-500 bg-red-50"
-                      : isFullyStaffed
-                        ? "border-l-green-500 bg-green-50"
-                        : "border-l-yellow-500 bg-yellow-50"
-                      }`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-gray-800">{station.name}</h3>
-                          <Badge
-                            variant={
-                              isEmpty ? "destructive" : isFullyStaffed ? "default" : "secondary"
-                            }
-                          >
-                            {count}/{station.maxStaff}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">{station.address}</p>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-500">Nhân viên:</span>
-                            <span
-                              className={`font-medium ${isEmpty
-                                ? "text-red-600"
-                                : isFullyStaffed
-                                  ? "text-green-600"
-                                  : "text-yellow-600"
-                                }`}
-                            >
-                              {count}/{station.maxStaff}
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${isEmpty
-                                ? "bg-red-500"
-                                : isFullyStaffed
-                                  ? "bg-green-500"
-                                  : "bg-yellow-500"
-                                }`}
-                              style={{ width: `${(count / station.maxStaff) * 100}%` }}
-                            />
-                            <div className="space-y-1">
-                              {staffsAtStation.map((s) => (
-                                <div key={s.staffId} className="flex items-center text-xs text-gray-600">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                                  {s.fullName}
+                        <CardContent className="p-5 pt-6">
+                          <div className="space-y-3">
+                            {/* Header */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-gray-900 text-base leading-tight mb-1 line-clamp-2">
+                                  Trạm {st.stationId} : {st.stationName}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Badge
+                                    variant={isEmpty ? "destructive" : st.active ? "default" : "secondary"}
+                                    className="text-xs font-semibold">
+                                    {count} nhân viên đang hoạt động
+                                  </Badge>
                                 </div>
-                              ))}
-                              {count === 0 && (
-                                <div className="text-xs text-gray-500 italic">Chưa có thông tin</div>
+                              </div>
+                            </div>
+
+                            {/* Address */}
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                              <p className="text-sm text-gray-600 line-clamp-2 leading-snug">
+                                {st.address || "Chưa có địa chỉ"}
+                              </p>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="space-y-1.5">
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r from-green-400 to-emerald-500`}
+                                />
+                              </div>
+                            </div>
+
+
+                            {/* Staff list */}
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                              {st.staffList && st.staffList.length > 0 ? (
+                                st.staffList.map((s) => (
+                                  <div
+                                    key={s.staffId}
+                                    className="flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2 border border-gray-100 hover:bg-white hover:border-gray-200 transition-colors">
+                                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.active ? 'bg-green-500 shadow-sm shadow-green-300' : 'bg-gray-400'}`} />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-800 truncate">{s.staffId} - {s.fullName}</p>
+                                      <p className="text-xs text-gray-500 truncate">{s.email}</p>
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-center py-6 px-3">
+                                  <Users className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                                  <p className="text-xs text-gray-400 italic">Chưa có nhân viên được phân công</p>
+                                </div>
                               )}
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Staff Management */}
-        <Card className="border-0 shadow-lg bg-white overflow-hidden hover:shadow-xl transition-all duration-300">
+        {/* Staff table */}
+        <Card className="border-0 shadow-lg">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 w-10 h-10 rounded-lg flex items-center justify-center mr-3 shadow-md">
-                    <Users className="h-5 w-5 text-white" />
-                  </div>
-                  Danh sách nhân viên
-                </CardTitle>
-                <CardDescription>Quản lý tất cả nhân viên trong hệ thống</CardDescription>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <div className="bg-gradient-to-r from-purple-500 to-purple-600 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                    Danh sách nhân viên
+                  </CardTitle>
+                  <CardDescription>Quản lý tất cả nhân viên trong hệ thống</CardDescription>
+                </div>
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-gradient-to-r from-purple-600 to-purple-700">
+                      <Plus className="h-4 w-4 mr-2" /> Thêm nhân viên
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Thêm nhân viên mới</DialogTitle>
+                      <DialogDescription>Nhập thông tin nhân viên</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="name">Họ và tên *</Label>
+                        <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nhập họ và tên" />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email *</Label>
+                        <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="Nhập email" />
+                      </div>
+                      <div>
+                        <Label htmlFor="password">Mật khẩu *</Label>
+                        <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Mật khẩu tạm thời" />
+                      </div>
+                      <div>
+                        <Label htmlFor="stationId">Station ID (tùy chọn)</Label>
+                        <Input id="stationId" value={formData.stationId} onChange={(e) => setFormData({ ...formData, stationId: e.target.value })} placeholder="VD: 1" />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Hủy</Button>
+                      <Button onClick={handleAddStaff} disabled={!!loading.add}>{loading.add ? "Đang tạo..." : "Thêm nhân viên"}</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-md">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Thêm nhân viên
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Thêm nhân viên mới</DialogTitle>
-                    <DialogDescription>Nhập thông tin nhân viên mới</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Họ và tên *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Nhập họ và tên"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="Nhập email"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Mật khẩu *</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        placeholder="Mật khẩu tạm thời"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="stationId">Station ID (có thể để trống)</Label>
-                      <Input
-                        id="stationId"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder="Gán trạm làm việc"
-                        value={formData.stationId}
-                        onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                      Hủy
-                    </Button>
-                    <Button onClick={handleAddStaff} disabled={addLoading}>
-                      {addLoading ? "Đang tạo..." : "Thêm nhân viên"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+
+              {/* Filter controls */}
+              <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg border">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Tìm theo tên, email hoặc mã nhân viên..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium whitespace-nowrap">Trạng thái:</Label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="border rounded-md px-3 py-2 bg-white text-sm font-medium min-w-[150px] focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="all">Tất cả</option>
+                    <option value="active">Hoạt động</option>
+                    <option value="inactive">Không hoạt động</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>Hiển thị <strong className="text-foreground">{filteredStaffList.length}</strong> / {staffList.length} nhân viên</span>
+              </div>
             </div>
           </CardHeader>
 
@@ -503,169 +456,104 @@ const StaffManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {staffList.map((staff) => {
-                  const stationDisplay = getStationDisplay(staff.stationId, staff.stationName);
-                  const isBusy = !!rowLoading[staff.staffId];
-
-                  return (
-                    <TableRow key={staff.staffId}>
-                      <TableCell>{staff.staffId}</TableCell>
-                      <TableCell className="font-medium">{staff.fullName}</TableCell>
-                      <TableCell>{staff.email}</TableCell>
-                      <TableCell>
-                        {stationDisplay ? (
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-1" />
-                            {stationDisplay.id} - {stationDisplay.name}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">Chưa phân công</span>
-                        )}
-                      </TableCell>
-
-                      {/* ✅ Select trạng thái */}
-                      <TableCell>
-                        <div className="min-w-[160px]">
-                          <Select
-                            value={staff.active ? "active" : "inactive"}
-                            disabled={isBusy}
-                            onValueChange={(val) =>
-                              handleChangeActive(staff, val === "active")
-                            }
-                          >
-                            <SelectTrigger className="w-[160px]">
-                              <SelectValue placeholder="Chọn trạng thái" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="active">Hoạt động</SelectItem>
-                              <SelectItem value="inactive">Không hoạt động</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex flex-wrap gap-2">
-                          <Button size="sm" variant="outline" onClick={() => openEditDialog(staff)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-
-                          {staff.stationId === null ? (
-                            // Chưa assign -> cho assign
-                            <Button
-                              size="sm"
-                              onClick={() => openAssignDialog(staff)}
-                              disabled={isBusy}
-                            >
-                              {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assign"}
-                            </Button>
+                {filteredStaffList.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12">
+                      <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-gray-500">
+                        {searchQuery || statusFilter !== "all"
+                          ? "Không tìm thấy nhân viên phù hợp với bộ lọc"
+                          : "Chưa có nhân viên nào"}
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredStaffList.map((s) => {
+                    const isBusy = !!loading[s.staffId];
+                    const stationName = s.stationName || (s.stationId ? String(s.stationId) : null);
+                    return (
+                      <TableRow key={s.staffId}>
+                        <TableCell>{s.staffId}</TableCell>
+                        <TableCell className="font-medium">{s.fullName}</TableCell>
+                        <TableCell>{s.email}</TableCell>
+                        <TableCell>
+                          {stationName ? (
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-1 text-blue-500" /> {stationName}
+                            </div>
                           ) : (
-                            // Đang có station -> Hủy assign
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleUnassignStaff(staff.staffId)}
-                              disabled={isBusy}
-                            >
-                              {isBusy ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Đang hủy...
-                                </>
-                              ) : (
-                                "Hủy assign"
-                              )}
-                            </Button>
+                            <span className="text-muted-foreground">Chưa phân công</span>
                           )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={s.active ? "default" : "secondary"}>{s.active ? "Hoạt động" : "Không hoạt động"}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => { setSelectedStaff(s); setFormData({ name: s.fullName, email: s.email, password: "", stationId: s.stationId ?? "" }); setIsEditDialogOpen(true); }}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+
+                            {s.stationId ? (
+                              <Button size="sm" variant="outline" onClick={() => handleUnassignStaff(s.staffId)} disabled={isBusy}>
+                                {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hủy assign"}
+                              </Button>
+                            ) : (
+                              <Button size="sm" onClick={() => { setSelectedStaff(s); setAssignStationId(""); setIsAssignDialogOpen(true); }} disabled={isBusy}>
+                                {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assign"}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
 
-        {/* Edit Dialog */}
+        {/* Edit dialog (UI only) */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Chỉnh sửa thông tin nhân viên</DialogTitle>
-              <DialogDescription>Cập nhật thông tin nhân viên</DialogDescription>
+              <DialogDescription>Cập nhật thông tin (demo UI)</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="edit-name">Họ và tên</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
+                <Input id="edit-name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div>
                 <Label htmlFor="edit-email">Email</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
+                <Input id="edit-email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Hủy
-              </Button>
-              <Button
-                onClick={() => {
-                  // chỉ cập nhật UI cho demo
-                  if (selectedStaff && formData.name && formData.email) {
-                    setStaffList((list) =>
-                      list.map((s) =>
-                        s.staffId === selectedStaff.staffId
-                          ? { ...s, fullName: formData.name, email: formData.email }
-                          : s
-                      )
-                    );
-                    setSelectedStaff(null);
-                    setFormData({ name: "", email: "", password: "", stationId: "" });
-                    setIsEditDialogOpen(false);
-                    toast.success("Đã cập nhật thông tin nhân viên (UI)");
-                  }
-                }}
-              >
-                Cập nhật
-              </Button>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Hủy</Button>
+              <Button onClick={() => { toast.success("Cập nhật (UI)"); setIsEditDialogOpen(false); }}>Cập nhật</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Assign Dialog (chỉ nhập Station ID) */}
+        {/* Assign dialog */}
         <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Phân công nhân viên vào trạm</DialogTitle>
-              <DialogDescription>Nhập Station ID để gán cho nhân viên</DialogDescription>
+              <DialogDescription>Nhập Station ID để phân công</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="assign-station">Station ID *</Label>
-                <Input
-                  id="assign-station"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="VD: 12"
-                  value={assignStationId}
-                  onChange={(e) => setAssignStationId(e.target.value)}
-                />
+                <Input id="assign-station" value={assignStationId} onChange={(e) => setAssignStationId(e.target.value)} placeholder="VD: 6" />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
-                Hủy
-              </Button>
-              <Button onClick={handleAssignConfirm}>Xác nhận Assign</Button>
+              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>Hủy</Button>
+              <Button onClick={handleAssignConfirm}>Xác nhận</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

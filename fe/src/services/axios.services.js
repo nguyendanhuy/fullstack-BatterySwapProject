@@ -176,7 +176,7 @@ const resetPasswordAPI = (token, newPassword, confirmPassword) => {
 }
 
 const getAllStaff = () => {
-    return axios.get("/admin/staff");
+    return axios.get("/admin/staff/list");
 }
 
 const createStaffAccount = (name, email, password, stationId) => {
@@ -188,9 +188,12 @@ const cancelStaffAssign = (staffId) => {
     return axios.delete(`/admin/staff/${staffId}/unassign`);
 }
 
-const assignOrActivateStaff = (staffId, stationId, active) => {
-    const data = { stationId, active };
-    return axios.put(`/admin/staff/${staffId}`, data);
+const assignStaff = (staffId, stationId) => {
+    return axios.put(`/admin/staff/${staffId}`, { stationId });
+}
+
+const getStationsAndStaff = () => {
+    return axios.get("/admin/staff");
 }
 
 export {
@@ -237,5 +240,6 @@ export {
     getAllStaff,
     createStaffAccount,
     cancelStaffAssign,
-    assignOrActivateStaff
+    assignStaff,
+    getStationsAndStaff
 };

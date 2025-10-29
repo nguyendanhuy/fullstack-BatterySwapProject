@@ -111,11 +111,10 @@ public class PaymentController {
         String message = (String) result.getOrDefault("message", "");
         String txnRef = (String) result.getOrDefault("vnp_TxnRef", "");
         boolean isSubscription = Boolean.TRUE.equals(result.get("isSubscription"));
+        boolean isWalletTopup = Boolean.TRUE.equals(result.get("isWalletTopup"));
 
-        // 🔹 Redirect dựa vào loại thanh toán
         String redirectUrl;
         if (isSubscription) {
-            // Thanh toán subscription → redirect về trang subscription checkout
             redirectUrl = String.format(
                     "http://localhost:5173/driver/subscriptions/checkout?status=%s&amount=%s&message=%s&vnp_TxnRef=%s",
                     status,
@@ -123,8 +122,15 @@ public class PaymentController {
                     URLEncoder.encode(message, StandardCharsets.UTF_8),
                     URLEncoder.encode(txnRef, StandardCharsets.UTF_8)
             );
+        } else if (isWalletTopup) {
+            redirectUrl = String.format(
+                    "http://localhost:5173/driver/wallet?status=%s&amount=%s&message=%s&vnp_TxnRef=%s",
+                    status,
+                    amount,
+                    URLEncoder.encode(message, StandardCharsets.UTF_8),
+                    URLEncoder.encode(txnRef, StandardCharsets.UTF_8)
+            );
         } else {
-            // Thanh toán booking → redirect về trang payment hiện tại
             redirectUrl = String.format(
                     "http://localhost:5173/driver/payment?status=%s&amount=%s&message=%s&vnp_TxnRef=%s",
                     status,
@@ -136,6 +142,8 @@ public class PaymentController {
 
         response.sendRedirect(redirectUrl);
     }
+
+
     @PostMapping("/refund-booking/{bookingId}")
     public ResponseEntity<Map<String, Object>> refundBooking(
             @PathVariable String bookingId) {

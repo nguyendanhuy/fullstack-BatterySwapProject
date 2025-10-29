@@ -5,6 +5,8 @@ import BatterySwapStation.dto.VnPayCreatePaymentRequest;
 import BatterySwapStation.dto.WalletTopupRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
+import BatterySwapStation.entity.Invoice.InvoiceType;
+import BatterySwapStation.entity.Payment.PaymentMethod;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import BatterySwapStation.utils.VnPayUtils;
@@ -275,19 +277,25 @@ public class PaymentService {
         result.put("vnp_ResponseCode", respCode);
         result.put("message", message);
 
-        // 🔹 Kiểm tra xem có phải thanh toán subscription không
-        boolean isSubscription = false;
+        // 🔹 Kiểm tra loại thanh toán (subscription / wallet topup)
         paymentRepository.findByVnpTxnRef(txnRef).ifPresent(payment -> {
             Invoice invoice = payment.getInvoice();
-            if (invoice != null && invoice.getPlanToActivate() != null) {
-                result.put("isSubscription", true);
+            if (invoice != null) {
+                if (invoice.getInvoiceType() == Invoice.InvoiceType.WALLET_TOPUP) {
+                    result.put("isWalletTopup", true);
+                } else if (invoice.getPlanToActivate() != null) {
+                    result.put("isSubscription", true);
+                }
             }
         });
 
-        log.info("📤 [RETURN RESULT] txnRef={} | success={} | message={}", txnRef, success, result.get("message"));
+        log.info("📤 [RETURN RESULT] txnRef={} | success={} | message={} | walletTopup={} | subscription={}",
+                txnRef, success, result.get("message"),
+                result.get("isWalletTopup"), result.get("isSubscription"));
 
         return result;
     }
+
     private void updateVnpFields(Payment payment, Map<String, String> query) {
         payment.setVnpBankCode(query.get("vnp_BankCode"));
         payment.setVnpTransactionNo(query.get("vnp_TransactionNo"));

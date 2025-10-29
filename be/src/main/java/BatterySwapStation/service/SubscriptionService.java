@@ -31,21 +31,21 @@ public class SubscriptionService {
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final BookingRepository bookingRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PaymentRepository paymentRepository;
 
-    /**
-     * ✅ [SỬA 2] Cập nhật hàm này để dùng DTO (SubscribeRequest)
-     * và giữ lại logic kiểm tra "activeSub"
-     */
+
+
     @Transactional
     public Invoice createSubscriptionInvoice(SubscriptionRequest request) {
 
-        // --- 1. VALIDATION (Kiểm tra) ---
+        // --- 1️⃣ VALIDATION ---
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User ID: " + request.getUserId()));
 
         SubscriptionPlan plan = subscriptionPlanRepository.findById(request.getPlanId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Gói cước ID: " + request.getPlanId()));
 
+        // Kiểm tra gói đang active
         Optional<UserSubscription> activeSub = userSubscriptionRepository.findActiveSubscriptionForUser(
                 request.getUserId(),
                 UserSubscription.SubscriptionStatus.ACTIVE,
@@ -57,24 +57,77 @@ public class SubscriptionService {
                     "Không thể đăng ký gói mới cho đến khi gói cũ hết hạn.");
         }
 
-        // --- 2. LẤY GIÁ ---
+        // --- 2️⃣ LẤY GIÁ ---
         Double planPrice = systemPriceService.getPriceByType(plan.getPriceType());
         if (planPrice == null) {
             throw new EntityNotFoundException("Không tìm thấy giá cho " + plan.getPriceType());
         }
 
-        // --- 3. TẠO INVOICE ---
+        // --- 3️⃣ KHỞI TẠO INVOICE ---
         Invoice invoice = new Invoice();
         invoice.setUserId(user.getUserId());
         invoice.setCreatedDate(LocalDateTime.now());
-        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
-        invoice.setTotalAmount(planPrice);
         invoice.setPlanToActivate(plan);
         invoice.setNumberOfSwaps(0);
-        invoice.setInvoiceType(Invoice.InvoiceType.SUBSCRIPTION); // Tự động gán loại hóa đơn là SUBSCRIPTION
+        invoice.setInvoiceType(Invoice.InvoiceType.SUBSCRIPTION);
 
-        return invoiceRepository.save(invoice);
+        // --- 4️⃣ XỬ LÝ THANH TOÁN ---
+        String method = request.getPaymentMethod(); // "WALLET" hoặc "VNPAY"
+        if (method == null || method.isBlank()) {
+            throw new IllegalArgumentException("Phương thức thanh toán là bắt buộc (WALLET hoặc VNPAY).");
+        }
+
+        if (method.equalsIgnoreCase("WALLET")) {
+            // 🟢 THANH TOÁN QUA VÍ
+            Double balance = Optional.ofNullable(user.getWalletBalance()).orElse(0.0);
+            if (balance < planPrice) {
+                throw new IllegalStateException(String.format(
+                        "Số dư ví không đủ để mua gói %s. Cần: %.0f, Hiện có: %.0f",
+                        plan.getPlanName(), planPrice, balance
+                ));
+            }
+
+            // Trừ tiền ví
+            user.setWalletBalance(balance - planPrice);
+            userRepository.save(user);
+
+            // Đánh dấu invoice đã thanh toán
+            invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+            invoice.setTotalAmount(planPrice);
+            Invoice savedInvoice = invoiceRepository.save(invoice);
+
+            // Ghi lại payment thành công (WALLET)
+            Payment payment = Payment.builder()
+                    .invoice(savedInvoice)
+                    .amount(planPrice)
+                    .paymentMethod(Payment.PaymentMethod.WALLET)
+                    .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                    .transactionType(Payment.TransactionType.PAYMENT)
+                    .message("Thanh toán gói cước " + plan.getPlanName() + " bằng ví người dùng.")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            paymentRepository.save(payment);
+
+            // Kích hoạt gói luôn sau khi trừ ví
+            log.info("✅ [SUBSCRIPTION WALLET] User {} mua gói {} bằng ví thành công.", user.getUserId(), plan.getPlanName());
+            this.activateSubscription(savedInvoice);
+            return savedInvoice;
+
+        } else if (method.equalsIgnoreCase("VNPAY")) {
+            // 🟠 THANH TOÁN QUA VNPAY
+            invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
+            invoice.setTotalAmount(planPrice);
+            Invoice savedInvoice = invoiceRepository.save(invoice);
+
+
+            log.info("🟡 [SUBSCRIPTION VNPAY] Invoice #{} chờ thanh toán qua VNPay.", savedInvoice.getInvoiceId());
+            return savedInvoice;
+        } else {
+            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ: " + method);
+        }
     }
+
+
 
     /**
      * Kích hoạt gói cước sau khi thanh toán thành công.

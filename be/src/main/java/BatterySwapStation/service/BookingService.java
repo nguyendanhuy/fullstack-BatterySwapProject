@@ -53,7 +53,7 @@ public class BookingService {
      */
     @PostMapping("/create")
     public BookingResponse createBooking(BookingRequest request) {
-        // Xác thực xe trước tiên để lấy userId
+        // ================== XÁC THỰC XE ==================
         Integer vehicleId = request.getVehicleId();
         if (vehicleId == null) {
             throw new IllegalArgumentException("Bạn phải chọn một xe để đặt pin.");
@@ -62,16 +62,14 @@ public class BookingService {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy xe với mã: " + vehicleId));
 
-        // Tự động lấy userId từ vehicle
         if (vehicle.getUser() == null) {
             throw new IllegalArgumentException("Xe này chưa được đăng ký cho người dùng nào.");
         }
 
         User user = vehicle.getUser();
 
-        // ========== KIỂM TRA XE CÓ BOOKING CHƯA HOÀN THÀNH (Giữ nguyên) ==========
+        // ================== KIỂM TRA BOOKING CHƯA HOÀN THÀNH ==================
         if (bookingRepository.hasIncompleteBookingForVehicle(vehicleId)) {
-            // (Giữ nguyên logic báo lỗi chi tiết...)
             List<Booking> incompleteBookings = bookingRepository.findIncompleteBookingsByVehicle(vehicleId);
             if (!incompleteBookings.isEmpty()) {
                 Booking firstIncomplete = incompleteBookings.get(0);
@@ -92,284 +90,210 @@ public class BookingService {
                 ));
             }
         }
-        // =============================================================
 
-        // Xác thực trạm
+        // ================== XÁC THỰC TRẠM ==================
         Station station = stationRepository.findById(request.getStationId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy trạm với mã: " + request.getStationId()));
 
-        // Kiểm tra ngày đặt chỗ (Giữ nguyên)
+        // ================== KIỂM TRA NGÀY ==================
         LocalDate now = LocalDate.now();
         if (request.getBookingDate().isBefore(now) || request.getBookingDate().isAfter(now.plusDays(7))) {
             throw new IllegalArgumentException("Ngày đặt pin phải nằm trong vòng 7 ngày kể từ hôm nay.");
         }
 
-        // Chuyển đổi String sang LocalTime (Giữ nguyên)
         if (request.getTimeSlot() == null) {
             throw new IllegalArgumentException("Bạn phải chọn khung giờ.");
         }
-        // Chuyển đổi String sang LocalTime (Giữ nguyên)
+
         LocalTime timeSlot = LocalTime.parse(request.getTimeSlot(), DateTimeFormatter.ofPattern("HH:mm"));
 
-        // Kiểm tra trùng lặp booking (Giữ nguyên)
+        // ================== KIỂM TRA TRÙNG BOOKING ==================
         if (bookingRepository.existsDuplicateBooking(user, vehicle, station, request.getBookingDate(), timeSlot)) {
             throw new IllegalStateException("Bạn không thể đặt cùng một xe tại cùng một trạm và khung giờ.");
         }
 
-        // Xác định số pin muốn đổi (Giữ nguyên)
+        // ================== XÁC ĐỊNH SỐ PIN MUỐN ĐỔI ==================
         Integer requestedBatteryCount = request.getBatteryCount();
         if (requestedBatteryCount == null) {
             requestedBatteryCount = vehicle.getBatteryCount();
         }
 
+        // ================== KIỂM TRA CÔNG SUẤT TRẠM ==================
+        Integer alreadyBookedCount = bookingRepository.getBookedBatteryCountAtTimeSlot(station, request.getBookingDate(), timeSlot);
+        if (alreadyBookedCount == null) alreadyBookedCount = 0;
 
-        // ========== [LOGIC MỚI] - KIỂM TRA CÔNG SUẤT TRẠM ==========
-
-        // 1. Lấy tổng số pin đã được đặt (chưa hoàn thành) tại trạm và khung giờ này
-        Integer alreadyBookedCount = bookingRepository.getBookedBatteryCountAtTimeSlot(
-                station,
-                request.getBookingDate(),
-                timeSlot
-        );
-        if (alreadyBookedCount == null) {
-            alreadyBookedCount = 0;
-        }
-
-        // 2. Lấy tổng công suất của trạm
-        Integer stationCapacity = station.getDocks().size(); // <--- ĐÃ SỬA
-
-        // 3. Kiểm tra
+        Integer stationCapacity = station.getDocks().size();
         if ((alreadyBookedCount + requestedBatteryCount) > stationCapacity) {
             throw new IllegalStateException(String.format(
-                    "Trạm không đủ pin cho khung giờ này. Khung giờ này đã có %d pin được đặt, " +
-                            "bạn yêu cầu %d pin, vượt quá công suất trạm (%d).",
-                    alreadyBookedCount,
-                    requestedBatteryCount,
-                    stationCapacity
+                    "Trạm không đủ pin cho khung giờ này. Đã có %d pin được đặt, yêu cầu %d pin, vượt quá công suất (%d).",
+                    alreadyBookedCount, requestedBatteryCount, stationCapacity
             ));
         }
-        // =============================================================
 
-        // ========== [SỬA ĐỔI] - TÍNH GIÁ DỰA TRÊN GÓI CƯỚC (SUBSCRIPTION) ==========
-
-        // 1. Lấy giá đổi pin tiêu chuẩn (15000)
+        // ================== TÍNH GIÁ DỰA TRÊN GÓI CƯỚC ==================
         Double standardSwapPrice = systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP);
-        Double finalBookingPrice = standardSwapPrice * requestedBatteryCount.doubleValue(); // Giá mặc định
-        boolean isFreeSwap = false; // Cờ (flag) để theo dõi
-        Optional<UserSubscription> activeSub = Optional.empty(); // Biến để lưu sub
-
-        // 2. KIỂM TRA SUBSCRIPTION CỦA USER (user object đã được lấy từ vehicle)
-        activeSub = userSubscriptionRepository.findActiveSubscriptionForUser(
+        Double finalBookingPrice = standardSwapPrice * requestedBatteryCount.doubleValue();
+        boolean isFreeSwap = false;
+        Optional<UserSubscription> activeSub = userSubscriptionRepository.findActiveSubscriptionForUser(
                 user.getUserId(),
                 UserSubscription.SubscriptionStatus.ACTIVE,
                 LocalDateTime.now()
         );
 
         if (activeSub.isPresent()) {
-            // User này CÓ gói cước!
-            log.info("User {} có gói cước ACTIVE. Đang kiểm tra quyền lợi...", user.getUserId());
             UserSubscription sub = activeSub.get();
             SubscriptionPlan plan = sub.getPlan();
-
             int limit = (plan.getSwapLimit() == null || plan.getSwapLimit() < 0) ? -1 : plan.getSwapLimit();
             int used = sub.getUsedSwaps();
 
-            // 3. Kiểm tra giới hạn (Limit)
-            if (limit == -1) {
-                // Gói KHÔNG GIỚI HẠN
-                log.info("User {} dùng gói KHÔNG GIỚI HẠN. Áp dụng miễn phí.", user.getUserId());
-                finalBookingPrice = 0.0; // Miễn phí!
+            if (limit == -1 || used + requestedBatteryCount <= limit) {
+                log.info("User {} áp dụng gói cước miễn phí: {}", user.getUserId(), plan.getPlanName());
+                finalBookingPrice = 0.0;
                 isFreeSwap = true;
-
-            } else if (used + requestedBatteryCount <= limit) {
-                // Gói CÓ GIỚI HẠN, và còn đủ lượt
-                log.info("User {} còn {}/{} lượt. Áp dụng miễn phí.", user.getUserId(), (limit - used), limit);
-                finalBookingPrice = 0.0; // Miễn phí!
-                isFreeSwap = true;
-
             } else {
-                // Gói CÓ GIỚI HẠN, nhưng đã VƯỢT QUÁ
-                log.warn("User {} đã hết {}/{} lượt. Tính phí {} VND cho booking này.",
-                        user.getUserId(), used, limit, finalBookingPrice);
-                // Không làm gì, 'finalBookingPrice' vẫn là giá 15k
+                log.warn("User {} đã hết lượt trong gói {}. Tính phí {} VND.",
+                        user.getUserId(), plan.getPlanName(), finalBookingPrice);
             }
         }
 
-// Lấy vehicleType từ vehicle (Giữ nguyên)
-        String vehicleTypeStr = vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : "UNKNOWN";
-
-// Lấy batteryType (Giữ nguyên)
-        String batteryTypeStr = request.getBatteryType();
-        if (batteryTypeStr == null || batteryTypeStr.isBlank()) {
-            batteryTypeStr = vehicle.getBatteryType() != null ? vehicle.getBatteryType().toString() : "UNKNOWN";
-        }
-
-// ========== LOGIC XỬ LÝ THANH TOÁN MỚI ==========
-
+        // ================== XỬ LÝ THANH TOÁN ==================
         Booking.BookingStatus initialBookingStatus;
         Invoice.InvoiceStatus initialInvoiceStatus;
         Payment.PaymentMethod paymentMethodEnum = null;
         Payment.PaymentStatus paymentStatusEnum = null;
-        boolean createPaymentRecord = false; // Cờ (flag)
-        String paymentMethodRequest = request.getPaymentMethod(); // "WALLET" hoặc "VNPAY"
+        boolean createPaymentRecord = false;
+        String paymentMethodRequest = request.getPaymentMethod();
 
         if (isFreeSwap) {
-            // TRƯỜNG HỢP 1: DÙNG GÓI CƯỚC (0 ĐỒNG)
             log.info("Booking 0đ (Gói cước). Tự động kích hoạt.");
             initialBookingStatus = Booking.BookingStatus.PENDINGSWAPPING;
             initialInvoiceStatus = Invoice.InvoiceStatus.PAID;
 
-            // Không tạo record Payment, vì đây là gói cước
-            createPaymentRecord = false;
+            // 🆕 Ghi nhận thanh toán bằng Subscription
+            paymentMethodEnum = Payment.PaymentMethod.SUBSCRIPTION;
+            paymentStatusEnum = Payment.PaymentStatus.SUCCESS;
+            createPaymentRecord = true;
 
         } else {
-            // TRƯỜNG HỢP 2: TÍNH PHÍ (15.000 ĐỒNG)
             if (paymentMethodRequest == null || paymentMethodRequest.isBlank()) {
                 throw new IllegalArgumentException("Phương thức thanh toán là bắt buộc (ví dụ: WALLET hoặc VNPAY).");
             }
 
             if (paymentMethodRequest.equalsIgnoreCase("WALLET")) {
-                // 2a. THANH TOÁN BẰNG VÍ
-                log.info("Booking 15.000đ. Xử lý thanh toán qua VÍ.");
-
+                log.info("Booking trả bằng ví.");
                 Double userWallet = user.getWalletBalance();
                 if (userWallet < finalBookingPrice) {
                     throw new IllegalStateException(String.format(
-                            "Số dư ví không đủ. Cần %.0f, số dư: %.0f",
+                            "Số dư ví không đủ. Cần %.0f, hiện có %.0f",
                             finalBookingPrice, userWallet
                     ));
                 }
-
-                // Trừ tiền
                 user.setWalletBalance(userWallet - finalBookingPrice);
-                userRepository.save(user); // Lưu số dư mới
+                userRepository.save(user);
 
-                // Đã thanh toán, sẵn sàng đổi pin
                 initialBookingStatus = Booking.BookingStatus.PENDINGSWAPPING;
                 initialInvoiceStatus = Invoice.InvoiceStatus.PAID;
-
-                // (Tạo 1 record Payment)
                 paymentMethodEnum = Payment.PaymentMethod.WALLET;
                 paymentStatusEnum = Payment.PaymentStatus.SUCCESS;
                 createPaymentRecord = true;
 
             } else if (paymentMethodRequest.equalsIgnoreCase("VNPAY")) {
-                // 2b. THANH TOÁN BẰNG VNPAY
-                log.info("Booking 15.000đ. Chuyển hướng sang VNPAY.");
-
-                // Chờ thanh toán
+                log.info("Booking thanh toán qua VNPAY.");
                 initialBookingStatus = Booking.BookingStatus.PENDINGPAYMENT;
                 initialInvoiceStatus = Invoice.InvoiceStatus.PENDING;
-
-                // Tạo record Payment ở trạng thái PENDING
                 paymentMethodEnum = Payment.PaymentMethod.VNPAY;
                 paymentStatusEnum = Payment.PaymentStatus.PENDING;
                 createPaymentRecord = true;
 
             } else {
-                // (Bạn có thể thêm CREDIT_CARD hoặc QR_BANKING ở đây nếu muốn)
                 throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ: " + paymentMethodRequest);
             }
         }
 
-        // ========== [PHẦN 4 - THAY THẾ] ==========
-        // ========== TẠO BOOKING, INVOICE, PAYMENT ==========
-
-        // 1. TẠO INVOICE (Tương thích với Invoice.java mới)
+        // ================== TẠO INVOICE ==================
         Invoice invoice = new Invoice();
         invoice.setUserId(user.getUserId());
-        invoice.setPricePerSwap(standardSwapPrice); // <-- Dòng bạn đã thêm
+        invoice.setPricePerSwap(standardSwapPrice);
         invoice.setTotalAmount(finalBookingPrice);
         invoice.setCreatedDate(LocalDateTime.now());
-        invoice.setInvoiceStatus(initialInvoiceStatus); // <-- Dùng status đã tính
+        invoice.setInvoiceStatus(initialInvoiceStatus);
         invoice.setNumberOfSwaps(requestedBatteryCount);
-        invoice.setInvoiceType(Invoice.InvoiceType.BOOKING); // <-- Dùng Enum mới
+        invoice.setInvoiceType(Invoice.InvoiceType.BOOKING);
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        // 2. TẠO BOOKING
+        // ================== TẠO BOOKING ==================
         Booking booking = Booking.builder()
                 .user(user)
                 .station(station)
                 .vehicle(vehicle)
-                .vehicleType(vehicleTypeStr)
+                .vehicleType(vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : "UNKNOWN")
                 .amount(finalBookingPrice)
                 .bookingDate(request.getBookingDate())
                 .timeSlot(timeSlot)
-                .batteryType(batteryTypeStr)
+                .batteryType(request.getBatteryType() != null ? request.getBatteryType() : "UNKNOWN")
                 .batteryCount(requestedBatteryCount)
-                .bookingStatus(initialBookingStatus) // <-- Dùng status đã tính
+                .bookingStatus(initialBookingStatus)
                 .notes("Đặt lịch qua API")
                 .totalPrice(finalBookingPrice)
-                .invoice(savedInvoice) // <-- Liên kết invoice
+                .invoice(savedInvoice)
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
 
-        // 3. TẠO PAYMENT RECORD (NẾU CẦN)
+        // ================== TẠO PAYMENT ==================
         if (createPaymentRecord) {
+            double amountToSave = finalBookingPrice;
+            String message = null;
+            String gateway = null;
+
+            if (isFreeSwap && activeSub.isPresent()) {
+                // 🆕 Ghi rõ gói tháng nào đã chi trả
+                UserSubscription sub = activeSub.get();
+                String planName = sub.getPlan() != null ? sub.getPlan().getPlanName() : "UNKNOWN_PLAN";
+                amountToSave = 0.0;
+                gateway = "SUBSCRIPTION_PLAN";
+                message = "Thanh toán bằng gói Subscription: " + planName;
+            }
+
             Payment payment = Payment.builder()
-                    .invoice(savedInvoice) // Liên kết tới Invoice
-                    .amount(finalBookingPrice)
+                    .invoice(savedInvoice)
+                    .amount(amountToSave)
                     .paymentMethod(paymentMethodEnum)
                     .paymentStatus(paymentStatusEnum)
-                    .transactionType(Payment.TransactionType.PAYMENT) // <-- Dùng Enum mới
+                    .transactionType(Payment.TransactionType.PAYMENT)
+                    .gateway(gateway)
+                    .message(message)
                     .createdAt(LocalDateTime.now())
                     .build();
             paymentRepository.save(payment);
         }
 
-        // ========== [PHẦN 5 - GIỮ NGUYÊN] ==========
-        // ========== TRỪ LƯỢT VÀ TRẢ VỀ RESPONSE ==========
-
-        // TRỪ LƯỢT NẾU LÀ 0 ĐỒNG
+        // ================== TRỪ LƯỢT SUBSCRIPTION ==================
         if (isFreeSwap && activeSub.isPresent()) {
             UserSubscription sub = activeSub.get();
-            int used = sub.getUsedSwaps();
-            sub.setUsedSwaps(used + requestedBatteryCount);
+            sub.setUsedSwaps(sub.getUsedSwaps() + requestedBatteryCount);
             userSubscriptionRepository.save(sub);
-            log.info("Đã trừ {} lượt. User {} còn {}/{} lượt.",
-                    requestedBatteryCount, user.getUserId(), (sub.getUsedSwaps()), sub.getPlan().getSwapLimit());
         }
 
-        // Phần trả về Response (Giữ nguyên)
-        BookingResponse response;
-        if (isFreeSwap && activeSub.isPresent()) {
-            response = convertToResponse(savedBooking, activeSub.get());
+        // ================== TẠO RESPONSE ==================
+        BookingResponse response = isFreeSwap && activeSub.isPresent()
+                ? convertToResponse(savedBooking, activeSub.get())
+                : convertToResponse(savedBooking, null);
+
+        String message;
+        if (isFreeSwap) {
+            message = "Booking (Gói cước) thành công! Trạng thái: PENDINGSWAPPING";
+        } else if ("WALLET".equalsIgnoreCase(paymentMethodRequest)) {
+            message = String.format("Booking #%d thanh toán qua Ví thành công. Tổng: %.0f VND.",
+                    savedBooking.getBookingId(), savedBooking.getAmount());
         } else {
-            response = convertToResponse(savedBooking, null);
+            message = String.format("Booking #%d tạo thành công. Trạng thái: PENDINGPAYMENT. Tổng: %.0f VND.",
+                    savedBooking.getBookingId(), savedBooking.getAmount());
         }
 
-        // TẠO MESSAGE (Giữ nguyên)
-        // (Phần này sẽ cần cập nhật để hiển thị đúng message cho WALLET)
-        String createMessage;
-        if (isFreeSwap && activeSub.isPresent()) {
-            // ... (Message Gói cước của bạn) ...
-            createMessage = "Booking (Gói cước) thành công! Trạng thái: PENDINGSWAPPING";
-        } else if (paymentMethodRequest != null && paymentMethodRequest.equalsIgnoreCase("WALLET")) {
-            // Message mới cho WALLET
-            createMessage = String.format(
-                    "Booking #%d được thanh toán qua Ví thành công!\n" +
-                            "Trạng thái: Chờ đổi pin (PENDINGSWAPPING)\n" +
-                            "Tổng tiền: %.0f VND",
-                    savedBooking.getBookingId(),
-                    savedBooking.getAmount()
-            );
-        } else {
-            // Message cũ cho VNPAY
-            createMessage = String.format(
-                    "Booking #%d được tạo thành công!\n" +
-                            "Trạng thái: Chờ thanh toán (PENDINGPAYMENT)\n" +
-                            "Tổng tiền: %.0f VND",
-                    savedBooking.getBookingId(),
-                    savedBooking.getAmount()
-            );
-        }
-
-        response.setMessage(createMessage);
+        response.setMessage(message);
         response.setBatteryCount(savedBooking.getBatteryCount());
-
         return response;
     }
-
 
     /**
      * Lấy danh sách đặt chỗ của người dùng
@@ -1501,8 +1425,9 @@ public class BookingService {
 
         Invoice savedMasterInvoice = invoiceRepository.save(masterInvoice);
 
-        // 4. TẠO 1 PAYMENT CHUNG
+        // 4. TẠO 1 PAYMENT CHUNG (kể cả khi là gói Subscription)
         if (totalCost > 0 && paymentMethodEnum != null) {
+            // Có phí (WALLET hoặc VNPAY)
             Payment masterPayment = Payment.builder()
                     .invoice(savedMasterInvoice)
                     .amount(totalCost)
@@ -1510,13 +1435,26 @@ public class BookingService {
                     .paymentStatus(paymentStatusEnum)
                     .transactionType(Payment.TransactionType.PAYMENT)
                     .createdAt(LocalDateTime.now())
-
-                    // ✅ [SỬA VẤN ĐỀ 2] - Thêm gateway (cho WALLET hoặc VNPAY)
                     .gateway(paymentMethodEnum == Payment.PaymentMethod.WALLET ? "WALLET" : "VNPAY")
-
                     .build();
             paymentRepository.save(masterPayment);
+
+        } else if (totalCost == 0 && activeSubOpt.isPresent()) {
+            // 🔹 Trường hợp MIỄN PHÍ bằng gói Subscription
+            UserSubscription sub = activeSubOpt.get();
+            Payment subscriptionPayment = Payment.builder()
+                    .invoice(savedMasterInvoice)
+                    .amount(0.0)
+                    .paymentMethod(Payment.PaymentMethod.SUBSCRIPTION)
+                    .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                    .transactionType(Payment.TransactionType.PAYMENT)
+                    .gateway("SUBSCRIPTION")
+                    .message("Thanh toán bằng gói cước " + sub.getPlan().getPlanName())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            paymentRepository.save(subscriptionPayment);
         }
+
 
         // 5. LƯU TẤT CẢ BOOKING
         List<BookingResponse> successBookings = new ArrayList<>();

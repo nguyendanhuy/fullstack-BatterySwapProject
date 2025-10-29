@@ -76,9 +76,8 @@ public class Payment {
     // ===================== ENUMS =====================
 
     public enum PaymentMethod {
-        CREDIT_CARD,
+        SUBSCRIPTION,
         WALLET,
-        QR_BANKING,
         VNPAY
     }
 

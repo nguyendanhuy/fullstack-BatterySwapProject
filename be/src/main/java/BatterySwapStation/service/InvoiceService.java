@@ -37,10 +37,12 @@ public class InvoiceService {
 
     /**
      * Lấy chi tiết invoice bao gồm thông tin các booking
+     * ✅ [CẬP NHẬT] Thêm @Transactional và 2 trường mới
      */
+    @Transactional(readOnly = true) // <-- THÊM MỚI (Rất quan trọng để fix lỗi Lazy loading)
     public InvoiceResponseDTO getInvoiceDetail(Long invoiceId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
 
         InvoiceResponseDTO dto = new InvoiceResponseDTO();
         dto.setId(invoice.getInvoiceId());
@@ -49,6 +51,27 @@ public class InvoiceService {
         dto.setPricePerSwap(invoice.getPricePerSwap());
         dto.setNumberOfSwaps(invoice.getNumberOfSwaps());
 
+        // ✅ [LOGIC MỚI 1] - Thêm InvoiceType
+        if (invoice.getInvoiceType() != null) {
+            dto.setInvoiceType(invoice.getInvoiceType().name());
+        } else {
+            dto.setInvoiceType(Invoice.InvoiceType.BOOKING.name()); // Mặc định
+        }
+
+        // ✅ [LOGIC MỚI 2] - Thêm PaymentMethod
+        String pm = null;
+        if (invoice.getTotalAmount() != null && invoice.getTotalAmount() == 0) {
+            pm = "SUBSCRIPTION"; // Gói cước
+        } else if (invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
+            // Sẽ trigger lazy load, nhưng an toàn vì đã @Transactional
+            Payment firstPayment = invoice.getPayments().get(0);
+            if (firstPayment.getPaymentMethod() != null) {
+                pm = firstPayment.getPaymentMethod().name();
+            }
+        }
+        dto.setPaymentMethod(pm);
+
+        // (Phần map booking này giờ đã an toàn vì @Transactional)
         List<BookingInfoDTO> bookingDTOs = invoice.getBookings().stream().map(booking -> {
             BookingInfoDTO bDto = new BookingInfoDTO();
             bDto.setBookingId(booking.getBookingId());
@@ -63,18 +86,11 @@ public class InvoiceService {
         return dto;
     }
 
-    /**
-     * Tạo invoice mới và tự động tính toán tổng tiền
-     */
-    /**
-     * Tạo invoice mới (ĐÃ SỬA LỖI)
-     * [SỬA] Đã xóa 'calculateTotalAmount()' vì nó gây ra lỗi setTotalAmount = 0
-     * vì các giá trị đã được Controller tính toán trước.
-     */
+    // (Hàm createInvoice giữ nguyên)
     @Transactional
     public Invoice createInvoice(Invoice invoice) {
+        // ... (Giữ nguyên logic)
         invoice.setInvoiceId(null);
-
         if (invoice.getPricePerSwap() == null) {
             invoice.setPricePerSwap(systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP));
         }
@@ -84,274 +100,194 @@ public class InvoiceService {
         if (invoice.getInvoiceStatus() == null) {
             invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
         }
-
         return invoiceRepository.save(invoice);
     }
 
-
-    /**
-     * Tạo invoice cho booking sau khi thanh toán
-     */
+    // (Hàm createInvoiceForBooking giữ nguyên)
     @Transactional
     public Invoice createInvoiceForBooking(Booking booking) {
-        // Kiểm tra trạng thái booking - chỉ tạo invoice cho booking đã thanh toán (PENDINGSWAPPING trở lên)
+        // ... (Giữ nguyên logic)
         if (booking.getBookingStatus() == Booking.BookingStatus.PENDINGPAYMENT) {
             throw new IllegalStateException("Không thể tạo invoice cho booking chưa thanh toán");
         }
-
-        // Kiểm tra trạng thái booking - KHÔNG cho phép tạo invoice từ booking đã hoàn thành
         if (booking.getBookingStatus() == Booking.BookingStatus.COMPLETED) {
             throw new IllegalStateException("Không thể tạo invoice cho booking đã hoàn thành");
         }
-
-        // Kiểm tra booking đã hủy
         if (booking.getBookingStatus() == Booking.BookingStatus.CANCELLED) {
             throw new IllegalStateException("Không thể tạo invoice cho booking đã hủy");
         }
-
-        // Kiểm tra booking đã có invoice chưa
         if (booking.getInvoice() != null) {
             throw new IllegalStateException("Booking này đã có invoice rồi. Invoice ID: " + booking.getInvoice().getInvoiceId());
         }
-
         Invoice invoice = new Invoice();
-        invoice.setUserId(booking.getUser().getUserId()); // Set userId từ booking
+        invoice.setUserId(booking.getUser().getUserId());
         invoice.setPricePerSwap(booking.getAmount());
         invoice.setNumberOfSwaps(1);
         invoice.setCreatedDate(LocalDateTime.now());
-        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID); // Set status PAID vì booking đã thanh toán
-
-        // Tính tổng tiền
+        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
         invoice.calculateTotalAmount();
-
-        // Lưu invoice trước
         Invoice savedInvoice = invoiceRepository.save(invoice);
-
-        // Cập nhật booking với invoice
         booking.setInvoice(savedInvoice);
         bookingRepository.save(booking);
-
         return savedInvoice;
     }
 
-    /**
-     * Cập nhật invoice và tính lại tổng tiền
-     */
+    // (Hàm updateInvoice giữ nguyên)
     @Transactional
     public Invoice updateInvoice(Long id, Invoice invoice) {
+        // ... (Giữ nguyên logic)
         Invoice existing = invoiceRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
-
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
         existing.setCreatedDate(invoice.getCreatedDate());
-
-        // Cập nhật giá và số lần đổi nếu có
         if (invoice.getPricePerSwap() != null) {
             existing.setPricePerSwap(invoice.getPricePerSwap());
         }
-
         if (invoice.getNumberOfSwaps() != null) {
             existing.setNumberOfSwaps(invoice.getNumberOfSwaps());
         }
-
-        // Tính lại tổng tiền
         existing.calculateTotalAmount();
-
         return invoiceRepository.save(existing);
     }
 
-    /**
-     * Thêm booking vào invoice và cập nhật tổng tiền
-     */
+    // (Hàm addBookingToInvoice giữ nguyên)
     @Transactional
     public Invoice addBookingToInvoice(Long invoiceId, Booking booking) {
+        // ... (Giữ nguyên logic)
         Invoice invoice = invoiceRepository.findById(invoiceId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
-
-        // Thêm booking vào invoice
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
         booking.setInvoice(invoice);
-
-        // Tăng số lần đổi pin
         invoice.setNumberOfSwaps(invoice.getNumberOfSwaps() + 1);
-
-        // Tính lại tổng tiền
         invoice.calculateTotalAmount();
-
         return invoiceRepository.save(invoice);
     }
 
-    /**
-     * Link nhiều booking vào 1 invoice và tự động tính tổng tiền
-     * [ĐÃ CẬP NHẬT LOGIC]
-     * * @param invoiceId ID của invoice cần link
-     * @param bookingIds Danh sách ID của các booking cần link
-     * @return Invoice đã được cập nhật
-     */
+    // (Hàm linkBookingsToInvoice giữ nguyên)
     @Transactional
     public Invoice linkBookingsToInvoice(Long invoiceId, List<Long> bookingIds) {
+        // ... (Giữ nguyên logic)
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
-
         List<Booking> bookings = bookingRepository.findAllById(bookingIds);
-
         if (bookings.isEmpty()) {
             throw new RuntimeException("Không tìm thấy booking nào để link");
         }
-
         if (invoice.getUserId() == null && !bookings.isEmpty()) {
             invoice.setUserId(bookings.get(0).getUser().getUserId());
         }
-
-        // Kiểm tra booking đã có invoice
         List<Booking> alreadyLinked = bookings.stream()
                 .filter(b -> b.getInvoice() != null)
                 .collect(Collectors.toList());
-
         if (!alreadyLinked.isEmpty()) {
             String bookingIdsStr = alreadyLinked.stream()
                     .map(b -> String.valueOf(b.getBookingId()))
                     .collect(Collectors.joining(", "));
             throw new RuntimeException("Các booking sau đã được link với invoice khác: " + bookingIdsStr);
         }
-
-        // Link các booking vào invoice
         for (Booking booking : bookings) {
             booking.setInvoice(invoice);
-
-            // Đặt giá cho booking nếu nó chưa có
             if (booking.getAmount() == null) {
                 booking.setAmount(invoice.getPricePerSwap());
             }
-
-            // ✅ Đặt totalPrice nếu chưa có (backward compatibility)
             if (booking.getTotalPrice() == null) {
                 int batteries = booking.getBatteryCount() != null ? booking.getBatteryCount() : 0;
                 booking.setTotalPrice((double) (batteries * invoice.getPricePerSwap()));
             }
         }
-
         bookingRepository.saveAll(bookings);
-
-        // ✅ SỬA LOGIC: Lấy tổng giá từ booking (đã tính gói tháng)
         invoice.setNumberOfSwaps(bookings.size());
-
         double totalAmount = bookings.stream()
                 .mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
                 .sum();
-
         invoice.setTotalAmount(totalAmount);
-
         return invoiceRepository.save(invoice);
     }
 
-    /**
-     * Tạo invoice mới và link với các booking
-     * @param bookingIds Danh sách ID của các booking cần link
-     * @return Invoice mới được tạo
-     */
+    // (Hàm createInvoiceWithBookings giữ nguyên)
     @Transactional
     public Invoice createInvoiceWithBookings(List<Long> bookingIds) {
-        // Tạo invoice mới
+        // ... (Giữ nguyên logic)
         Invoice invoice = new Invoice();
         invoice.setPricePerSwap(systemPriceService.getPriceByType(SystemPrice.PriceType.BATTERY_SWAP));
         invoice.setCreatedDate(LocalDateTime.now());
         invoice.setNumberOfSwaps(0);
         invoice.setTotalAmount(0.0);
-
-        // Lưu invoice trước
         Invoice savedInvoice = invoiceRepository.save(invoice);
-
-        // Link các booking vào invoice
         if (bookingIds != null && !bookingIds.isEmpty()) {
             return linkBookingsToInvoice(savedInvoice.getInvoiceId(), bookingIds);
         }
-
         return savedInvoice;
     }
 
-    /**
-     * Gỡ link booking khỏi invoice
-     * @param bookingId ID của booking cần gỡ link
-     */
+    // (Hàm unlinkBookingFromInvoice giữ nguyên)
     @Transactional
     public void unlinkBookingFromInvoice(Long bookingId) {
+        // ... (Giữ nguyên logic)
         Booking booking = bookingRepository.findById(bookingId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy booking với ID: " + bookingId));
-
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy booking với ID: " + bookingId));
         if (booking.getInvoice() != null) {
             Invoice invoice = booking.getInvoice();
             booking.setInvoice(null);
             bookingRepository.save(booking);
-
-            // Cập nhật lại invoice
             invoice.setNumberOfSwaps(Math.max(0, invoice.getNumberOfSwaps() - 1));
             invoice.calculateTotalAmount();
             invoiceRepository.save(invoice);
         }
     }
 
-    /**
-     * Xóa invoice
-     */
+    // (Hàm deleteInvoice giữ nguyên)
     @Transactional
     public void deleteInvoice(Long id) {
-        // Lấy invoice trước
+        // ... (Giữ nguyên logic)
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
-
-        // Gỡ link tất cả booking khỏi invoice trước khi xóa
         if (invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
             for (Booking booking : invoice.getBookings()) {
                 booking.setInvoice(null);
             }
             bookingRepository.saveAll(invoice.getBookings());
         }
-
-        // Bây giờ mới xóa invoice
         invoiceRepository.deleteById(id);
     }
 
-    /**
-     * Lấy tất cả invoice
-     */
+    // (Hàm getAllInvoices giữ nguyên)
     public List<Invoice> getAllInvoices() {
         return invoiceRepository.findAll();
     }
 
-    /**
-     * Lấy invoice theo ID
-     */
+    // (Hàm getInvoiceById giữ nguyên)
     public Invoice getInvoiceById(Long id) {
         return invoiceRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
     }
 
     /**
      * Lấy chi tiết invoice với DTO đơn giản, tránh circular reference
+     * ✅ [CẬP NHẬT] Thêm @Transactional và 2 trường mới
      */
+    @Transactional(readOnly = true) // <-- THÊM MỚI (Rất quan trọng để fix lỗi Lazy loading)
     public InvoiceSimpleResponseDTO getInvoiceSimple(Long invoiceId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
 
+        // (Phần map simpleBookings này giờ đã an toàn vì @Transactional)
         List<InvoiceSimpleResponseDTO.SimpleBookingInfo> simpleBookings = invoice.getBookings().stream()
-            .map(booking -> InvoiceSimpleResponseDTO.SimpleBookingInfo.builder()
-                .bookingId(booking.getBookingId())
-                .bookingDate(booking.getBookingDate())
-                .timeSlot(booking.getTimeSlot())
-                .vehicleType(booking.getVehicleType())
-                .amount(booking.getAmount())
-                .bookingStatus(booking.getBookingStatus().toString())
-                // Chỉ lấy thông tin cơ bản của station
-                .stationId(booking.getStation().getStationId())
-                .stationName(booking.getStation().getStationName())
-                .stationAddress(booking.getStation().getAddress())
-                // Chỉ lấy thông tin cơ bản của vehicle
-                .vehicleId(booking.getVehicle().getVehicleId())
-                .licensePlate(booking.getVehicle().getLicensePlate())
-                .vehicleBatteryType(booking.getVehicle().getBatteryType().toString())
-                .build())
-            .collect(Collectors.toList());
+                .map(booking -> InvoiceSimpleResponseDTO.SimpleBookingInfo.builder()
+                        .bookingId(booking.getBookingId())
+                        .bookingDate(booking.getBookingDate())
+                        .timeSlot(booking.getTimeSlot())
+                        .vehicleType(booking.getVehicleType())
+                        .amount(booking.getAmount())
+                        .bookingStatus(booking.getBookingStatus().toString())
+                        .stationId(booking.getStation().getStationId())
+                        .stationName(booking.getStation().getStationName())
+                        .stationAddress(booking.getStation().getAddress())
+                        .vehicleId(booking.getVehicle().getVehicleId())
+                        .licensePlate(booking.getVehicle().getLicensePlate())
+                        .vehicleBatteryType(booking.getVehicle().getBatteryType().toString())
+                        .build())
+                .collect(Collectors.toList());
 
-        // Map thông tin planToActivate nếu có
+        // (Phần map simplePlanInfo này giờ đã an toàn vì @Transactional)
         InvoiceSimpleResponseDTO.SimplePlanInfo simplePlanInfo = null;
         if (invoice.getPlanToActivate() != null) {
             SubscriptionPlan plan = invoice.getPlanToActivate();
@@ -365,6 +301,18 @@ public class InvoiceService {
                     .build();
         }
 
+        // ✅ [LOGIC MỚI] - Lấy PaymentMethod (trước khi build)
+        String pm = null;
+        if (invoice.getTotalAmount() != null && invoice.getTotalAmount() == 0) {
+            pm = "SUBSCRIPTION"; // Gói cước
+        } else if (invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
+            // Sẽ trigger lazy load, nhưng an toàn vì đã @Transactional
+            Payment firstPayment = invoice.getPayments().get(0);
+            if (firstPayment.getPaymentMethod() != null) {
+                pm = firstPayment.getPaymentMethod().name();
+            }
+        }
+
         return InvoiceSimpleResponseDTO.builder()
                 .invoiceId(invoice.getInvoiceId())
                 .userId(invoice.getUserId())
@@ -375,6 +323,9 @@ public class InvoiceService {
                 .bookings(simpleBookings)
                 .invoiceStatus(invoice.getInvoiceStatus().toString())
                 .planToActivate(simplePlanInfo)
+                // ✅ [THÊM 2 TRƯỜNG MỚI]
+                .invoiceType(invoice.getInvoiceType() != null ? invoice.getInvoiceType().name() : "BOOKING")
+                .paymentMethod(pm)
                 .build();
     }
 
@@ -389,12 +340,13 @@ public class InvoiceService {
 
     /**
      * Lọc Invoices theo trạng thái (PENDING/ PAID/ PAYMENTFAILED)
+     * ✅ [CẬP NHẬT] Thêm @Transactional
      */
+    @Transactional(readOnly = true) // <-- THÊM MỚI (Rất quan trọng để fix lỗi Lazy loading)
     public List<InvoiceSimpleResponseDTO> getInvoicesByStatus(String statusString) {
         Invoice.InvoiceStatus status;
         String upperStatus = statusString.trim().toUpperCase();
 
-        // ✅ LOGIC CẬP NHẬT: Chỉ chấp nhận PENDING, PAID, PAYMENTFAILED
         if ("PENDING".equals(upperStatus)) {
             status = Invoice.InvoiceStatus.PENDING;
         } else if ("PAID".equals(upperStatus)) {
@@ -402,17 +354,16 @@ public class InvoiceService {
         } else if ("PAYMENTFAILED".equals(upperStatus)) {
             status = Invoice.InvoiceStatus.PAYMENTFAILED;
         } else {
-            // Ném lỗi nếu nhập trạng thái khác
             throw new IllegalArgumentException(
                     "Trạng thái không hợp lệ: " + statusString +
                             ". Chỉ chấp nhận PENDING, PAID hoặc PAYMENTFAILED."
             );
         }
 
-        // Gọi phương thức Repository
         List<Invoice> invoices = invoiceRepository.findByInvoiceStatus(status);
 
         // Chuyển đổi sang DTO
+        // (Cuộc gọi 'getInvoiceSimple' này giờ đã an toàn vì @Transactional)
         return invoices.stream()
                 .map(invoice -> getInvoiceSimple(invoice.getInvoiceId()))
                 .collect(Collectors.toList());
@@ -423,39 +374,26 @@ public class InvoiceService {
      */
     @Transactional
     public void userCancelInvoice(Long invoiceId) {
-        // 1. Tìm invoice
+        // ... (Giữ nguyên logic)
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Invoice ID: " + invoiceId));
-
-        // 2. Kiểm tra trạng thái
         if (invoice.getInvoiceStatus() != Invoice.InvoiceStatus.PENDING) {
             throw new IllegalStateException("Bạn chỉ có thể hủy invoice đang ở trạng thái PENDING. " +
                     "Invoice này đang ở trạng thái: " + invoice.getInvoiceStatus());
         }
-
-        // 3. Cập nhật Invoice status
-        // (Chúng ta sẽ dùng status PAYMENTFAILED của scheduler,
-        // hoặc bạn có thể tạo status mới là 'CANCELLED')
         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
-
-        // 4. Cập nhật Booking status (liên kết)
         List<Booking> bookings = bookingRepository.findAllByInvoice(invoice);
         for (Booking booking : bookings) {
             booking.setBookingStatus(Booking.BookingStatus.FAILED);
         }
-
-        // 5. Cập nhật Payment status (liên kết)
-        Payment payment = paymentRepository.findByInvoice(invoice);
-        if (payment != null) {
-            payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
-            paymentRepository.save(payment);
+        List<Payment> payments = paymentRepository.findAllByInvoice(invoice);
+        if (payments != null && !payments.isEmpty()) {
+            for (Payment payment : payments) {
+                payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
+            }
+            paymentRepository.saveAll(payments);
         }
-
-        // 6. Lưu thay đổi
         invoiceRepository.save(invoice);
         bookingRepository.saveAll(bookings);
-
-        // (Ghi log nếu cần)
-        // logger.info("Người dùng đã chủ động hủy Invoice #{}", invoice.getInvoiceId());
     }
 }

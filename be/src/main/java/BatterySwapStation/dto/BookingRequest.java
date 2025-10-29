@@ -35,5 +35,12 @@ public class BookingRequest {
     @Size(max = 3, message = "Chỉ cho phép tối đa 3 xe")
     private List<Integer> vehicleIds;
 
+    /**
+     * Chỉ định phương thức thanh toán.
+     * Người dùng phải gửi: "WALLET" hoặc "VNPAY"
+     */
+    private String paymentMethod;
+
     private String notes;
+
 }

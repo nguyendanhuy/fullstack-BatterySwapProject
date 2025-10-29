@@ -23,8 +23,8 @@ public class InvoiceSimpleResponseDTO {
     private Integer numberOfSwaps;
     private List<SimpleBookingInfo> bookings;
     private String invoiceStatus;
-
-    // Thông tin gói subscription (nếu có)
+    private String invoiceType;
+    private String paymentMethod;
     private SimplePlanInfo planToActivate;
 
 

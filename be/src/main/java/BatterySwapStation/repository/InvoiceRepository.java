@@ -48,4 +48,18 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     WHERE b.bookingId = :bookingId
 """)
     Optional<Invoice> findByBookingId(@Param("bookingId") Long bookingId);
+
+    /**
+     * Lấy danh sách invoice VÀ các payment liên quan (để tránh LazyInitException)
+     */
+    @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.payments WHERE i.userId = :userId ORDER BY i.createdDate DESC")
+    List<Invoice> findByUserIdWithPayments(@Param("userId") String userId);
+
+    /**
+     * Lấy 1 invoice VÀ các payment liên quan (để tránh LazyInitException)
+     */
+    @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.payments WHERE i.invoiceId = :invoiceId")
+    Optional<Invoice> findByIdWithPayments(@Param("invoiceId") Long invoiceId);
+
+    // (Bạn có thể cần sửa/xóa hàm 'findByUserIdOrderByCreatedDateDesc' cũ nếu có)
 }

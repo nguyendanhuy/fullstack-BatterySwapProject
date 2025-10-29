@@ -2,10 +2,10 @@ package BatterySwapStation.service;
 
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Invoice;
-import BatterySwapStation.entity.Payment; // (Giả định bạn có Entity này)
+import BatterySwapStation.entity.Payment;
 import BatterySwapStation.repository.BookingRepository;
 import BatterySwapStation.repository.InvoiceRepository;
-import BatterySwapStation.repository.PaymentRepository; // (Giả định bạn có Repo này)
+import BatterySwapStation.repository.PaymentRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,6 @@ public class InvoiceSchedulerService {
     @Autowired
     private BookingRepository bookingRepository;
 
-    // Giả định bạn có PaymentRepository và Payment.java
     @Autowired
     private PaymentRepository paymentRepository;
 
@@ -43,16 +42,14 @@ public class InvoiceSchedulerService {
     @Transactional
     public void checkPendingInvoiceTimeouts() {
 
-        // ✅ "BƯỚC BẠN HỎI" NẰM Ở ĐÂY:
-        // 1. Tính toán thời gian hết hạn (15 phút trước)
+        // 1. Tính toán thời gian hết hạn (Giữ nguyên)
         LocalDateTime timeoutTime = LocalDateTime.now().minusMinutes(TIMEOUT_MINUTES);
 
-        // 2. Tìm tất cả các invoice PENDING đã quá hạn
+        // 2. Tìm tất cả các invoice PENDING đã quá hạn (Giữ nguyên)
         List<Invoice> expiredInvoices = invoiceRepository.findPendingInvoicesOlderThan(
                 Invoice.InvoiceStatus.PENDING,
-                timeoutTime // <-- Sử dụng logic 15 phút chính xác
+                timeoutTime
         );
-        // (Logic 'LocalDate.now().minusDays(1)' cũ đã bị thay thế)
 
         if (expiredInvoices.isEmpty()) {
             return; // Không có gì để làm
@@ -62,24 +59,34 @@ public class InvoiceSchedulerService {
 
         for (Invoice invoice : expiredInvoices) {
 
-            // 3. Cập nhật Invoice status
+            // 3. Cập nhật Invoice status (Giữ nguyên)
             invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
 
-            // 4. Cập nhật Booking status
-            // (Cần tải các booking liên quan)
+            // 4. Cập nhật Booking status (Giữ nguyên)
             List<Booking> bookings = bookingRepository.findAllByInvoice(invoice);
             for (Booking booking : bookings) {
                 booking.setBookingStatus(Booking.BookingStatus.FAILED);
             }
 
-            // 5. Cập nhật Payment status (Nếu có)
-            Payment payment = paymentRepository.findByInvoice(invoice);
-            if (payment != null) {
-                payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
-                paymentRepository.save(payment);
-            }
+            // ========== ✅ [BƯỚC 5 ĐÃ SỬA LỖI] ==========
 
-            // 6. Lưu thay đổi
+            // 1. Dùng hàm mới (trả về List)
+            // (Bạn phải sửa tệp PaymentRepository.java để có hàm này)
+            List<Payment> payments = paymentRepository.findAllByInvoice(invoice);
+
+            // 2. Lặp qua TẤT CẢ payment và cập nhật
+            if (payments != null && !payments.isEmpty()) {
+                for (Payment p : payments) {
+                    if (p.getPaymentStatus() == Payment.PaymentStatus.PENDING) {
+                        p.setPaymentStatus(Payment.PaymentStatus.FAILED);
+                    }
+                }
+                paymentRepository.saveAll(payments); // 3. Lưu tất cả thay đổi
+            }
+            // =============================================
+
+
+            // 6. Lưu thay đổi (Giữ nguyên)
             invoiceRepository.save(invoice);
             bookingRepository.saveAll(bookings);
 

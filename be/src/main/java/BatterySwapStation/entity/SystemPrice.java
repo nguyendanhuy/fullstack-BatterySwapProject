@@ -58,7 +58,7 @@ public class SystemPrice {
         MAINTENANCE("Phí bảo trì"),
         MONTHLY_SUBSCRIPTION_BASIC("Gói tháng Cơ bản - 299k"),
         MONTHLY_SUBSCRIPTION_PREMIUM("Gói tháng Cao cấp - 499k"),
-        MONTHLY_SUBSCRIPTION_UNLIMITED("Gói tháng Không giới hạn - 899k"),
+        MONTHLY_SUBSCRIPTION_BUSINESS("Gói tháng Doanh nghiệp - 899k"),
         DAMAGE_FEE("Phí đền bù hư hỏng pin");
 
         private final String displayName;

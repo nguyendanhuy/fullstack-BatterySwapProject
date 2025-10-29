@@ -31,7 +31,7 @@ public class SubscriptionPlan {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "PriceType", nullable = false, length = 50, unique = true)
-    private SystemPrice.PriceType priceType; // SUB_BASIC_299K
+    private SystemPrice.PriceType priceType;
 
     /**
      * ✅ [THÊM MỚI] Giới hạn số lượt đổi pin.

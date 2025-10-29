@@ -40,16 +40,12 @@ public class SubscriptionService {
     public Invoice createSubscriptionInvoice(SubscriptionRequest request) {
 
         // --- 1. VALIDATION (Kiểm tra) ---
-
-        // a. Tìm User
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User ID: " + request.getUserId()));
 
-        // b. Tìm Gói cước
         SubscriptionPlan plan = subscriptionPlanRepository.findById(request.getPlanId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Gói cước ID: " + request.getPlanId()));
 
-        // c. KIỂM TRA QUAN TRỌNG: User này đã có gói ACTIVE chưa?
         Optional<UserSubscription> activeSub = userSubscriptionRepository.findActiveSubscriptionForUser(
                 request.getUserId(),
                 UserSubscription.SubscriptionStatus.ACTIVE,
@@ -67,14 +63,15 @@ public class SubscriptionService {
             throw new EntityNotFoundException("Không tìm thấy giá cho " + plan.getPriceType());
         }
 
-        // --- 3. TẠO INVOICE (Khớp với Entity Invoice của bạn) ---
+        // --- 3. TẠO INVOICE ---
         Invoice invoice = new Invoice();
         invoice.setUserId(user.getUserId());
         invoice.setCreatedDate(LocalDateTime.now());
         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
         invoice.setTotalAmount(planPrice);
-        invoice.setPlanToActivate(plan); // [QUAN TRỌNG] Liên kết Invoice với Gói
-        invoice.setNumberOfSwaps(0); // Không phải batch booking
+        invoice.setPlanToActivate(plan);
+        invoice.setNumberOfSwaps(0);
+        invoice.setInvoiceType(Invoice.InvoiceType.SUBSCRIPTION); // Tự động gán loại hóa đơn là SUBSCRIPTION
 
         return invoiceRepository.save(invoice);
     }

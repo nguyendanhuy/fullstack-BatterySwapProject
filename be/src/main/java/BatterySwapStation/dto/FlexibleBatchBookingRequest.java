@@ -14,8 +14,14 @@ import java.util.List;
 @AllArgsConstructor
 public class FlexibleBatchBookingRequest {
 
+    private String userId;
+
+    private String paymentMethod;
+
     @NotNull(message = "Danh sách booking không được null")
     @Size(min = 1, max = 3, message = "Chỉ cho phép từ 1-3 booking")
     @Valid
     private List<BookingRequest> bookings;
+
+
 }

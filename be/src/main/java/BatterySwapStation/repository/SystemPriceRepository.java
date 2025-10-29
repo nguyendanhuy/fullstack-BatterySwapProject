@@ -25,9 +25,4 @@ public interface SystemPriceRepository extends JpaRepository<SystemPrice, Long> 
     @Query("SELECT sp.price FROM SystemPrice sp WHERE sp.priceType = :priceType")
     Optional<Double> findPriceByPriceType(@Param("priceType") SystemPrice.PriceType priceType);
 
-
-
-    // [ĐÃ XÓA] Các hàm cũ như 'findCurrentSystemPrice', 'existsBy',
-    // và 'findFirstByOrderByIdAsc' đã bị xóa vì chúng không còn
-    // phù hợp với logic nhiều loại giá nữa.
 }

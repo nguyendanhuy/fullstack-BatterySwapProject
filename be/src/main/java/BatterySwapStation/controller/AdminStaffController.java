@@ -42,4 +42,12 @@ public class AdminStaffController {
         staffService.unassignStaff(staffId);
         return ResponseEntity.ok(Map.of("message", "Staff đã được hủy assign khỏi trạm."));
     }
+
+
+    @Operation (summary = "lấy danh sách staff theo trạm")
+    @GetMapping("/station/{stationId}")
+    public ResponseEntity<List<StaffListItemDTO>> getStaffByStation(@PathVariable Integer stationId) {
+        List<StaffListItemDTO> list = staffService.getStaffByStation(stationId);
+        return ResponseEntity.ok(list);
+    }
 }

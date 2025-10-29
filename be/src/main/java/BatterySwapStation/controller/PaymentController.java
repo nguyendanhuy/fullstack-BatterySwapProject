@@ -3,16 +3,20 @@ package BatterySwapStation.controller;
 import BatterySwapStation.dto.VnPayCreatePaymentRequest;
 import BatterySwapStation.dto.VnPayCreatePaymentResponse;
 import BatterySwapStation.dto.PaymentResponse;
+import BatterySwapStation.dto.WalletTopupRequest;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Payment;
 import BatterySwapStation.repository.PaymentRepository;
 import BatterySwapStation.service.PaymentService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -139,6 +143,31 @@ public class PaymentController {
         Map<String, Object> result = paymentService.refundBooking(bookingId);
         return ResponseEntity.ok(result);
     }
+
+    @PostMapping("/wallet/topup")
+    @Operation(summary = "Nạp tiền vào ví (VNPay)")
+    public ResponseEntity<Map<String, Object>> topupWallet(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody WalletTopupRequest request,
+            HttpServletRequest http
+    ) {
+        try {
+            String userId = userDetails.getUsername();
+            String paymentUrl = paymentService.createVnPayWalletTopup(request, http, userId);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "paymentUrl", paymentUrl,
+                    "message", "Tạo link thanh toán thành công"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
 //
 //    @PostMapping("/vnpay/subscription")
 //    public ResponseEntity<Map<String, Object>> createSubscriptionPayment(

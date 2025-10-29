@@ -43,6 +43,27 @@ public class Invoice {
         PAYMENTFAILED,
     }
 
+    public enum InvoiceType {
+        BOOKING,
+        SUBSCRIPTION,
+        WALLET_TOPUP
+    }
+
+    // 🆕 Thêm sau phần enum InvoiceType
+    @Enumerated(EnumType.STRING)
+    @Column(name = "invoicetype", length = 30)
+    private InvoiceType invoiceType = InvoiceType.BOOKING;
+
+    // Getter / Setter cho InvoiceType
+    public InvoiceType getInvoiceType() {
+        return invoiceType;
+    }
+
+    public void setInvoiceType(InvoiceType invoiceType) {
+        this.invoiceType = invoiceType;
+    }
+
+
     @Enumerated(EnumType.STRING)
     @Column(name = "invoicestatus", nullable = false, length = 20)
     private InvoiceStatus invoiceStatus = InvoiceStatus.PENDING;
@@ -67,7 +88,7 @@ public class Invoice {
     private SubscriptionPlan planToActivate;
 
     // Getters and setters
-    public Long getInvoiceId(){
+    public Long getInvoiceId() {
         return invoiceId;
     }
 
@@ -76,7 +97,7 @@ public class Invoice {
     }
 
     @JsonIgnore
-    public Long getId(){
+    public Long getId() {
         return invoiceId;
     }
 

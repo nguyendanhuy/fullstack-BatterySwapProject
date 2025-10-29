@@ -28,36 +28,35 @@ public class StaffService {
 
     @Transactional
     public CreateStaffResponse createStaff(CreateStaffRequest req) {
-    // 1️⃣ Kiểm tra trùng email
+        // 1️⃣ Kiểm tra trùng email
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new RuntimeException("Email đã tồn tại: " + req.getEmail());
         }
 
-        // 2️⃣ Sinh staffId tự động: ST001, ST002, ...
-        long staffCount = userRepository.countByRole_RoleId(2); // Giả sử roleId=2 là STAFF
+        // 2️⃣ Sinh staffId tự động
+        long staffCount = userRepository.countByRole_RoleId(2); // roleId=2 là STAFF
         String staffId = String.format("ST%03d", staffCount + 1);
 
         // 3️⃣ Lấy role STAFF
         Role staffRole = roleRepository.findByRoleName("STAFF");
         if (staffRole == null) throw new RuntimeException("Không thấy role STAFF");
 
-
         // 4️⃣ Mã hóa mật khẩu
         String encodedPassword = passwordEncoder.encode(req.getPassword());
 
-        // 5️⃣ Tạo user entity
+        // 5️⃣ Tạo staff (chưa assign → inactive)
         User staff = new User();
         staff.setUserId(staffId);
         staff.setFullName(req.getName());
         staff.setEmail(req.getEmail());
         staff.setPassword(encodedPassword);
-        staff.setActive(true);
+        staff.setActive(false); // ⛔ Mặc định chưa assign thì inactive
         staff.setVerified(true);
         staff.setRole(staffRole);
 
         userRepository.save(staff);
 
-        // 6️⃣ Gán staff vào station (nếu có stationId)
+        // 6️⃣ Gán trạm nếu có (tự động active staff & assign)
         Station station = null;
         if (req.getStationId() != null) {
             station = stationRepository.findById(req.getStationId())
@@ -69,6 +68,10 @@ public class StaffService {
             assign.setAssignDate(LocalDateTime.now());
             assign.setActive(true);
             staffAssignRepository.save(assign);
+
+            // ✅ Khi assign → tự động bật staff active
+            staff.setActive(true);
+            userRepository.save(staff);
         }
 
         return new CreateStaffResponse(
@@ -82,38 +85,10 @@ public class StaffService {
         );
     }
 
-
     @Transactional(readOnly = true)
     public List<StaffListItemDTO> getAllStaff() {
-        // 1️⃣ Lấy tất cả user có roleId = 2 (STAFF)
-        List<User> staffUsers = userRepository.findAll().stream()
-                .filter(u -> u.getRole() != null && u.getRole().getRoleId() == 2)
-                .collect(Collectors.toList());
-
-        // 2️⃣ Map sang DTO, gắn thông tin assign (nếu có)
-        return staffUsers.stream().map(user -> {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
-            Station station = null;
-            Integer stationId = null;
-            String stationName = null;
-
-            if (assign != null) {
-                stationId = assign.getStationId();
-                station = stationRepository.findById(stationId).orElse(null);
-                if (station != null) {
-                    stationName = station.getStationName();
-                }
-            }
-
-            return new StaffListItemDTO(
-                    user.getUserId(),
-                    user.getFullName(),
-                    user.getEmail(),
-                    stationId,
-                    stationName,
-                    user.isActive()
-            );
-        }).collect(Collectors.toList());
+        // 🔹 Lấy trực tiếp từ repository (1 query duy nhất)
+        return userRepository.findAllStaffWithStation();
     }
 
     @Transactional
@@ -121,29 +96,35 @@ public class StaffService {
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy staff: " + staffId));
 
-        if (req.getActive() != null) {
-            staff.setActive(req.getActive());
-            userRepository.save(staff);
-        }
-
+        // 🔹 Lấy assign hiện tại (nếu có)
         StaffAssign currentAssign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(staffId);
 
+        // 🔹 Nếu có stationId mới => deactivate assign cũ và tạo assign mới
         if (req.getStationId() != null) {
-            if (currentAssign == null) {
-                currentAssign = new StaffAssign();
-                currentAssign.setUser(staff);
-                currentAssign.setAssignDate(LocalDateTime.now());
+            if (currentAssign != null) {
+                currentAssign.setActive(false);
+                staffAssignRepository.save(currentAssign);
             }
 
-            currentAssign.setStationId(req.getStationId());
-            currentAssign.setActive(true);
-            staffAssignRepository.save(currentAssign);
+            // ✅ Tạo assign mới
+            StaffAssign newAssign = new StaffAssign();
+            newAssign.setUser(staff);
+            newAssign.setStationId(req.getStationId());
+            newAssign.setAssignDate(LocalDateTime.now());
+            newAssign.setActive(true);
+            staffAssignRepository.save(newAssign);
+
+            if (!staff.isActive()) {
+                staff.setActive(true);
+                userRepository.save(staff);
+            }
+
+            currentAssign = newAssign;
         }
 
+        // 🔹 Xác định station để trả về DTO
         Station station = null;
-        if (req.getStationId() != null) {
-            station = stationRepository.findById(req.getStationId()).orElse(null);
-        } else if (currentAssign != null) {
+        if (currentAssign != null) {
             station = stationRepository.findById(currentAssign.getStationId()).orElse(null);
         }
 
@@ -158,14 +139,29 @@ public class StaffService {
     }
 
 
+
     @Transactional
     public void unassignStaff(String staffId) {
-        StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(staffId);
-        if (assign == null) {
-            throw new RuntimeException("Staff không có assign hoạt động.");
+        // 🔹 Lấy assign đang active
+        StaffAssign currentAssign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(staffId);
+        if (currentAssign == null) {
+            throw new RuntimeException("Staff không có assign hoạt động để hủy.");
         }
 
-        assign.setActive(false);
-        staffAssignRepository.save(assign);
+        // 🔹 Deactivate assign
+        currentAssign.setActive(false);
+        staffAssignRepository.save(currentAssign);
+
+        // 🔹 Cập nhật user.active = false
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy staff: " + staffId));
+        staff.setActive(false);
+        userRepository.save(staff);
     }
+
+    @Transactional(readOnly = true)
+    public List<StaffListItemDTO> getStaffByStation(Integer stationId) {
+        return userRepository.findStaffByStationId(stationId);
+    }
+
 }

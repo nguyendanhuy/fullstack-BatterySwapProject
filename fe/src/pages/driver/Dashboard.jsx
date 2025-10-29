@@ -156,11 +156,9 @@ const DriverDashboard = () => {
                     </Badge>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between items-center bg-white/60 rounded-lg p-2">
-                        <span className="text-gray-700 font-medium">Tên gói:</span>
+                        <span className="text-gray-700 font-medium">Loại gói:</span>
                         <span className="font-semibold text-gray-900">
-                          {invoice.planToActivate.planName === "BASIC" ? "Cơ bản"
-                            : invoice.planToActivate.planName === "PREMIUM" ? "Premium"
-                              : "Không giới hạn"}
+                          {invoice.planToActivate.planName}
                         </span>
                       </div>
                       <div className="flex justify-between items-center bg-white/60 rounded-lg p-2">

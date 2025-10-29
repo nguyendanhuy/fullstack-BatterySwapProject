@@ -39,7 +39,7 @@ const Subscriptions = () => {
                 color = "from-green-500 to-emerald-500";
                 bgColor = "from-green-50 to-emerald-50";
                 break;
-              case "UNLIMITED":
+              case "BUSINESS":
                 icon = Crown;
                 color = "from-purple-500 to-pink-500";
                 bgColor = "from-purple-50 to-pink-50";

@@ -196,6 +196,15 @@ const getStationsAndStaff = () => {
     return axios.get("/admin/staff");
 }
 
+const depositSystemWallet = (amount) => {
+    const data = {
+        amount,
+        bankCode: "VNPAY",
+        orderType: "wallet_topup"
+    };
+    return axios.post("/payments/vnpay/wallet/topup", data);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -241,5 +250,6 @@ export {
     createStaffAccount,
     cancelStaffAssign,
     assignStaff,
-    getStationsAndStaff
+    getStationsAndStaff,
+    depositSystemWallet
 };

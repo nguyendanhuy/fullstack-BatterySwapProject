@@ -2,9 +2,11 @@ package BatterySwapStation.controller;
 
 import BatterySwapStation.dto.CreateStaffRequest;
 import BatterySwapStation.dto.StaffListItemDTO;
+import BatterySwapStation.dto.StationStaffGroupDTO;
 import BatterySwapStation.dto.UpdateStaffAssignRequest;
 import BatterySwapStation.service.StaffService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,16 +20,26 @@ import java.util.Map;
 public class AdminStaffController {
 
     private final StaffService staffService;
-    @Operation(summary = "tạo tk cho staff")
+
     @PostMapping
-    public ResponseEntity<?> createStaff(@RequestBody CreateStaffRequest req) {
+    @Operation(summary = "Tạo tài khoản cho staff")
+    public ResponseEntity<?> createStaff(@Valid @RequestBody CreateStaffRequest req) {
         return ResponseEntity.ok(staffService.createStaff(req));
     }
-    @Operation(summary = "lấy danh sách tất cả staff")
-    @GetMapping
-    public ResponseEntity<List<StaffListItemDTO>> getAllStaff() {
-        return ResponseEntity.ok(staffService.getAllStaff());
+
+
+    @Operation(summary = "Lấy danh sách staff bth")
+    @GetMapping("/list")
+    public ResponseEntity<List<StaffListItemDTO>> getAllStaffFlat() {
+        List<StaffListItemDTO> list = staffService.getAllStaffFlat();
+        return ResponseEntity.ok(list);
     }
+    @Operation(summary = "Lấy danh sách staff được group theo trạm")
+    @GetMapping
+    public ResponseEntity<List<StationStaffGroupDTO>> getAllStaffGrouped() {
+        return ResponseEntity.ok(staffService.getAllStaffGroupedByStation());
+    }
+
     @Operation(summary = "assign staff, có thể null station id nếu chỉ đổi isactive")
     @PutMapping("/{staffId}")
     public ResponseEntity<StaffListItemDTO> updateStaffAssign(

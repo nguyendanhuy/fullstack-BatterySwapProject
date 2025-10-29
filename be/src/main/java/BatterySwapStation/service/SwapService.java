@@ -71,7 +71,7 @@ public class SwapService {
 
         Integer stationId = booking.getStation().getStationId();
 
-        // 1️⃣ PinOut: trả lại dock trống
+        // 1️⃣ PinOut: trả lại dock trống                                                                              
         if (batteryOut.getDockSlot() != null) {
             DockSlot old = batteryOut.getDockSlot();
             old.setBattery(null);

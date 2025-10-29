@@ -1,11 +1,10 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.CreateStaffRequest;
-import BatterySwapStation.dto.CreateStaffResponse;
-import BatterySwapStation.dto.StaffListItemDTO;
-import BatterySwapStation.dto.UpdateStaffAssignRequest;
+import BatterySwapStation.dto.*;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
+
+import BatterySwapStation.utils.UserIdGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +25,7 @@ public class StaffService {
     private final StationRepository stationRepository;
     private final StaffAssignRepository staffAssignRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserIdGenerator userIdGenerator;
 
     @Transactional
     public CreateStaffResponse createStaff(CreateStaffRequest req) {
@@ -33,13 +34,12 @@ public class StaffService {
             throw new RuntimeException("Email đã tồn tại: " + req.getEmail());
         }
 
-        // 2️⃣ Sinh staffId tự động
-        long staffCount = userRepository.countByRole_RoleId(2); // roleId=2 là STAFF
-        String staffId = String.format("ST%03d", staffCount + 1);
-
-        // 3️⃣ Lấy role STAFF
+        // 2️⃣ Lấy role STAFF
         Role staffRole = roleRepository.findByRoleName("STAFF");
         if (staffRole == null) throw new RuntimeException("Không thấy role STAFF");
+
+        // ✅ 3️⃣ Sinh staffId bằng UserIdGenerator (an toàn, không trùng)
+        String staffId = userIdGenerator.generateUserId(staffRole);
 
         // 4️⃣ Mã hóa mật khẩu
         String encodedPassword = passwordEncoder.encode(req.getPassword());
@@ -50,13 +50,13 @@ public class StaffService {
         staff.setFullName(req.getName());
         staff.setEmail(req.getEmail());
         staff.setPassword(encodedPassword);
-        staff.setActive(false); // ⛔ Mặc định chưa assign thì inactive
+        staff.setActive(false);
         staff.setVerified(true);
         staff.setRole(staffRole);
 
         userRepository.save(staff);
 
-        // 6️⃣ Gán trạm nếu có (tự động active staff & assign)
+        // 6️⃣ Gán trạm nếu có
         Station station = null;
         if (req.getStationId() != null) {
             station = stationRepository.findById(req.getStationId())
@@ -69,7 +69,6 @@ public class StaffService {
             assign.setActive(true);
             staffAssignRepository.save(assign);
 
-            // ✅ Khi assign → tự động bật staff active
             staff.setActive(true);
             userRepository.save(staff);
         }
@@ -86,10 +85,56 @@ public class StaffService {
     }
 
     @Transactional(readOnly = true)
-    public List<StaffListItemDTO> getAllStaff() {
-        // 🔹 Lấy trực tiếp từ repository (1 query duy nhất)
+    public List<StaffListItemDTO> getAllStaffFlat() {
+        // 🔹 Lấy toàn bộ staff kèm thông tin station (nếu có)
         return userRepository.findAllStaffWithStation();
     }
+
+    @Transactional(readOnly = true)
+    public List<StationStaffGroupDTO> getAllStaffGroupedByStation() {
+        // 1️⃣ Lấy toàn bộ staff cùng station
+        List<StaffListItemDTO> allStaff = userRepository.findAllStaffWithStation();
+
+        // 2️⃣ Group theo stationId (xử lý null => dùng -1 để tránh NPE)
+        Map<Integer, List<StaffListItemDTO>> grouped = allStaff.stream()
+                .collect(Collectors.groupingBy(staff ->
+                        staff.getStationId() != null ? staff.getStationId() : -1
+                ));
+
+        // 3️⃣ Duyệt từng group và tạo StationStaffGroupDTO
+        return grouped.entrySet().stream()
+                .map(entry -> {
+                    Integer stationId = entry.getKey();
+                    List<StaffListItemDTO> staffList = entry.getValue();
+
+                    // ✅ Nếu là nhóm chưa assign
+                    if (stationId == -1) {
+                        return new StationStaffGroupDTO(
+                                null,
+                                "Unassigned",
+                                null,
+                                false,
+                                staffList
+                        );
+                    }
+
+                    // ✅ Nếu có trạm thì lấy thông tin trạm từ DB
+                    Station station = stationRepository.findById(stationId).orElse(null);
+
+                    return new StationStaffGroupDTO(
+                            station != null ? station.getStationId() : null,
+                            station != null ? station.getStationName() : "Unknown Station",
+                            station != null ? station.getAddress() : null,
+                            station != null && station.isActive(),
+                            staffList
+                    );
+                })
+                // ✅ Sắp xếp cho nhóm “Unassigned” nằm đầu
+                .sorted((a, b) -> a.getStationId() == null ? -1 : 1)
+                .collect(Collectors.toList());
+    }
+
+
 
     @Transactional
     public StaffListItemDTO updateStaffAssign(String staffId, UpdateStaffAssignRequest req) {

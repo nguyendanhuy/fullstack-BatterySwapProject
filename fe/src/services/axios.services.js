@@ -204,6 +204,9 @@ const depositSystemWallet = (amount) => {
     };
     return axios.post("/payments/vnpay/wallet/topup", data);
 }
+const getStationPerformanceReports = () => {
+    return axios.get("/reports/station/performance");
+}
 
 export {
     registerAPI,
@@ -250,6 +253,7 @@ export {
     createStaffAccount,
     cancelStaffAssign,
     assignStaff,
-    getStationsAndStaff,
-    depositSystemWallet
+    getStationsAndStaff, 
+    depositSystemWallet,
+    getStationPerformanceReports
 };

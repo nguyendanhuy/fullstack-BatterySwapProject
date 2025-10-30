@@ -42,17 +42,9 @@ const Login = () => {
     }));
   };
 
-
-  const pickApiMessage = (res) =>
-    res?.messages?.auth ||
-    res?.messages?.business ||
-    res?.error ||
-    'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
-
-  const isErrorResponse = (res) =>
-    !!res?.error ||
-    !!res?.messages?.auth ||
-    !!res?.messages?.business;
+  // Helpers
+  const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
+  const isErrorResponse = (res) => res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
 
   const handleLogin = async (e) => {
     e.preventDefault();

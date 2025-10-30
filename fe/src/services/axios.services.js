@@ -81,9 +81,9 @@ const createBookingForVehicles = (data) => {
     return axios.post("/bookings/batch", data)
 }
 
-const createInvoiceForBookings = (data) => {
-    return axios.post("/invoices/create-from-multiple-bookings", data)
-}
+// const createInvoiceForBookings = (data) => {
+//     return axios.post("/invoices/create-from-multiple-bookings", data)
+// }
 
 const createVNPayUrl = (data) => {
     return axios.post("/payments/vnpay/create", data)
@@ -136,8 +136,8 @@ const changeUserPassword = (oldPassword, newPassword, confirmPassword) => {
 }
 
 
-const createInvoiceForSubscription = (planId, userId) => {
-    const data = { planId, userId };
+const createInvoiceForSubscription = (planId, userId, paymentMethod) => {
+    const data = { planId, userId, paymentMethod };
     return axios.post("/plans/subscribe", data);
 }
 
@@ -228,7 +228,7 @@ export {
     cancelBookingById,
     getSwapDefaultPrice,
     createBookingForVehicles,
-    createInvoiceForBookings,
+    // createInvoiceForBookings,
     createVNPayUrl,
     checkVNPayPaymentStatus,
     getInvoicebyUserId,
@@ -253,7 +253,7 @@ export {
     createStaffAccount,
     cancelStaffAssign,
     assignStaff,
-    getStationsAndStaff, 
+    getStationsAndStaff,
     depositSystemWallet,
     getStationPerformanceReports
 };

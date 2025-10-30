@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Steps } from "antd";
 import { UserOutlined, CalendarOutlined, ClockCircleOutlined, CreditCardOutlined, LoadingOutlined } from "@ant-design/icons";
-import { getSwapDefaultPrice, createBookingForVehicles, createInvoiceForBookings } from "../../services/axios.services";
+import { getSwapDefaultPrice, createBookingForVehicles } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -124,14 +124,19 @@ const Reservation = () => {
   // Check if user has active subscription
   const hasActiveSubscription = userData?.activeSubscriptionId && [1, 2, 3].includes(userData.activeSubscriptionId);
 
+  // Helpers
+  const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
+  const isErrorResponse = (res) => res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
+
   // Handle subscription payment
   const handleSubscriptionPayment = async () => {
     if (!anyTimePicked || paymentLoading) return;
 
     setPaymentLoading(true);
     try {
-      // Prepare booking data from reservation (same format as Payment.jsx)
       const bookingData = {
+        userId: userData?.userId,
+        paymentMethod: "SUBSCRIPTION",
         bookings: lines.map((line, index) => {
           const vehicleId = line.vehicleInfo.vehicleId;
           const dateTime = sb[vehicleId];
@@ -150,25 +155,18 @@ const Reservation = () => {
 
       console.log("Creating bookings with subscription:", bookingData);
 
-      // Step 1: Create bookings
-      const bookingRes = await createBookingForVehicles(bookingData);
-      console.log("Booking response:", bookingRes);
+      // Create bookings (API will auto-create invoice)
+      const response = await createBookingForVehicles(bookingData);
+      console.log("Booking response:", response);
 
-      // Check lỗi từ booking API
-      if (!bookingRes.success || !bookingRes.data) {
-        throw new Error(bookingRes.message || "Không thể tạo booking");
-      }
-
-
-      // Get successful booking IDs
-      const bookingIds = bookingRes.data.successBookings.map(sb => sb.bookingId);
-
-      // Step 2: Create invoice
-      const invoiceRes = await createInvoiceForBookings(bookingIds);
-      console.log("Invoice response:", invoiceRes);
-
-      if (!invoiceRes.invoiceId) {
-        throw new Error("Không thể tạo hóa đơn");
+      // Check error
+      if (isErrorResponse(response)) {
+        toast({
+          title: "Đặt lịch thất bại!",
+          description: pickApiMessage(response),
+          variant: "destructive",
+        });
+        return;
       }
 
       // Clear session storage
@@ -180,7 +178,7 @@ const Reservation = () => {
         className: "bg-green-500 text-white",
       });
 
-      // Navigate to booking history or dashboard
+      // Navigate to booking history
       setTimeout(() => {
         navigate("/driver/booking-history");
       }, 1500);

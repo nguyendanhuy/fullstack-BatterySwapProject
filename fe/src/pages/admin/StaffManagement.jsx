@@ -57,9 +57,8 @@ const StaffManagement = () => {
   const [formData, setFormData] = useState({ name: "", email: "", password: "", stationId: "" });
   const [assignStationId, setAssignStationId] = useState("");
 
-
-  const pickApiMessage = (data) => data?.messages?.auth || data?.messages?.business || data?.error || "Có lỗi xảy ra.";
-  const isErrorResponse = (data) => !!data?.error || !!data?.messages?.auth || !!data?.messages?.business;
+  const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
+  const isErrorResponse = (res) => res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
 
   // fetchers
   const fetchStaff = async () => {

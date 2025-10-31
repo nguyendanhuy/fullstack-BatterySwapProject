@@ -9,12 +9,14 @@ import BatterySwapStation.entity.BatteryInspection;
 import BatterySwapStation.entity.DisputeTicket;
 import BatterySwapStation.service.InspectionService; // Service đã được gộp
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -135,4 +137,23 @@ public class InspectionController {
             ));
         }
     }
+
+        // ✅ THÊM API NÀY
+        @GetMapping("/inspections/staff/{staffUserId}")
+        @Operation(summary = "Lấy danh sách Inspection được thực hiện bởi Staff",
+                description = "Lấy danh sách các Inspection do Staff có ID này thực hiện.")
+        public ResponseEntity<List<InspectionResponse>> getInspectionsByStaff(
+                @Parameter(description = "ID của Staff, ví dụ: ST006")
+                @PathVariable String staffUserId) {
+
+            List<InspectionResponse> inspections = inspectionService.getInspectionsByStaff(staffUserId);
+
+            if (inspections.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            return ResponseEntity.ok(inspections);
+        }
+
+
 }

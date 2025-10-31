@@ -217,4 +217,15 @@ public class InspectionService {
         }
         return res;
     }
+
+    // ✅ THÊM PHƯƠNG THỨC NÀY
+    public List<InspectionResponse> getInspectionsByStaff(String staffId) {
+        // 1. Lấy danh sách Inspection từ DB
+        List<BatteryInspection> inspections = inspectionRepository.findByStaffUserId(staffId);
+
+        // 2. Chuyển đổi List<BatteryInspection> sang List<InspectionResponse>
+        return inspections.stream()
+                .map(this::convertToInspectionResponse)
+                .collect(Collectors.toList());
+    }
 }

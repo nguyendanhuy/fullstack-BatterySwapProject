@@ -3,12 +3,14 @@ package BatterySwapStation.controller;
 import BatterySwapStation.dto.ApiResponseDto;
 import BatterySwapStation.service.ReportExportService;
 import BatterySwapStation.service.ReportService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -19,11 +21,13 @@ public class ReportController {
     private final ReportService reportService;
     private final ReportExportService reportExportService;
 
+    @Operation (summary = "Báo cáo hiệu suất trạm trong ngày hôm nay")
     @GetMapping("/station/performance")
     public ResponseEntity<ApiResponseDto> getStationPerformance() {
         return ResponseEntity.ok(new ApiResponseDto(true, "OK", reportService.getStationPerformanceReport()));
     }
 
+    @Operation (summary = "Báo cáo doanh thu hàng giờ trong khoảng thời gian")
     @GetMapping("/revenue/hourly")
     public ResponseEntity<ApiResponseDto> getRevenueHourly(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -33,6 +37,7 @@ public class ReportController {
                 reportService.getRevenueReport(startDate, endDate, true)));
     }
 
+    @Operation (summary = "Báo cáo doanh thu hàng ngày trong khoảng thời gian")
     @GetMapping("/revenue/daily")
     public ResponseEntity<ApiResponseDto> getRevenueDaily(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -42,6 +47,7 @@ public class ReportController {
                 reportService.getRevenueReport(startDate, endDate, false)));
     }
 
+    @Operation (summary = "Báo cáo số lần đổi pin hàng giờ trong khoảng thời gian")
     @GetMapping("/swap/hourly")
     public ResponseEntity<ApiResponseDto> getSwapHourly(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -51,6 +57,8 @@ public class ReportController {
                 reportService.getSwapReport(startDate, endDate, true)));
     }
 
+
+    @Operation (summary = "Báo cáo số lần đổi pin hàng ngày trong khoảng thời gian")
     @GetMapping("/swap/daily")
     public ResponseEntity<ApiResponseDto> getSwapDaily(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -60,12 +68,15 @@ public class ReportController {
                 reportService.getSwapReport(startDate, endDate, false)));
     }
 
+    @Operation (summary = "Báo cáo tổng hợp hiệu suất hoạt động của hệ thống")
     @GetMapping("/summary")
     public ResponseEntity<ApiResponseDto> getSummary() {
         return ResponseEntity.ok(new ApiResponseDto(true, "OK",
                 reportService.getSummary()));
     }
 
+
+    @Operation (summary = "Xuất báo cáo ra file Excel")
     @GetMapping("/{id}/export")
     public ResponseEntity<byte[]> exportReport(@PathVariable Long id) {
         try {
@@ -82,4 +93,35 @@ public class ReportController {
                     .body(("Error exporting report: " + e.getMessage()).getBytes());
         }
     }
+    @Operation (summary = "Báo cáo hiệu suất trạm trong khoảng 7 ngày gần nhất")
+    @GetMapping("/station/{stationId}/range")
+    public ResponseEntity<ApiResponseDto> getStationReportInRange(
+            @PathVariable Integer stationId,
+            @RequestParam(defaultValue = "7") int days
+    ) {
+        return ResponseEntity.ok(
+                new ApiResponseDto(true, "OK", reportService.getStationReportInRange(stationId, days))
+        );
+    }
+
+    @Operation (summary = "Báo cáo tổng hợp hàng ngày của tất cả các trạm trong khoảng ngày gần nhất")
+    @GetMapping("/stations")
+    public ResponseEntity<?> getAllStationReports(
+            @RequestParam(defaultValue = "7") int days
+    ) {
+        Map<String, Object> result = reportService.getStationReport(days);
+        return ResponseEntity.ok(result);
+    }
+
+
+    @Operation (summary = "Báo cáo hàng ngày của một trạm theo ngày cụ thể")
+    @GetMapping("/stations/{stationId}/day")
+    public ResponseEntity<?> getStationDailyReport(
+            @PathVariable Integer stationId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        Map<String, Object> result = reportService.getStationDailyReport(stationId, date);
+        return ResponseEntity.ok(result);
+    }
+
 }

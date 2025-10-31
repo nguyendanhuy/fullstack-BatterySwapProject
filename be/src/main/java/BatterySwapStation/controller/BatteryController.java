@@ -3,6 +3,7 @@ package BatterySwapStation.controller;
 import BatterySwapStation.dto.BatteryUpdateRequestDTO;
 import BatterySwapStation.dto.BatteryUpdateResponseDTO;
 import BatterySwapStation.entity.Battery;
+import BatterySwapStation.entity.DockSlot;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.service.BatteryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import BatterySwapStation.dto.BatteryStatusUpdateRequest;
+
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -55,6 +58,13 @@ public class BatteryController {
     public ResponseEntity<?> getLooseBatteries(@RequestParam Integer stationId) {
         return ResponseEntity.ok(batteryService.getLooseBatteriesByStation(stationId));
     }
+
+
+    @GetMapping("/{batteryId}")
+    public ResponseEntity<?> getBatteryById(@PathVariable String batteryId) {
+        return ResponseEntity.ok(batteryService.getBatteryDetail(batteryId));
+    }
+
 
 
 }

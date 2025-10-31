@@ -7,8 +7,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -61,5 +63,39 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.payments WHERE i.invoiceId = :invoiceId")
     Optional<Invoice> findByIdWithPayments(@Param("invoiceId") Long invoiceId);
 
-    // (Bạn có thể cần sửa/xóa hàm 'findByUserIdOrderByCreatedDateDesc' cũ nếu có)
+
+    @Query("""
+    SELECT b.station.stationId AS stationId,
+           DATE(i.createdDate) AS date,
+           SUM(i.totalAmount) AS totalRevenue
+    FROM Invoice i
+    JOIN Booking b ON b.invoice.invoiceId = i.invoiceId
+    WHERE DATE(i.createdDate) BETWEEN :start AND :end
+    GROUP BY b.station.stationId, DATE(i.createdDate)
+    ORDER BY b.station.stationId ASC, DATE(i.createdDate) ASC
+""")
+    List<Map<String, Object>> fetchDailyRevenueByAllStations(
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+
+
+    @Query("""
+    SELECT DATE(i.createdDate) AS date,
+           SUM(i.totalAmount) AS totalRevenue
+    FROM Invoice i
+    JOIN i.bookings b
+    WHERE b.station.stationId = :stationId
+      AND DATE(i.createdDate) BETWEEN :start AND :end
+    GROUP BY DATE(i.createdDate)
+    ORDER BY DATE(i.createdDate)
+""")
+    List<Map<String, Object>> fetchDailyRevenueByStation(
+            @Param("stationId") Integer stationId,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+
 }

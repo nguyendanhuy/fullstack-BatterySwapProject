@@ -63,4 +63,13 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
       AND ds.isActive = true
 """)
     List<Battery> findWaitingBatteriesByStation(@Param("stationId") Integer stationId);
+
+
+    @Query("""
+    SELECT b.dockSlot.dock.station.stationId, COUNT(b)
+    FROM Battery b
+    GROUP BY b.dockSlot.dock.station.stationId
+""")
+    List<Object[]> countBatteriesForAllStations();
+
 }

@@ -5,9 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
-
 
 @Repository
 public interface StationRepository extends JpaRepository<Station, Integer> {
@@ -46,10 +46,20 @@ public interface StationRepository extends JpaRepository<Station, Integer> {
         """)
     List<Object[]> getStationBatteryTypes();
 
-
-    // ✅ THÊM HÀM NÀY
-    @Query("SELECT s FROM Station s LEFT JOIN FETCH s.docks WHERE s.stationId = :stationId")
+    // Load trạm kèm docks (tránh Lazy exception)
+    @Query("""
+        SELECT s
+        FROM Station s
+        LEFT JOIN FETCH s.docks
+        WHERE s.stationId = :stationId
+    """)
     Optional<Station> findByIdWithDocks(@Param("stationId") Integer stationId);
+
+    // Đếm số pin thuộc trạm
+    @Query("""
+        SELECT COUNT(b)
+        FROM Battery b
+        WHERE b.dockSlot.dock.station.stationId = :stationId
+    """)
+    long countBatteriesAtStation(Integer stationId);
 }
-
-

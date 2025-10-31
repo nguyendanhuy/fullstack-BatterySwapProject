@@ -1,11 +1,13 @@
 package BatterySwapStation.service;
 
+import BatterySwapStation.dto.BatteryDetailDTO;
 import BatterySwapStation.dto.BatteryRealtimeEvent;
 import BatterySwapStation.dto.BatteryStatusUpdateRequest;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.DockSlot;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.DockSlotRepository;
+import BatterySwapStation.repository.SwapRepository;
 import BatterySwapStation.websocket.BatterySocketController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -15,6 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +29,7 @@ public class BatteryService {
     private final DockSlotRepository dockSlotRepository;
     private final BatterySocketController batterySocketController;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
+    private final SwapRepository swapRepository;
     // ==================== TỰ ĐỘNG SẠC ====================
     @Scheduled(fixedRate = 60000)
     @Transactional
@@ -211,6 +214,35 @@ public class BatteryService {
 
 
 
+    public BatteryDetailDTO getBatteryDetail(String batteryId) {
+        Battery battery = batteryRepository.findById(batteryId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy pin: " + batteryId));
+
+        long swapCount = swapRepository.countSwapsByBattery(batteryId);
+
+        DockSlot slot = battery.getDockSlot();
+
+        return BatteryDetailDTO.builder()
+                .stationId(battery.getStationId())
+                .stationName(slot != null ? slot.getDock().getStation().getStationName() : null)
+                .dockId(slot != null ? slot.getDock().getDockId() : null)
+                .dockName(slot != null ? slot.getDock().getDockName() : null)
+                .dockSlotId(slot != null ? slot.getDockSlotId() : null)
+                .slotNumber(slot != null ? slot.getSlotNumber() : null)
+
+                .batteryId(battery.getBatteryId())
+                .status(battery.getBatteryStatus().name())
+                .batteryType(battery.getBatteryType().name())
+                .currentCapacity(battery.getCurrentCapacity())
+                .stateOfHealth(battery.getStateOfHealth())
+                .cycleCount(battery.getCycleCount())
+                .manufactureDate(battery.getManufactureDate())
+                .expiryDate(battery.getExpiryDate())
+                .isActive(battery.isActive())
+
+                .swapCount(swapCount)
+                .build();
+    }
 
 
 }

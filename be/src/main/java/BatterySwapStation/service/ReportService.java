@@ -168,5 +168,81 @@ public class ReportService {
         return data;
     }
 
+    // 📊 Lấy báo cáo 1 trạm theo khoảng ngày
+    public Map<String, Object> getStationReportInRange(Integer stationId, int days) {
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusDays(days);
+
+        var swapRows = swapRepository.fetchDailySwapByStation(stationId, start, end);
+        var revenueRows = invoiceRepository.fetchDailyRevenueByStation(stationId, start, end);
+
+        int totalSwaps = swapRows.stream()
+                .mapToInt(r -> ((Number) r.get("swapCount")).intValue())
+                .sum();
+
+        double totalRevenue = revenueRows.stream()
+                .mapToDouble(r -> ((Number) r.get("totalRevenue")).doubleValue())
+                .sum();
+
+        var station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new EntityNotFoundException("Station not found"));
+
+        return Map.of(
+                "stationId", stationId,
+                "stationName", station.getStationName(),
+                "address", station.getAddress(),
+                "range", Map.of("start", start, "end", end, "days", days),
+                "totalRevenue", totalRevenue,
+                "totalSwaps", totalSwaps,
+                "revenueChart", revenueRows,
+                "swapChart", swapRows
+        );
+    }
+
+    // 📊 Lấy báo cáo tất cả trạm
+    public Map<String, Object> getStationReport(int days) {
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusDays(days);
+
+        var stations = stationRepository.findAll();
+        var swapData = swapRepository.fetchDailySwapByAllStations(start, end);
+        var revenueData = invoiceRepository.fetchDailyRevenueByAllStations(start, end);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (var st : stations) {
+            int id = st.getStationId();
+
+            var revenueChart = revenueData.stream()
+                    .filter(r -> ((Integer) r.get("stationId")) == id)
+                    .toList();
+
+            var swapChart = swapData.stream()
+                    .filter(r -> ((Integer) r.get("stationId")) == id)
+                    .toList();
+
+            double totalRevenue = revenueChart.stream()
+                    .mapToDouble(r -> ((Number) r.get("totalRevenue")).doubleValue())
+                    .sum();
+
+            int totalSwaps = swapChart.stream()
+                    .mapToInt(r -> ((Number) r.get("swapCount")).intValue())
+                    .sum();
+
+            result.add(Map.of(
+                    "stationId", id,
+                    "stationName", st.getStationName(),
+                    "address", st.getAddress(),
+                    "range", Map.of("start", start, "end", end, "days", days),
+                    "totalRevenue", totalRevenue,
+                    "totalSwaps", totalSwaps,
+                    "revenueChart", revenueChart,
+                    "swapChart", swapChart
+            ));
+        }
+
+        return Map.of("stations", result);
+    }
+
 }
 

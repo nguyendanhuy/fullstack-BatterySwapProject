@@ -29,13 +29,15 @@ public class InspectionService {
     private final InvoiceService invoiceService;
     private final UserRepository userRepository;
     private final SwapRepository swapRepository;
+    private final StationRepository stationRepository;
 
     // ----------------------------------------------------
     // --- 1. TẠO INSPECTION (POST /inspections) ---
     // ----------------------------------------------------
     @Transactional
     public BatteryInspection createInspection(InspectionRequest request) {
-        // ... (Logic tạo Inspection, giữ nguyên) ...
+
+        // (Giữ nguyên phần kiểm tra dữ liệu đầu vào)
         if (request.getStaffId() == null || request.getStaffId().isEmpty()) {
             throw new IllegalArgumentException("staffId là bắt buộc");
         }
@@ -46,6 +48,7 @@ public class InspectionService {
             throw new IllegalArgumentException("bookingId là bắt buộc (để liên kết)");
         }
 
+        // 1. Lấy Staff, Booking, Battery (Giữ nguyên)
         User staff = userRepository.findById(request.getStaffId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Staff (User) ID: " + request.getStaffId()));
 
@@ -58,6 +61,7 @@ public class InspectionService {
                         "Không tìm thấy (Entity) Pin với ID: " + oldBatteryId
                 ));
 
+        // 2. Tạo và Lưu Inspection
         BatteryInspection inspection = BatteryInspection.builder()
                 .booking(booking)
                 .battery(battery)
@@ -65,28 +69,60 @@ public class InspectionService {
                 .inspectionTime(LocalDateTime.now())
                 .stateOfHealth(request.getStateOfHealth())
                 .physicalNotes(request.getPhysicalNotes())
-                .isDamaged(request.isCreateDispute())
                 .build();
 
         BatteryInspection savedInspection = inspectionRepository.save(inspection);
+        return savedInspection;
+    }
 
-        if (request.isCreateDispute()) {
-            DisputeTicket ticket = DisputeTicket.builder()
-                    .booking(booking)
-                    .user(booking.getUser())
-                    .createdByStaff(staff)
-                    .inspection(savedInspection)
-                    .status(DisputeTicket.TicketStatus.OPEN)
-                    .title(request.getDisputeTitle())
-                    .description(request.getDisputeDescription())
-                    .createdAt(LocalDateTime.now())
-                    .build();
+    // ----------------------------------------------------------------------
+// HÀM MỚI: TẠO DISPUTE TICKET (POST /tickets)
+// ----------------------------------------------------------------------
+    @Transactional
+    public DisputeTicket createDisputeTicket(Long inspectionId, String staffId, String title, String description, String disputeReason, Integer stationId) {
 
-            disputeTicketRepository.save(ticket);
-            log.info("Đã tạo Dispute Ticket #{} cho Battery #{}", ticket.getId(), oldBatteryId);
+        // 1. Lấy Inspection (Khóa chính)
+        BatteryInspection inspection = inspectionRepository.findById(inspectionId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Inspection ID: " + inspectionId));
+
+        // 2. Kiểm tra xem Ticket đã tồn tại cho Inspection này chưa (Tùy chọn)
+        // List<DisputeTicket> existingTickets = disputeTicketRepository.findByInspectionId(inspectionId);
+        // if (!existingTickets.isEmpty()) { throw new IllegalStateException("Ticket đã tồn tại cho Inspection này."); }
+
+        // 3. Lấy Staff (người đang tạo Ticket)
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Staff (User) ID: " + staffId));
+
+        // 3. Lấy Station ✅ BƯỚC MỚI
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Station ID: " + stationId));
+
+        // ✅ Thêm kiểm tra và chuyển đổi Enum
+        DisputeTicket.DisputeReason reasonEnum;
+        try {
+            reasonEnum = DisputeTicket.DisputeReason.valueOf(disputeReason.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Lý do tranh chấp không hợp lệ: " + disputeReason + ". Phải là BAD_CONDITION, SOH, hoặc OTHER.");
         }
 
-        return savedInspection;
+        // 4. Tạo Ticket
+        DisputeTicket ticket = DisputeTicket.builder()
+                .booking(inspection.getBooking())
+                .user(inspection.getBooking().getUser()) // Lấy Customer từ Booking
+                .createdByStaff(staff) // Staff hiện tại đang tạo Ticket
+                .inspection(inspection)
+                .station(station)
+                .status(DisputeTicket.TicketStatus.OPEN)
+                .title(title)
+                .description(description)
+                .reason(reasonEnum)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        DisputeTicket savedTicket = disputeTicketRepository.save(ticket);
+        log.info("Đã tạo Dispute Ticket #{} liên kết với Inspection #{}", savedTicket.getId(), inspectionId);
+
+        return savedTicket;
     }
 
     // -----------------------------------------------------
@@ -152,7 +188,16 @@ public class InspectionService {
                 throw new IllegalArgumentException("Trạng thái ticket không hợp lệ: " + request.getNewStatus());
             }
         }
-        // *Không có assignedStaff, nên không có logic cập nhật assignedStaff*
+
+        // ✅ THÊM LOGIC CẬP NHẬT REASON:
+        if (request.getNewReason() != null) {
+            try {
+                // Chuyển đổi chuỗi thành Enum
+                ticket.setReason(DisputeTicket.DisputeReason.valueOf(request.getNewReason().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Lý do ticket không hợp lệ: " + request.getNewReason());
+            }
+        }
 
         DisputeTicket updatedTicket = disputeTicketRepository.save(ticket);
         return convertToTicketResponse(updatedTicket);
@@ -209,9 +254,13 @@ public class InspectionService {
         TicketResponse res = new TicketResponse();
         res.setId(ticket.getId());
         res.setInspectionId(ticket.getInspection() != null ? ticket.getInspection().getId() : null);
+        res.setTitle(ticket.getTitle());
         res.setDescription(ticket.getDescription());
         res.setStatus(ticket.getStatus().name());
         res.setCreatedAt(ticket.getCreatedAt());
+        if (ticket.getReason() != null) {
+            res.setReason(ticket.getReason().name());
+        }
         if (ticket.getCreatedByStaff() != null) {
             res.setCreatedByStaffName(ticket.getCreatedByStaff().getFullName());
         }

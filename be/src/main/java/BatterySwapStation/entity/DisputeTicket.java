@@ -55,6 +55,18 @@ public class DisputeTicket {
     @Column(name = "status", nullable = false, length = 20)
     private TicketStatus status = TicketStatus.OPEN;
 
+    // ✅ THÊM ENUM CHO LÝ DO TRANH CHẤP
+    public enum DisputeReason {
+        BAD_CONDITION, // Tình trạng vật lý kém (trầy xước, nứt vỡ)
+        SOH,           // State of Health (SOH) thấp hơn tiêu chuẩn
+        OTHER          // Lý do khác
+    }
+
+    // ✅ THÊM CỘT MỚI: Lý do
+    @Enumerated(EnumType.STRING) // Lưu dưới dạng chuỗi trong DB
+    @Column(name = "reason")
+    private DisputeReason reason;
+
     @Column(name = "title", nullable = false, length = 255)
     private String title; // Ví dụ: "Khách trả pin bị móp"
 

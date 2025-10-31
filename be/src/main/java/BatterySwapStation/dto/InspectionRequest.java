@@ -14,9 +14,5 @@ public class InspectionRequest {
     private Double stateOfHealth;
     private String physicalNotes;
 
-    private boolean createDispute;
-    private String disputeTitle;
-    private String disputeDescription;
-
     private String staffId;
 }

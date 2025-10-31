@@ -6,5 +6,5 @@ import lombok.Data;
 public class TicketUpdateRequest {
     private String newDescription;
     private String newStatus;
-    private Long assignedStaffId;
+    private String newReason;
 }

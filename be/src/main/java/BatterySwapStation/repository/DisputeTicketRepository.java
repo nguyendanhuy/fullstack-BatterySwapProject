@@ -1,9 +1,8 @@
 package BatterySwapStation.repository;
 
-import BatterySwapStation.entity.DisputeTicket; // ✅ [SỬA LỖI] Đổi từ BatteryInspection
+import BatterySwapStation.entity.DisputeTicket;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository; // ✅ Thêm @Repository
-
+import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
@@ -15,4 +14,8 @@ public interface DisputeTicketRepository extends JpaRepository<DisputeTicket, Lo
      //Tìm tất cả các ticket (bất kể trạng thái) theo StationId
      //Sắp xếp theo ngày tạo mới nhất lên đầu.
     List<DisputeTicket> findByStation_StationIdOrderByCreatedAtDesc(Integer stationId);
+
+    // Tìm tất cả các ticket được gán cho nhân viên cụ thể theo UserId của họ
+    List<DisputeTicket> findByCreatedByStaff_UserId(String staffUserId);
+
 }

@@ -15,4 +15,7 @@ public interface InspectionRepository extends JpaRepository<BatteryInspection, L
      */
     List<BatteryInspection> findAllByOrderByInspectionTimeDesc();
 
+    // Tìm tất cả các BatteryInspection theo Staff ID
+    List<BatteryInspection> findByStaffId(String staffId);
+
 }

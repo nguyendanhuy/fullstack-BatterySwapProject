@@ -16,7 +16,8 @@ public class AuthResponse {
     private String role;
     private String token;
 
-    private Integer assignedStationId; // chỉ khi Staff
-    private Long activeSubscriptionId;  // chỉ khi Driver
-
+    private Integer assignedStationId; // Staff
+    private Long activeSubscriptionId; // Driver
+    private Double walletBalance;      // ✅ Driver mới có
 }
+

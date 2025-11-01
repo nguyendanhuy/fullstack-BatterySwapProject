@@ -17,6 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -170,27 +171,35 @@ public class BatteryService {
     public List<Map<String, Object>> getWaitingBatteriesByStation(Integer stationId) {
         List<Battery> list = batteryRepository.findWaitingBatteriesByStation(stationId);
 
-        return list.stream()
-                .map(battery -> {
-                    Map<String, Object> result = new java.util.HashMap<>();
+        return list.stream().map(battery -> {
+            Map<String, Object> result = new HashMap<>();
 
-                    DockSlot slot = battery.getDockSlot();
-                    result.put("batteryId", battery.getBatteryId());
-                    result.put("batteryType", battery.getBatteryType());
-                    result.put("stateOfHealth", battery.getStateOfHealth());
+            DockSlot slot = battery.getDockSlot();
 
-                    if (slot != null && slot.getDock() != null) {
-                        result.put("dockName", slot.getDock().getDockName());
-                        result.put("slotNumber", slot.getSlotNumber());
-                    } else {
-                        result.put("dockName", null);
-                        result.put("slotNumber", null);
-                    }
+            Integer lastBookingId = swapRepository
+                    .findLatestBookingIdByBattery(battery.getBatteryId())
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
 
-                    return result;
-                })
-                .toList();
+            result.put("batteryId", battery.getBatteryId());
+            result.put("batteryType", battery.getBatteryType());
+            result.put("stateOfHealth", battery.getStateOfHealth());
+            result.put("cycleCount", battery.getCycleCount()); //Thêm cycleCount
+            result.put("lastBookingId", lastBookingId); //  Thêm booking mới nhất
+
+            if (slot != null && slot.getDock() != null) {
+                result.put("dockName", slot.getDock().getDockName());
+                result.put("slotNumber", slot.getSlotNumber());
+            } else {
+                result.put("dockName", null);
+                result.put("slotNumber", null);
+            }
+
+            return result;
+        }).toList();
     }
+
 
 
     // ==================== PIN RỜI TRONG TRẠM (KHÔNG TRONG DOCKSLOT) ====================

@@ -82,8 +82,10 @@ public class AuthService {
                 user.getRole().getRoleName(),
                 token,
                 assignedStationId,
-                activeSubscriptionId
+                activeSubscriptionId,
+                user.getRole().getRoleId() == 1 ? user.getWalletBalance() : null // ✅ chỉ driver
         );
+
     }
 
     // Cập nhật role cho user
@@ -182,7 +184,8 @@ public class AuthService {
                 user.getRole().getRoleName(),
                 token,
                 assignedStationId,
-                activeSubscriptionId
+                activeSubscriptionId,
+                user.getRole().getRoleId() == 1 ? user.getWalletBalance() : null
         );
     }
 }

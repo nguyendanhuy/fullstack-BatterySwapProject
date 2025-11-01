@@ -46,7 +46,20 @@ public class InspectionService { // ✅ Đổi tên lớp
                         "Không tìm thấy (Entity) Pin với ID: " + oldBatteryId
                 ));
 
-        // 2. Tạo và Lưu Inspection
+        // 2. Xác định Status
+        BatteryInspection.InspectionStatus inspectionStatus = BatteryInspection.InspectionStatus.PASS;
+        if (request.getStatus() != null && !request.getStatus().isEmpty()) {
+            try {
+                inspectionStatus = BatteryInspection.InspectionStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Trạng thái Inspection không hợp lệ: " + request.getStatus() + ". Phải là PASS hoặc IN_MAINTENANCE.");
+            }
+        }
+
+        // 3. Xác định isDamaged dựa vào Status
+        boolean isDamaged = inspectionStatus == BatteryInspection.InspectionStatus.IN_MAINTENANCE;
+
+        // 4. Tạo và Lưu Inspection
         BatteryInspection inspection = BatteryInspection.builder()
                 .booking(booking)
                 .battery(battery)
@@ -54,8 +67,8 @@ public class InspectionService { // ✅ Đổi tên lớp
                 .inspectionTime(LocalDateTime.now())
                 .stateOfHealth(request.getStateOfHealth())
                 .physicalNotes(request.getPhysicalNotes())
-                .status(BatteryInspection.InspectionStatus.PASS)
-                .isDamaged(false) // Mặc định là FALSE
+                .status(inspectionStatus)
+                .isDamaged(isDamaged)
                 .build();
 
         return inspectionRepository.save(inspection);

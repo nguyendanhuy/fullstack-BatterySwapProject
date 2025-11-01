@@ -77,4 +77,13 @@ public interface SwapRepository extends JpaRepository<Swap, Long> {
     long countSwapsByBattery(@Param("batteryId") String batteryId);
 
 
+    @Query("""
+SELECT s.booking.bookingId
+FROM Swap s
+WHERE s.batteryInId = :batteryId
+ORDER BY s.completedTime DESC
+""")
+    List<Integer> findLatestBookingIdByBattery(@Param("batteryId") String batteryId);
+
+
 }

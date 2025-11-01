@@ -13,6 +13,7 @@ public class InspectionRequest {
 
     private Double stateOfHealth;
     private String physicalNotes;
+    private String status;
 
     private String staffId;
 }

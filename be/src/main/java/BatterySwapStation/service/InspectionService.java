@@ -56,10 +56,12 @@ public class InspectionService { // ✅ Đổi tên lớp
             }
         }
 
-        // 3. Xác định isDamaged dựa vào Status
-        boolean isDamaged = inspectionStatus == BatteryInspection.InspectionStatus.IN_MAINTENANCE;
+        // 3. Status được xác định hoàn toàn bởi staff, không bị ràng buộc với stateOfHealth
 
-        // 4. Tạo và Lưu Inspection
+        // 4. Cập nhật thông tin pin dựa trên kết quả kiểm tra
+        updateBatteryFromInspection(battery, request, inspectionStatus);
+
+        // 5. Tạo và Lưu Inspection (hoạt động như log)
         BatteryInspection inspection = BatteryInspection.builder()
                 .booking(booking)
                 .battery(battery)
@@ -68,7 +70,6 @@ public class InspectionService { // ✅ Đổi tên lớp
                 .stateOfHealth(request.getStateOfHealth())
                 .physicalNotes(request.getPhysicalNotes())
                 .status(inspectionStatus)
-                .isDamaged(isDamaged)
                 .build();
 
         return inspectionRepository.save(inspection);
@@ -92,23 +93,33 @@ public class InspectionService { // ✅ Đổi tên lớp
         BatteryInspection inspection = inspectionRepository.findById(inspectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Inspection không tồn tại với ID: " + inspectionId));
 
+        boolean needUpdateBattery = false;
+        Battery battery = inspection.getBattery();
+
         if (request.getStateOfHealth() != null) {
             inspection.setStateOfHealth(request.getStateOfHealth());
+            // Cập nhật StateOfHealth cho pin
+            battery.setStateOfHealth(request.getStateOfHealth());
+            needUpdateBattery = true;
         }
         if (request.getPhysicalNotes() != null) {
             inspection.setPhysicalNotes(request.getPhysicalNotes());
         }
-        if (request.getDamaged() != null) {
-            inspection.setDamaged(request.getDamaged());
-        }
+
         if (request.getNewStatus() != null) {
             try {
                 BatteryInspection.InspectionStatus newStatus =
                         BatteryInspection.InspectionStatus.valueOf(request.getNewStatus().toUpperCase());
                 inspection.setStatus(newStatus);
+                needUpdateBattery = true;
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Trạng thái Inspection không hợp lệ: " + request.getNewStatus() + ". Phải là PASS hoặc IN_MAINTENANCE.");
             }
+        }
+
+        // Cập nhật thông tin pin nếu cần thiết
+        if (needUpdateBattery) {
+            updateBatteryFromInspectionUpdate(battery, inspection);
         }
 
         BatteryInspection updatedInspection = inspectionRepository.save(inspection);
@@ -136,7 +147,7 @@ public class InspectionService { // ✅ Đổi tên lớp
         ins.setInspectionTime(inspection.getInspectionTime());
         ins.setStateOfHealth(inspection.getStateOfHealth());
         ins.setPhysicalNotes(inspection.getPhysicalNotes());
-        ins.setDamaged(inspection.isDamaged());
+
 
         if (inspection.getBattery() != null) {
             ins.setBatteryId(inspection.getBattery().getBatteryId());
@@ -147,5 +158,60 @@ public class InspectionService { // ✅ Đổi tên lớp
         }
 
         return ins;
+    }
+
+    // ---------------------------------
+    // --- HÀM CẬP NHẬT THÔNG TIN PIN ---
+    // ---------------------------------
+    private void updateBatteryFromInspection(Battery battery, InspectionRequest request,
+                                           BatteryInspection.InspectionStatus inspectionStatus) {
+
+        // Cập nhật StateOfHealth nếu có
+        if (request.getStateOfHealth() != null) {
+            battery.setStateOfHealth(request.getStateOfHealth());
+        }
+
+        // Cập nhật trạng thái pin dựa trên status mà staff nhập
+        if (inspectionStatus == BatteryInspection.InspectionStatus.IN_MAINTENANCE) {
+            // Pin cần bảo trì -> chuyển sang MAINTENANCE
+            battery.setBatteryStatus(Battery.BatteryStatus.MAINTENANCE);
+        } else if (inspectionStatus == BatteryInspection.InspectionStatus.PASS) {
+            // Pin vượt qua kiểm tra -> chuyển về AVAILABLE (sẵn sàng sử dụng)
+            battery.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
+        }
+
+        // Tăng số lượng chu kỳ sử dụng
+        if (battery.getCycleCount() == null) {
+            battery.setCycleCount(1);
+        } else {
+            battery.setCycleCount(battery.getCycleCount() + 1);
+        }
+
+        // Lưu thay đổi vào database
+        batteryRepository.save(battery);
+
+        log.info("Đã cập nhật thông tin pin {} sau kiểm tra: Status={}, StateOfHealth={}, CycleCount={}",
+                battery.getBatteryId(), battery.getBatteryStatus(), battery.getStateOfHealth(), battery.getCycleCount());
+    }
+
+    // -----------------------------------------
+    // --- HÀM CẬP NHẬT PIN KHI SỬA INSPECTION ---
+    // -----------------------------------------
+    private void updateBatteryFromInspectionUpdate(Battery battery, BatteryInspection inspection) {
+
+        // Cập nhật trạng thái pin dựa trên status mà staff đã đánh giá
+        if (inspection.getStatus() == BatteryInspection.InspectionStatus.IN_MAINTENANCE) {
+            // Pin cần bảo trì -> chuyển sang MAINTENANCE
+            battery.setBatteryStatus(Battery.BatteryStatus.MAINTENANCE);
+        } else if (inspection.getStatus() == BatteryInspection.InspectionStatus.PASS) {
+            // Pin vượt qua kiểm tra -> chuyển về AVAILABLE (sẵn sàng sử dụng)
+            battery.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
+        }
+
+        // Lưu thay đổi vào database
+        batteryRepository.save(battery);
+
+        log.info("Đã cập nhật lại thông tin pin {} sau chỉnh sửa inspection: Status={}, StateOfHealth={}",
+                battery.getBatteryId(), battery.getBatteryStatus(), battery.getStateOfHealth());
     }
 }

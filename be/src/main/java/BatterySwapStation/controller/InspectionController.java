@@ -3,16 +3,11 @@ package BatterySwapStation.controller;
 import BatterySwapStation.dto.InspectionRequest;
 import BatterySwapStation.dto.InspectionResponse;
 import BatterySwapStation.dto.InspectionUpdateRequest;
-import BatterySwapStation.dto.TicketResponse;
-import BatterySwapStation.dto.TicketUpdateRequest;
 import BatterySwapStation.entity.BatteryInspection;
-import BatterySwapStation.entity.DisputeTicket;
-import BatterySwapStation.service.InspectionService; // Service đã được gộp
+import BatterySwapStation.service.InspectionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,15 +17,15 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/staff") // Đổi tên Base path cho dễ quản lý
-@Tag(name = "Staff: Inspection & Ticket", description = "Quản lý Kiểm tra Pin (Inspection) và Ticket Tranh chấp")
+@RequestMapping("/api/staff/inspections") // Base path chỉ dành cho inspections
+@Tag(name = "Staff: Inspection", description = "Quản lý Kiểm tra Pin (Inspection)")
 public class InspectionController {
 
     @Autowired
-    private InspectionService inspectionService; // Dùng Service đã gộp
+    private InspectionService inspectionService;
 
-    //TẠO INSPECTION (CHỈ TẠO INSPECTION) ---
-    @PostMapping("/inspections")
+    // --- POST: TẠO INSPECTION ---
+    @PostMapping
     @Operation(summary = "Staff tạo Inspection",
             description = "Ghi nhận biên bản kiểm tra pin do người dùng bỏ vào.")
     public ResponseEntity<Map<String, Object>> createInspection(
@@ -52,45 +47,8 @@ public class InspectionController {
         }
     }
 
-    //TẠO DISPUTE TICKET
-// Giả định bạn cần các tham số: inspectionId, staffId, title, description
-    @PostMapping("/tickets")
-    @Operation(summary = "Tạo Dispute Ticket liên kết với Inspection",
-            description = "Staff tạo Ticket tranh chấp sau khi xác nhận pin bị hỏng (liên kết với Inspection đã có).")
-    public ResponseEntity<Map<String, Object>> createDisputeTicket(
-            @RequestParam Long inspectionId,
-            @RequestParam String staffId,
-            @RequestParam String title,
-            @RequestParam String description,
-            @RequestParam String disputeReason,
-            @RequestParam Integer stationId
-    ) {
-        try {
-            DisputeTicket ticket = inspectionService.createDisputeTicket(
-                    inspectionId, staffId, title, description, disputeReason, stationId
-            );
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Tạo Dispute Ticket thành công.",
-                    "ticketId", ticket.getId(),
-                    "inspectionId", inspectionId,
-                    "stationId", stationId
-            ));
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(404).body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-            ));
-        }
-    }
-
-    //GET: LẤY TẤT CẢ INSPECTION
-    @GetMapping("/inspections/all")
+    // --- GET: LẤY TẤT CẢ INSPECTION ---
+    @GetMapping("/all")
     @Operation(summary = "Staff lấy TẤT CẢ Inspection",
             description = "Lấy danh sách tất cả các biên bản kiểm tra pin đã tạo.")
     public ResponseEntity<List<InspectionResponse>> getAllInspections() {
@@ -98,8 +56,8 @@ public class InspectionController {
         return ResponseEntity.ok(inss);
     }
 
-    //PUT: CẬP NHẬT INSPECTION
-    @PutMapping("/inspections/{inspectionId}")
+    // --- PUT: CẬP NHẬT INSPECTION ---
+    @PutMapping("/{inspectionId}")
     @Operation(summary = "Cập nhật Inspection",
             description = "Staff cập nhật thông tin chi tiết của biên bản kiểm tra pin.")
     public ResponseEntity<InspectionResponse> updateInspection(
@@ -110,88 +68,20 @@ public class InspectionController {
         return ResponseEntity.ok(response);
     }
 
+    // --- GET: LẤY INSPECTION THEO STAFF ---
+    @GetMapping("/staff/{staffUserId}")
+    @Operation(summary = "Lấy danh sách Inspection được thực hiện bởi Staff",
+            description = "Lấy danh sách các Inspection do Staff có ID này thực hiện.")
+    public ResponseEntity<List<InspectionResponse>> getInspectionsByStaff(
+            @Parameter(description = "ID của Staff, ví dụ: ST006")
+            @PathVariable String staffUserId) {
 
-    // Trong InspectionController.java
+        List<InspectionResponse> inspections = inspectionService.getInspectionsByStaff(staffUserId);
 
-    //GET: LẤY TICKET THEO STAFF
-    @GetMapping("/tickets/staff/{staffUserId}")
-    @Operation(summary = "Staff lấy Ticket được giao",
-            description = "Lấy danh sách các ticket tranh chấp đã được TẠO bởi Staff này.")
-    public ResponseEntity<List<TicketResponse>> getDisputesByStaff(@PathVariable String staffUserId) {
-
-        // Service trả về List<TicketResponse>
-        List<TicketResponse> response = inspectionService.getDisputesByStaffId(staffUserId);
-
-        return ResponseEntity.ok(response);
-    }
-
-    //PUT: CẬP NHẬT TICKET
-    @PutMapping("/tickets/{ticketId}")
-    @Operation(summary = "Cập nhật Dispute Ticket",
-            description = "Staff/Admin thay đổi trạng thái, mô tả, hoặc gán lại Staff cho Ticket.")
-    public ResponseEntity<TicketResponse> updateDisputeTicket(
-            @PathVariable Long ticketId,
-            @RequestBody TicketUpdateRequest request) {
-
-        TicketResponse response = inspectionService.updateTicket(ticketId, request); // Dùng InspectionService
-        return ResponseEntity.ok(response);
-    }
-
-    //SỬA: 6. GET: LẤY OPEN DISPUTES
-    @GetMapping("/tickets/open")
-    @Operation(summary = "Staff lấy các Dispute CHƯA XỬ LÝ")
-    public ResponseEntity<List<TicketResponse>> getOpenDisputes() {
-        List<TicketResponse> tickets = inspectionService.getOpenDisputes();
-        return ResponseEntity.ok(tickets);
-    }
-
-    //SỬA: 7. GET: DISPUTES BY STATION
-    @GetMapping("/tickets/by-station")
-    @Operation(summary = "Staff lấy Dispute (Tranh chấp) theo Trạm")
-    public ResponseEntity<Map<String, Object>> getDisputesByStation(
-            @RequestParam @NotNull Integer stationId
-    ) {
-        try {
-            List<TicketResponse> tickets = inspectionService.getDisputesByStation(stationId);
-
-            // Chú ý: Vì bạn trả về Map<String, Object>, nên bạn phải sửa Map này
-            if (tickets.isEmpty()) {
-                return ResponseEntity.ok(Map.of(
-                        "success", true,
-                        "message", "Không tìm thấy ticket nào cho trạm " + stationId,
-                        "tickets", tickets // Vẫn là List<TicketResponse>
-                ));
-            }
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Lấy danh sách ticket cho trạm " + stationId + " thành công.",
-                    "tickets", tickets // Vẫn là List<TicketResponse>
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-            ));
-        }
-    }
-
-        // THÊM API NÀY
-        @GetMapping("/inspections/staff/{staffUserId}")
-        @Operation(summary = "Lấy danh sách Inspection được thực hiện bởi Staff",
-                description = "Lấy danh sách các Inspection do Staff có ID này thực hiện.")
-        public ResponseEntity<List<InspectionResponse>> getInspectionsByStaff(
-                @Parameter(description = "ID của Staff, ví dụ: ST006")
-                @PathVariable String staffUserId) {
-
-            List<InspectionResponse> inspections = inspectionService.getInspectionsByStaff(staffUserId);
-
-            if (inspections.isEmpty()) {
-                return ResponseEntity.ok(Collections.emptyList());
-            }
-
-            return ResponseEntity.ok(inspections);
+        if (inspections.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyList());
         }
 
-
+        return ResponseEntity.ok(inspections);
+    }
 }

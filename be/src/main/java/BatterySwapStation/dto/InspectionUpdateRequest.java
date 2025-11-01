@@ -7,4 +7,5 @@ public class InspectionUpdateRequest {
     private Double stateOfHealth;
     private String physicalNotes;
     private Boolean damaged;
+    private String newStatus;
 }

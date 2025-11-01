@@ -12,4 +12,5 @@ public class InspectionResponse { // (Tên DTO của bạn có thể khác)
     private String physicalNotes;
     private boolean damaged;
     private String batteryId;
+    private String status;
 }

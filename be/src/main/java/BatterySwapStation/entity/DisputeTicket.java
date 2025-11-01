@@ -38,11 +38,6 @@ public class DisputeTicket {
     @JsonIgnore
     private User createdByStaff;
 
-    // Liên kết với bằng chứng kiểm tra
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inspectionid")
-    @JsonIgnore
-    private BatteryInspection inspection;
 
     public enum TicketStatus {
         OPEN,

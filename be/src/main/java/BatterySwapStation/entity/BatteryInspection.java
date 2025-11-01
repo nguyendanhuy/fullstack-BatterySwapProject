@@ -49,4 +49,14 @@ public class BatteryInspection {
 
     @Column(name = "isdamaged", nullable = false)
     private boolean isDamaged = false; // Cờ (flag)
+
+
+    public enum InspectionStatus {
+        PASS, // đạt
+        IN_MAINTENANCE // đang bảo trì
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private InspectionStatus status;
 }

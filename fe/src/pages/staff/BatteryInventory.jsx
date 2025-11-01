@@ -74,8 +74,7 @@ const BatteryInventory = () => {
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [selectedDockIndex, setSelectedDockIndex] = useState(0);
   const { userData } = useContext(SystemContext);
-  userData.assignedStationId;
-  const STATION_ID = 1;
+  const STATION_ID = userData.assignedStationId;
   // WebSocket hooks
   const { connected, connect, disconnect, subscribeStation, subscribeStationGrouped, sendJoinStation } = useStompBattery();
   const unsubRef = useRef(null);
@@ -459,14 +458,6 @@ const BatteryInventory = () => {
     setIsDetailPanelOpen(true);
   };
 
-  const handleRefresh = () => {
-    loadDockData();
-    toast({
-      title: "Đã làm mới",
-      description: "Dữ liệu đã được cập nhật",
-    });
-  };
-
   // Lấy danh sách theo dock + filter tìm kiếm (áp dụng cho list view)
   const getCurrentDockSlotsFiltered = () => {
     const slots = docks[selectedDockIndex]?.slots || [];
@@ -660,9 +651,6 @@ const BatteryInventory = () => {
               </Select>
 
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={handleRefresh} className="hover:bg-gray-100">
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
                 <div className="flex border rounded-lg overflow-hidden">
                   <Button
                     variant={viewMode === "grid" ? "default" : "ghost"}

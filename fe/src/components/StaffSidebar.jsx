@@ -2,7 +2,8 @@ import {
     Home, Car, MapPin, History, Battery, CreditCard,
     Settings, LogOut, PanelLeftClose, PanelLeft,
     QrCode,
-    Search, FileText
+    Search, FileText,
+    TrendingUp
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -30,6 +31,7 @@ const mainItems = [
     { title: "Lịch sử giao dịch", url: "/staff/transaction-history", icon: CreditCard },
     { title: "Lịch sử đổi pin", url: "/staff/swap-history", icon: FileText },
     { title: "Kiểm tra pin", url: "/staff/battery-inspection", icon: Search },
+    { title: "Quản lý tranh chấp pin", url: "/staff/battery-dispute", icon: TrendingUp },
 ];
 
 export function StaffSidebar() {

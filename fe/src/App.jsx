@@ -40,6 +40,7 @@ import AuthProvider from "./components/AuthProvider";
 import { StaffLayout } from "./components/StaffLayout";
 import { AdminLayout } from "./components/AdminLayout";
 import Invoices from "./pages/driver/Invoice";
+import DisputeManagement from "./pages/staff/DisputeManagement";
 const queryClient = new QueryClient();
 const App = () => (<QueryClientProvider client={queryClient}>
   <SystemProvider>
@@ -90,6 +91,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
               <Route path="swap-history" element={<SwapHistory />} />
               <Route path="battery-inventory" element={<BatteryInventory />} />
               <Route path="battery-inspection" element={<BatteryInspection />} />
+              <Route path="battery-dispute" element={<DisputeManagement />} />
             </Route>
 
             {/* Admin routes (nested with sidebar layout) */}

@@ -207,7 +207,15 @@ const depositSystemWallet = (amount) => {
 const getStationPerformanceReports = () => {
     return axios.get("/reports/station/performance");
 }
-
+const getWattingBatteryInventory = (stationId) => {
+    return axios.get(`/batteries/waiting?stationId=${stationId}`);
+}
+const createInspection=(data)=>{
+    return axios.post("/staff/inspections",data);
+}
+const getInspectionByStaffId=(staffId)=>{
+    return axios.get(`/staff/inspections/staff/${staffId}`);
+}
 export {
     registerAPI,
     loginAPI,
@@ -255,5 +263,8 @@ export {
     assignStaff,
     getStationsAndStaff,
     depositSystemWallet,
-    getStationPerformanceReports
+    getStationPerformanceReports,
+    getWattingBatteryInventory,
+    createInspection,
+    getInspectionByStaffId
 };

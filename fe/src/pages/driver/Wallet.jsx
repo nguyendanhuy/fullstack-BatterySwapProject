@@ -39,20 +39,20 @@ const Wallet = () => {
         { value: 2000000, label: "2.000.000 ₫" },
     ];
 
-    // Load wallet balance
-    useEffect(() => {
-        const fetchWalletBalance = async () => {
-            try {
-                const data = await getInfoByToken();
-                console.log("✅ Fetched wallet balance:", data?.walletBalance);
-                setWalletBalance(data?.walletBalance || 0);
-            } catch (error) {
-                console.error("❌ Fetch wallet balance error:", error);
-            }
-        };
+    // // Load wallet balance
+    // useEffect(() => {
+    //     const fetchWalletBalance = async () => {
+    //         try {
+    //             const data = await getInfoByToken();
+    //             console.log("✅ Fetched wallet balance:", data?.walletBalance);
+    //             setWalletBalance(data?.walletBalance || 0);
+    //         } catch (error) {
+    //             console.error("❌ Fetch wallet balance error:", error);
+    //         }
+    //     };
 
-        fetchWalletBalance();
-    }, []);
+    //     fetchWalletBalance();
+    // }, []);
 
     // Handle amount selection
     const handleSelectAmount = (value) => {
@@ -213,7 +213,7 @@ const Wallet = () => {
                             <div>
                                 <p className="text-green-100 text-sm font-medium mb-2">Số dư khả dụng</p>
                                 <h2 className="text-4xl font-bold tracking-tight mb-1">
-                                    {formatCurrency(walletBalance)}
+                                    {formatCurrency(userData?.walletBalance)}
                                 </h2>
                                 <p className="text-green-100 text-xs flex items-center gap-1 mt-2">
                                     <TrendingUp className="h-3 w-3" />

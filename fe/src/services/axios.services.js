@@ -150,8 +150,8 @@ const createVNpayForSubscription = (invoiceId) => {
     return axios.post("/payments/vnpay/create-subscription", data);
 }
 
-const createInspectionAndDispute = (data) => {
-    return axios.post("/inspections", data);
+const createTicket = (data) => {
+    return axios.post("/staff/tickets", data);
 }
 
 const insertBatteryInventory = (slotId, batteryId) => {
@@ -210,12 +210,21 @@ const getStationPerformanceReports = () => {
 const getWattingBatteryInventory = (stationId) => {
     return axios.get(`/batteries/waiting?stationId=${stationId}`);
 }
-const createInspection=(data)=>{
-    return axios.post("/staff/inspections",data);
+const createInspection = (data) => {
+    return axios.post("/staff/inspections", data);
 }
-const getInspectionByStaffId=(staffId)=>{
+const getInspectionByStaffId = (staffId) => {
     return axios.get(`/staff/inspections/staff/${staffId}`);
 }
+
+const getTicketByStationId = (stationId) => {
+    return axios.get(`/staff/tickets/by-station?stationId=${stationId}`);
+}
+
+const updateTicketSolution = (ticketId, data) => {
+    return axios.put(`staff/tickets/${ticketId}/resolve`, data);
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -236,7 +245,6 @@ export {
     cancelBookingById,
     getSwapDefaultPrice,
     createBookingForVehicles,
-    // createInvoiceForBookings,
     createVNPayUrl,
     checkVNPayPaymentStatus,
     getInvoicebyUserId,
@@ -253,7 +261,7 @@ export {
     changeUserPassword,
     createInvoiceForSubscription,
     createVNpayForSubscription,
-    createInspectionAndDispute,
+    createTicket,
     insertBatteryInventory,
     removeBatteryInventory,
     batteryStatusUpdate,
@@ -266,5 +274,7 @@ export {
     getStationPerformanceReports,
     getWattingBatteryInventory,
     createInspection,
-    getInspectionByStaffId
+    getInspectionByStaffId,
+    getTicketByStationId,
+    updateTicketSolution
 };

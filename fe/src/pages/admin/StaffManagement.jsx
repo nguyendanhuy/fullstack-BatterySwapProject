@@ -49,9 +49,10 @@ const StaffManagement = () => {
 
   // UI state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [viewStaffStationId, setViewStaffStationId] = useState(null); //mở Dialog theo trạm để xem nv
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [loading, setLoading] = useState({});
+  const [loading, setLoading] = useState({}); // object dạng Mã NV : true/false hoặc add : true/false để hiện thị loading khi gọi api        
 
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [formData, setFormData] = useState({ name: "", email: "", password: "", stationId: "" });
@@ -65,7 +66,7 @@ const StaffManagement = () => {
     try {
       const data = await getAllStaff();
       console.log("✅ Fetch All Staff:", data);
-      setStaffList(Array.isArray(data) ? data : []);
+      setStaffList(Array.isArray(data) ? data.sort((a, b) => a.stationId - b.stationId) : []);
     } catch (err) {
       console.error("❌ Fetch Staff:", err);
       toast.error("Không thể tải danh sách nhân viên");
@@ -173,17 +174,6 @@ const StaffManagement = () => {
     }
   };
 
-  // UI helpers
-  const getStationDisplay = (station) => {
-    if (!station) return { id: null, name: "Unassigned", address: "-", staffList: [], active: false };
-    return {
-      id: station.stationId,
-      name: station.stationName || (station.stationId === null ? "Unassigned" : String(station.stationId)),
-      address: station.address || "-",
-      staffList: station.staffList || [],
-      active: typeof station.active === "boolean" ? station.active : (station.staffList || []).some((s) => s.active),
-    };
-  };
 
   // Filter staff list (independent logic)
   const filteredStaffList = staffList.filter((staff) => {
@@ -282,57 +272,69 @@ const StaffManagement = () => {
                     const isEmpty = count === 0;
 
                     return (
-                      <Card
-                        key={st.stationId}
-                        className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isEmpty
-                          ? "border-red-200 bg-gradient-to-br from-red-50 to-orange-50"
-                          : st.active
-                            ? "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
-                            : "border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50"
-                          }`}>
-                        {/* Top colored bar */}
-                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${isEmpty ? "bg-gradient-to-r from-red-400 to-orange-400" : st.active ? "bg-gradient-to-r from-green-400 to-emerald-400" : "bg-gradient-to-r from-gray-400 to-slate-400"}`} />
+                      //bấm vào card hiện dialog
+                      <Dialog key={st.stationId} open={viewStaffStationId === st.stationId} onOpenChange={(open) => setViewStaffStationId(open ? st.stationId : null)}>
+                        <DialogTrigger asChild>
+                          <Card
+                            className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isEmpty
+                              ? "border-red-200 bg-gradient-to-br from-red-50 to-orange-50"
+                              : st.active
+                                ? "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
+                                : "border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50"
+                              }`}>
+                            {/* Top colored bar */}
+                            <div className={`absolute top-0 left-0 right-0 h-1.5 ${st.active ? "bg-gradient-to-r from-green-400 to-emerald-400" : "bg-gradient-to-r from-gray-400 to-slate-400"}`} />
 
-                        <CardContent className="p-5 pt-6">
-                          <div className="space-y-3">
-                            {/* Header */}
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-gray-900 text-base leading-tight mb-1 line-clamp-2">
-                                  Trạm {st.stationId} : {st.stationName}
-                                </h3>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge
-                                    variant={isEmpty ? "destructive" : st.active ? "default" : "secondary"}
-                                    className="text-xs font-semibold">
-                                    {count} nhân viên đang hoạt động
-                                  </Badge>
+                            <CardContent className="p-5 pt-6">
+                              <div className="space-y-3">
+                                {/* Header */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-gray-900 text-base leading-tight mb-1 line-clamp-2">
+                                      Trạm {st.stationId} : {st.stationName}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-2">
+
+                                      <Badge
+                                        variant={isEmpty ? "destructive" : st.active ? "default" : "secondary"}
+                                        className="text-xs font-semibold cursor-pointer hover:opacity-80">
+                                        {count} nhân viên đang hoạt động
+                                      </Badge>
+
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Address */}
+                                <div className="flex items-start gap-2">
+                                  <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                  <p className="text-sm text-gray-600 line-clamp-2 leading-snug">
+                                    {st.address || "Chưa có địa chỉ"}
+                                  </p>
+                                </div>
+
+                                {/* Progress bar */}
+                                <div className="space-y-1.5">
+                                  <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r from-green-400 to-emerald-500`}
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-
-                            {/* Address */}
-                            <div className="flex items-start gap-2">
-                              <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                              <p className="text-sm text-gray-600 line-clamp-2 leading-snug">
-                                {st.address || "Chưa có địa chỉ"}
-                              </p>
-                            </div>
-
-                            {/* Progress bar */}
-                            <div className="space-y-1.5">
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r from-green-400 to-emerald-500`}
-                                />
-                              </div>
-                            </div>
-
-
-                            {/* Staff list */}
-                            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                              {st.staffList && st.staffList.length > 0 ? (
-                                st.staffList.map((s) => (
+                            </CardContent>
+                          </Card>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Nhân viên trong {st.stationName}</DialogTitle>
+                          </DialogHeader>
+                          {/* Staff list */}
+                          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                            {st.staffList && st.staffList.length > 0 ? (
+                              st.staffList.map((s) => {
+                                const isBusy = !!loading[s.staffId];
+                                return (
                                   <div
                                     key={s.staffId}
                                     className="flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2 border border-gray-100 hover:bg-white hover:border-gray-200 transition-colors">
@@ -341,18 +343,21 @@ const StaffManagement = () => {
                                       <p className="text-sm font-medium text-gray-800 truncate">{s.staffId} - {s.fullName}</p>
                                       <p className="text-xs text-gray-500 truncate">{s.email}</p>
                                     </div>
+                                    <Button size="sm" variant="outline" onClick={() => handleUnassignStaff(s.staffId)} disabled={isBusy}>
+                                      {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hủy assign"}
+                                    </Button>
                                   </div>
-                                ))
-                              ) : (
-                                <div className="text-center py-6 px-3">
-                                  <Users className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                                  <p className="text-xs text-gray-400 italic">Chưa có nhân viên được phân công</p>
-                                </div>
-                              )}
-                            </div>
+                                )
+                              })
+                            ) : (
+                              <div className="text-center py-6 px-3">
+                                <Users className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                                <p className="text-xs text-gray-400 italic">Chưa có nhân viên được phân công</p>
+                              </div>
+                            )}
                           </div>
-                        </CardContent>
-                      </Card>
+                        </DialogContent>
+                      </Dialog>
                     );
                   })
               )}

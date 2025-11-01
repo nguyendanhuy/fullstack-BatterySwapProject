@@ -10,7 +10,6 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 
 const StaffDashboard = () => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -39,7 +38,7 @@ const StaffDashboard = () => {
               <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg mr-2">
                 <Battery className="h-5 w-5 text-white" />
               </div>
-              Trạm đang quản lý
+              Trạm đang quản lý (Hard Code/ConsoleLog check userData để xem)
             </CardTitle>
           </CardHeader>
 

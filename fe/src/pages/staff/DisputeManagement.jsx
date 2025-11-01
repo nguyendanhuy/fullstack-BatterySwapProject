@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,370 +7,228 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "@/components/ui/use-toast";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import {
     Clock,
-    Search,
     CheckCircle,
     XCircle,
-    Plus,
     Eye,
     AlertTriangle,
-    Battery,
-    User,
-    Phone,
-    MapPin,
-    Calendar,
     FileText,
-    Edit,
-    Ban,
-    Check,
-    Image as ImageIcon
+    Loader2,
+    Check
 } from "lucide-react";
-import { Link } from "react-router-dom";
-
-// Mock Data (JSX: không cần kiểu)
-const mockDisputes = [
-    {
-        id: "1",
-        ticketNumber: "DSP-2024-001",
-        customerId: "CUST-001",
-        customerName: "Nguyễn Văn An",
-        customerPhone: "0901234567",
-        batteryId: "BAT-003",
-        batteryLocation: "A3",
-        dockId: 1,
-        type: "low_soh",
-        typeLabel: "SoH quá thấp",
-        status: "investigating",
-        priority: "high",
-        description:
-            "Pin sụt điện rất nhanh, chỉ chạy được 10km dù báo 80%. Nghi ngờ SoH thực tế thấp hơn hiển thị. Yêu cầu kiểm tra và đổi pin mới.",
-        reportedDate: "15/12/2024 14:30",
-        assignedTo: "Nhân viên Trần B",
-        batteryType: "Lithium-ion 48V 20Ah",
-        currentSoh: "62%",
-        chargeLevel: 45,
-        lastSwapDate: "14/12/2024 10:15",
-        images: ["/placeholder.svg"],
-        history: [
-            { timestamp: "15/12/2024 14:30", action: "Phiếu được tạo", performer: "Nguyễn Văn An" },
-            { timestamp: "15/12/2024 14:35", action: "Nhân viên nhận xử lý", performer: "Trần B" },
-            {
-                timestamp: "15/12/2024 15:00",
-                action: "Bắt đầu kiểm tra pin",
-                performer: "Trần B",
-                note: "Pin được mang về kho để kiểm tra chi tiết"
-            }
-        ]
-    },
-    {
-        id: "2",
-        ticketNumber: "DSP-2024-002",
-        customerId: "CUST-002",
-        customerName: "Trần Thị Bình",
-        customerPhone: "0912345678",
-        batteryId: "BAT-007",
-        batteryLocation: "B2",
-        dockId: 1,
-        type: "defective",
-        typeLabel: "Pin hư hỏng",
-        status: "pending",
-        priority: "urgent",
-        description: "Pin phát ra tiếng kêu lạ và nóng bất thường khi sạc. Rất nguy hiểm, cần xử lý ngay.",
-        reportedDate: "15/12/2024 16:45",
-        batteryType: "Lithium-ion 60V 24Ah",
-        currentSoh: "78%",
-        chargeLevel: 35,
-        lastSwapDate: "15/12/2024 09:30",
-        images: ["/placeholder.svg", "/placeholder.svg"],
-        history: [{ timestamp: "15/12/2024 16:45", action: "Phiếu được tạo", performer: "Trần Thị Bình" }]
-    },
-    {
-        id: "3",
-        ticketNumber: "DSP-2024-003",
-        customerId: "CUST-003",
-        customerName: "Lê Văn Cường",
-        customerPhone: "0923456789",
-        batteryId: "BAT-012",
-        batteryLocation: "C1",
-        dockId: 2,
-        type: "not_charging",
-        typeLabel: "Không sạc được",
-        status: "resolved",
-        priority: "medium",
-        description: "Pin không nhận sạc, đã thử nhiều cổng sạc khác nhau nhưng đều không được.",
-        reportedDate: "14/12/2024 10:20",
-        assignedTo: "Nhân viên Phạm D",
-        batteryType: "Lithium-ion 48V 20Ah",
-        currentSoh: "85%",
-        chargeLevel: 15,
-        lastSwapDate: "14/12/2024 08:00",
-        resolution: "Đã thay thế pin mới cho khách hàng. Pin cũ được chuyển về bảo trì.",
-        resolvedDate: "14/12/2024 15:30",
-        compensationType: "replacement",
-        history: [
-            { timestamp: "14/12/2024 10:20", action: "Phiếu được tạo", performer: "Lê Văn Cường" },
-            { timestamp: "14/12/2024 10:25", action: "Nhân viên nhận xử lý", performer: "Phạm D" },
-            { timestamp: "14/12/2024 11:00", action: "Kiểm tra xác nhận lỗi", performer: "Phạm D", note: "Cổng sạc bị hỏng" },
-            { timestamp: "14/12/2024 15:30", action: "Đã thay pin mới", performer: "Phạm D" }
-        ]
-    },
-    {
-        id: "4",
-        ticketNumber: "DSP-2024-004",
-        customerId: "CUST-004",
-        customerName: "Phạm Thị Dung",
-        customerPhone: "0934567890",
-        batteryId: "BAT-015",
-        batteryLocation: "A5",
-        dockId: 1,
-        type: "performance",
-        typeLabel: "Hiệu suất kém",
-        status: "rejected",
-        priority: "low",
-        description: "Pin hết nhanh hơn bình thường.",
-        reportedDate: "13/12/2024 14:00",
-        assignedTo: "Nhân viên Nguyễn E",
-        batteryType: "Lithium-ion 48V 20Ah",
-        currentSoh: "92%",
-        chargeLevel: 88,
-        lastSwapDate: "13/12/2024 08:30",
-        resolution: "Sau kiểm tra, pin hoạt động bình thường. Khách hàng sử dụng xe ở chế độ công suất cao.",
-        resolvedDate: "13/12/2024 16:45",
-        compensationType: "none",
-        history: [
-            { timestamp: "13/12/2024 14:00", action: "Phiếu được tạo", performer: "Phạm Thị Dung" },
-            { timestamp: "13/12/2024 14:10", action: "Nhân viên nhận xử lý", performer: "Nguyễn E" },
-            { timestamp: "13/12/2024 15:30", action: "Kiểm tra pin", performer: "Nguyễn E", note: "Pin hoạt động tốt" },
-            { timestamp: "13/12/2024 16:45", action: "Từ chối phiếu", performer: "Nguyễn E", note: "Không phải lỗi pin" }
-        ]
-    }
-];
+import { getTicketByStationId, updateTicketSolution } from "../../services/axios.services";
+import { SystemContext } from "../../contexts/system.context";
+import dayjs from "dayjs";
 
 const DisputeManagement = () => {
-    // States (JSX: bỏ kiểu)
-    const [disputes, setDisputes] = useState(mockDisputes);
-    const [selectedDispute, setSelectedDispute] = useState(null);
+    const { toast } = useToast();
+    const { userData } = useContext(SystemContext);
+
+    // States
+    const [tickets, setTickets] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedTicket, setSelectedTicket] = useState(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [filterType, setFilterType] = useState("all");
+    const [filterReason, setFilterReason] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
-    const [filterPriority, setFilterPriority] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
 
-    // Processing form states
-    const [processingStatus, setProcessingStatus] = useState("");
-    const [processingNotes, setProcessingNotes] = useState("");
-    const [compensationType, setCompensationType] = useState("");
-    const [compensationAmount, setCompensationAmount] = useState("");
+    // Resolution form states
+    const [resolutionMethod, setResolutionMethod] = useState("");
+    const [resolutionDescription, setResolutionDescription] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Fetch tickets function (extracted to reuse)
+    const fetchTickets = async () => {
+        if (!userData?.assignedStationId) {
+            toast({
+                title: "Lỗi",
+                description: "Không tìm thấy thông tin trạm",
+                variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const res = await getTicketByStationId(userData.assignedStationId);
+            console.log("✅Fetched tickets:", res);
+            if (res?.success && res?.tickets) {
+                setTickets(res.tickets);
+            } else {
+                toast({
+                    title: "Lỗi",
+                    description: res?.message || "Không thể tải danh sách ticket",
+                    variant: "destructive",
+                });
+            }
+        } catch (err) {
+            toast({
+                title: "Lỗi mạng",
+                description: err?.message || "Không thể kết nối đến server",
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Fetch tickets on mount
+    useEffect(() => {
+        fetchTickets();
+    }, [userData]);
 
     // Stats computed values
     const statsData = useMemo(
         () => [
             {
-                label: "Chờ xử lý",
-                count: disputes.filter((d) => d.status === "pending").length,
+                label: "Tổng ticket",
+                count: tickets.length,
+                icon: FileText,
+                color: "from-blue-500 to-indigo-500",
+                bgColor: "from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
+            },
+            {
+                label: "Đang xử lý",
+                count: tickets.filter((t) => t.status === "IN_PROGRESS").length,
                 icon: Clock,
                 color: "from-orange-500 to-yellow-500",
                 bgColor: "from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20"
             },
             {
-                label: "Đang điều tra",
-                count: disputes.filter((d) => d.status === "investigating").length,
-                icon: Search,
-                color: "from-blue-500 to-indigo-500",
-                bgColor: "from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
-            },
-            {
                 label: "Đã giải quyết",
-                count: disputes.filter((d) => d.status === "resolved").length,
+                count: tickets.filter((t) => t.status === "RESOLVED").length,
                 icon: CheckCircle,
                 color: "from-green-500 to-emerald-500",
                 bgColor: "from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20"
-            },
-            {
-                label: "Từ chối",
-                count: disputes.filter((d) => d.status === "rejected").length,
-                icon: XCircle,
-                color: "from-red-500 to-pink-500",
-                bgColor: "from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20"
             }
         ],
-        [disputes]
+        [tickets]
     );
 
-    // Filtered disputes
-    const filteredDisputes = useMemo(() => {
-        return disputes.filter((dispute) => {
-            const matchType = filterType === "all" || dispute.type === filterType;
-            const matchStatus = filterStatus === "all" || dispute.status === filterStatus;
-            const matchPriority = filterPriority === "all" || dispute.priority === filterPriority;
+    // Filtered tickets
+    const filteredTickets = useMemo(() => {
+        return tickets.filter((ticket) => {
+            const matchReason = filterReason === "all" || ticket.reason === filterReason;
+            const matchStatus = filterStatus === "all" || ticket.status === filterStatus;
             const matchSearch =
                 searchQuery === "" ||
-                dispute.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                dispute.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                dispute.batteryId.toLowerCase().includes(searchQuery.toLowerCase());
+                ticket.id.toString().includes(searchQuery) ||
+                ticket.bookingId.toString().includes(searchQuery) ||
+                ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                ticket.createdByStaffName.toLowerCase().includes(searchQuery.toLowerCase());
 
-            return matchType && matchStatus && matchPriority && matchSearch;
-        });
-    }, [disputes, filterType, filterStatus, filterPriority, searchQuery]);
+            return matchReason && matchStatus && matchSearch;
+        })
+            .sort((a, b) => {
+                if (a.status === "IN_PROGRESS" && b.status === "RESOLVED") return -1;
+                if (a.status === "RESOLVED" && b.status === "IN_PROGRESS") return 1;
+                return 0;
+            });
+    }, [tickets, filterReason, filterStatus, searchQuery]);
 
     // Handlers
-    const handleViewDetail = (dispute) => {
-        setSelectedDispute(dispute);
-        setProcessingStatus(dispute.status);
-        setProcessingNotes(dispute.inspectionNotes || "");
-        setCompensationType(dispute.compensationType || "");
-        setCompensationAmount(dispute.compensationAmount ? String(dispute.compensationAmount) : "");
+    const handleViewDetail = (ticket) => {
+        setSelectedTicket(ticket);
+        // Load existing resolution data if available
+        setResolutionMethod(ticket.resolutionMethod || "");
+        setResolutionDescription(ticket.resolutionDescription || "");
         setIsDetailOpen(true);
     };
 
-    const handleUpdateStatus = () => {
-        if (!selectedDispute) return;
+    const handleResolveTicket = async () => {
+        if (!selectedTicket) return;
 
-        const updatedDisputes = disputes.map((d) =>
-            d.id === selectedDispute.id
-                ? {
-                    ...d,
-                    status: processingStatus,
-                    inspectionNotes: processingNotes,
-                    history: [
-                        ...d.history,
-                        {
-                            timestamp: new Date().toLocaleString("vi-VN"),
-                            action: `Cập nhật trạng thái: ${processingStatus}`,
-                            performer: "Nhân viên hiện tại",
-                            note: processingNotes
-                        }
-                    ]
-                }
-                : d
-        );
-
-        setDisputes(updatedDisputes);
-        toast({
-            title: "Cập nhật thành công",
-            description: `Trạng thái phiếu ${selectedDispute.ticketNumber} đã được cập nhật`
-        });
-    };
-
-    const handleResolve = () => {
-        if (!selectedDispute) return;
-
-        const updatedDisputes = disputes.map((d) =>
-            d.id === selectedDispute.id
-                ? {
-                    ...d,
-                    status: "resolved",
-                    resolution: processingNotes,
-                    resolvedDate: new Date().toLocaleString("vi-VN"),
-                    compensationType: compensationType,
-                    compensationAmount: parseFloat(compensationAmount) || 0,
-                    history: [
-                        ...d.history,
-                        {
-                            timestamp: new Date().toLocaleString("vi-VN"),
-                            action: "Đã giải quyết phiếu",
-                            performer: "Nhân viên hiện tại",
-                            note: `Bồi thường: ${compensationType} - ${compensationAmount}đ`
-                        }
-                    ]
-                }
-                : d
-        );
-
-        setDisputes(updatedDisputes);
-        setIsDetailOpen(false);
-        toast({
-            title: "Đã giải quyết phiếu tranh chấp",
-            description: `Phiếu ${selectedDispute.ticketNumber} đã được xử lý thành công`
-        });
-    };
-
-    const handleReject = () => {
-        if (!selectedDispute || !processingNotes) {
+        if (!resolutionMethod.trim()) {
             toast({
                 title: "Lỗi",
-                description: "Vui lòng nhập lý do từ chối",
-                variant: "destructive"
+                description: "Vui lòng chọn phương án giải quyết",
+                variant: "destructive",
             });
             return;
         }
 
-        const updatedDisputes = disputes.map((d) =>
-            d.id === selectedDispute.id
-                ? {
-                    ...d,
-                    status: "rejected",
-                    resolution: processingNotes,
-                    resolvedDate: new Date().toLocaleString("vi-VN"),
-                    compensationType: "none",
-                    history: [
-                        ...d.history,
-                        {
-                            timestamp: new Date().toLocaleString("vi-VN"),
-                            action: "Từ chối phiếu",
-                            performer: "Nhân viên hiện tại",
-                            note: processingNotes
-                        }
-                    ]
-                }
-                : d
-        );
+        if (!resolutionDescription.trim()) {
+            toast({
+                title: "Lỗi",
+                description: "Vui lòng nhập mô tả giải quyết",
+                variant: "destructive",
+            });
+            return;
+        }
 
-        setDisputes(updatedDisputes);
-        setIsDetailOpen(false);
-        toast({
-            title: "Đã từ chối phiếu",
-            description: `Phiếu ${selectedDispute.ticketNumber} đã được từ chối`
-        });
+        setIsSubmitting(true);
+        try {
+            const res = await updateTicketSolution(selectedTicket.id, {
+                resolutionMethod: resolutionMethod.trim(),
+                resolutionDescription: resolutionDescription.trim()
+            });
+            console.log("✅Update ticket solution response:", res);
+
+            if (res?.success || !res?.error) {
+                toast({
+                    title: "Thành công",
+                    description: res.message || "Đã giải quyết ticket thành công",
+                    className: "bg-green-500 text-white",
+                    duration: 3000,
+                });
+
+                // Reload tickets to get fresh data from backend
+                await fetchTickets();
+
+                // Close sheet - khi mở lại sẽ có data mới
+                setIsDetailOpen(false);
+            } else {
+                toast({
+                    title: "Thất bại",
+                    description: res?.message || "Không thể giải quyết ticket",
+                    variant: "destructive",
+                });
+            }
+        } catch (err) {
+            toast({
+                title: "Lỗi",
+                description: err?.message || "Đã xảy ra lỗi khi giải quyết ticket",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Helper badges
-    const getPriorityBadge = (priority) => {
-        const styles = {
-            urgent: "bg-gradient-to-r from-red-500 to-pink-500 text-white",
-            high: "bg-gradient-to-r from-orange-500 to-yellow-500 text-white",
-            medium: "bg-gradient-to-r from-blue-500 to-indigo-500 text-white",
-            low: "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-        };
-        const labels = { urgent: "Khẩn cấp", high: "Cao", medium: "Trung bình", low: "Thấp" };
-        return <Badge className={styles[priority]}>{labels[priority]}</Badge>;
-    };
-
     const getStatusBadge = (status) => {
         const styles = {
-            pending: "bg-orange-500 text-white",
-            investigating: "bg-blue-500 text-white",
-            resolved: "bg-green-500 text-white",
-            rejected: "bg-red-500 text-white"
+            IN_PROGRESS: "bg-orange-500 text-white",
+            RESOLVED: "bg-green-500 text-white"
         };
         const labels = {
-            pending: "Chờ xử lý",
-            investigating: "Đang điều tra",
-            resolved: "Đã giải quyết",
-            rejected: "Từ chối"
+            IN_PROGRESS: "Đang xử lý",
+            RESOLVED: "Đã giải quyết"
         };
-        return <Badge className={styles[status]}>{labels[status]}</Badge>;
+        return <Badge className={styles[status] || "bg-gray-500 text-white"}>{labels[status] || status}</Badge>;
     };
 
-    const getTypeBadge = (type) => {
+    const getReasonBadge = (reason) => {
         const styles = {
-            defective: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-            low_soh: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-            not_charging: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-            damage: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-            performance: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-            other: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+            BAD_CONDITION: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+            SOH: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+            OTHER: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+        };
+        const labels = {
+            BAD_CONDITION: "Tình trạng pin xấu",
+            SOH: "Vấn đề SOH",
+            OTHER: "Khác"
         };
         return (
-            <Badge variant="outline" className={styles[type]}>
-                {type}
+            <Badge variant="outline" className={styles[reason] || styles.OTHER}>
+                {labels[reason] || reason}
             </Badge>
         );
     };
@@ -378,15 +236,9 @@ const DisputeManagement = () => {
     return (
         <div className="container mx-auto px-6 py-8 max-w-7xl">
             {/* Header */}
-            <div className="mb-8 flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Xử lý Phiếu Tranh Chấp</h2>
-                    <p className="text-gray-600 dark:text-gray-400">Quản lý và giải quyết khiếu nại về pin từ khách hàng</p>
-                </div>
-                <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tạo phiếu mới
-                </Button>
+            <div className="mb-8">
+                <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Quản lý Ticket báo cáo</h2>
+                <p className="text-gray-600 dark:text-gray-400">Danh sách ticket báo cáo vấn đề pin từ nhân viên</p>
             </div>
 
             {/* Stats Cards */}
@@ -412,18 +264,15 @@ const DisputeManagement = () => {
             <Card className="mb-6 border-0 shadow-lg">
                 <CardContent className="pt-6">
                     <div className="flex flex-wrap gap-4">
-                        <Select value={filterType} onValueChange={setFilterType}>
+                        <Select value={filterReason} onValueChange={setFilterReason}>
                             <SelectTrigger className="w-[200px]">
-                                <SelectValue placeholder="Loại tranh chấp" />
+                                <SelectValue placeholder="Lý do" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Tất cả loại</SelectItem>
-                                <SelectItem value="defective">Pin hư hỏng</SelectItem>
-                                <SelectItem value="low_soh">SoH quá thấp</SelectItem>
-                                <SelectItem value="not_charging">Không sạc được</SelectItem>
-                                <SelectItem value="damage">Pin bị hư hại</SelectItem>
-                                <SelectItem value="performance">Hiệu suất kém</SelectItem>
-                                <SelectItem value="other">Khác</SelectItem>
+                                <SelectItem value="all">Tất cả lý do</SelectItem>
+                                <SelectItem value="BAD_CONDITION">Tình trạng pin xấu</SelectItem>
+                                <SelectItem value="SOH">Vấn đề SOH</SelectItem>
+                                <SelectItem value="OTHER">Khác</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -433,29 +282,14 @@ const DisputeManagement = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                                <SelectItem value="pending">Chờ xử lý</SelectItem>
-                                <SelectItem value="investigating">Đang điều tra</SelectItem>
-                                <SelectItem value="resolved">Đã giải quyết</SelectItem>
-                                <SelectItem value="rejected">Từ chối</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Select value={filterPriority} onValueChange={setFilterPriority}>
-                            <SelectTrigger className="w-[200px]">
-                                <SelectValue placeholder="Độ ưu tiên" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Tất cả độ ưu tiên</SelectItem>
-                                <SelectItem value="urgent">Khẩn cấp</SelectItem>
-                                <SelectItem value="high">Cao</SelectItem>
-                                <SelectItem value="medium">Trung bình</SelectItem>
-                                <SelectItem value="low">Thấp</SelectItem>
+                                <SelectItem value="IN_PROGRESS">Đang xử lý</SelectItem>
+                                <SelectItem value="RESOLVED">Đã giải quyết</SelectItem>
                             </SelectContent>
                         </Select>
 
                         <div className="flex-1 min-w-[200px]">
                             <Input
-                                placeholder="Tìm theo mã phiếu, tên khách, ID pin..."
+                                placeholder="Tìm theo ID ticket, booking ID, tiêu đề..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full"
@@ -465,78 +299,86 @@ const DisputeManagement = () => {
                 </CardContent>
             </Card>
 
-            {/* Dispute Table */}
+            {/* Ticket Table */}
             <Card className="border-0 shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center">
                         <FileText className="h-5 w-5 mr-2" />
-                        Danh sách phiếu tranh chấp
+                        Danh sách ticket
                     </CardTitle>
-                    <CardDescription>Hiển thị {filteredDisputes.length} / {disputes.length} phiếu</CardDescription>
+                    <CardDescription>Hiển thị {filteredTickets.length} / {tickets.length} ticket</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="h-[500px]">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[100px]">Mã phiếu</TableHead>
-                                    <TableHead>Khách hàng</TableHead>
-                                    <TableHead>Loại</TableHead>
-                                    <TableHead>ID Pin</TableHead>
-                                    <TableHead>Vị trí</TableHead>
-                                    <TableHead>Độ ưu tiên</TableHead>
-                                    <TableHead>Trạng thái</TableHead>
-                                    <TableHead>Ngày báo cáo</TableHead>
-                                    <TableHead className="text-right">Thao tác</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredDisputes.map((dispute) => (
-                                    <TableRow key={dispute.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
-                                        <TableCell className="font-mono font-semibold">{dispute.ticketNumber}</TableCell>
-                                        <TableCell>
-                                            <div>
-                                                <p className="font-medium">{dispute.customerName}</p>
-                                                <p className="text-xs text-gray-500">{dispute.customerPhone}</p>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{getTypeBadge(dispute.type)}</TableCell>
-                                        <TableCell>
-                                            <Link to="/staff/battery-inventory" className="text-blue-600 hover:underline font-mono">
-                                                {dispute.batteryId}
-                                            </Link>
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className="text-sm">Dock {dispute.dockId} - {dispute.batteryLocation}</span>
-                                        </TableCell>
-                                        <TableCell>{getPriorityBadge(dispute.priority)}</TableCell>
-                                        <TableCell>{getStatusBadge(dispute.status)}</TableCell>
-                                        <TableCell className="text-sm text-gray-600">{dispute.reportedDate}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => handleViewDetail(dispute)}>
-                                                <Eye className="h-4 w-4 mr-1" />
-                                                Xem
-                                            </Button>
-                                        </TableCell>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-[400px]">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                        </div>
+                    ) : (
+                        <ScrollArea className="h-[500px]">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[80px]">ID</TableHead>
+                                        <TableHead>Booking ID</TableHead>
+                                        <TableHead>Tiêu đề</TableHead>
+                                        <TableHead>Lý do</TableHead>
+                                        <TableHead>Trạng thái</TableHead>
+                                        <TableHead>Người tạo</TableHead>
+                                        <TableHead>Ngày tạo</TableHead>
+                                        <TableHead className="text-right">Thao tác</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredTickets.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="text-center text-gray-500 h-32">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <AlertTriangle className="h-8 w-8 mb-2 text-gray-400" />
+                                                    <p>Không có ticket nào</p>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        filteredTickets.map((ticket) => (
+                                            <TableRow key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
+                                                <TableCell className="font-mono font-semibold">#{ticket.id}</TableCell>
+                                                <TableCell className="font-mono">{ticket.bookingId}</TableCell>
+                                                <TableCell>
+                                                    <p className="font-medium max-w-xs truncate">{ticket.title}</p>
+                                                </TableCell>
+                                                <TableCell>{getReasonBadge(ticket.reason)}</TableCell>
+                                                <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                                                <TableCell className="text-sm">{ticket.createdByStaffName}</TableCell>
+                                                <TableCell className="text-sm text-gray-600">
+                                                    {dayjs(ticket.createdAt).format("HH:mm DD/MM/YYYY")}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" onClick={() => handleViewDetail(ticket)}>
+                                                        <Eye className="h-4 w-4 mr-1" />
+                                                        Xem
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    )}
                 </CardContent>
             </Card>
 
             {/* Detail Sheet */}
             <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
                 <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-                    {selectedDispute && (
+                    {selectedTicket && (
                         <>
                             <SheetHeader>
                                 <SheetTitle className="flex items-center text-2xl">
                                     <FileText className="h-6 w-6 mr-2" />
-                                    Chi tiết phiếu {selectedDispute.ticketNumber}
+                                    Chi tiết Ticket #{selectedTicket.id}
                                 </SheetTitle>
-                                <SheetDescription>Thông tin chi tiết và xử lý phiếu tranh chấp</SheetDescription>
+                                <SheetDescription>Thông tin chi tiết ticket báo cáo</SheetDescription>
                             </SheetHeader>
 
                             <div className="mt-6 space-y-6">
@@ -548,347 +390,141 @@ const DisputeManagement = () => {
                                     <CardContent className="space-y-3">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <Label className="text-xs text-gray-500">Mã phiếu</Label>
-                                                <p className="font-mono font-semibold">{selectedDispute.ticketNumber}</p>
+                                                <Label className="text-xs text-gray-500">Ticket ID</Label>
+                                                <p className="font-mono font-semibold">#{selectedTicket.id}</p>
                                             </div>
                                             <div>
-                                                <Label className="text-xs text-gray-500">Loại tranh chấp</Label>
-                                                <div className="mt-1">{getTypeBadge(selectedDispute.type)}</div>
+                                                <Label className="text-xs text-gray-500">Booking ID</Label>
+                                                <p className="font-mono font-semibold">{selectedTicket.bookingId}</p>
                                             </div>
                                             <div>
-                                                <Label className="text-xs text-gray-500">Độ ưu tiên</Label>
-                                                <div className="mt-1">{getPriorityBadge(selectedDispute.priority)}</div>
+                                                <Label className="text-xs text-gray-500">Lý do</Label>
+                                                <div className="mt-1">{getReasonBadge(selectedTicket.reason)}</div>
                                             </div>
                                             <div>
                                                 <Label className="text-xs text-gray-500">Trạng thái</Label>
-                                                <div className="mt-1">{getStatusBadge(selectedDispute.status)}</div>
+                                                <div className="mt-1">{getStatusBadge(selectedTicket.status)}</div>
                                             </div>
-                                            <div>
-                                                <Label className="text-xs text-gray-500">Ngày báo cáo</Label>
-                                                <p className="text-sm flex items-center">
-                                                    <Calendar className="h-3 w-3 mr-1" />
-                                                    {selectedDispute.reportedDate}
-                                                </p>
+                                            <div className="col-span-2">
+                                                <Label className="text-xs text-gray-500">Người tạo</Label>
+                                                <p className="text-sm">{selectedTicket.createdByStaffName}</p>
                                             </div>
-                                            {selectedDispute.assignedTo && (
-                                                <div>
-                                                    <Label className="text-xs text-gray-500">Người xử lý</Label>
-                                                    <p className="text-sm flex items-center">
-                                                        <User className="h-3 w-3 mr-1" />
-                                                        {selectedDispute.assignedTo}
-                                                    </p>
-                                                </div>
-                                            )}
+                                            <div className="col-span-2">
+                                                <Label className="text-xs text-gray-500">Ngày tạo</Label>
+                                                <p className="text-sm">{dayjs(selectedTicket.createdAt).format("HH:mm:ss - DD/MM/YYYY")}</p>
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
 
-                                {/* Customer Info */}
+                                {/* Title */}
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="text-lg flex items-center">
-                                            <User className="h-5 w-5 mr-2" />
-                                            Thông tin khách hàng
-                                        </CardTitle>
+                                        <CardTitle className="text-lg">Tiêu đề</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        <div className="flex items-center">
-                                            <User className="h-4 w-4 mr-2 text-gray-500" />
-                                            <span className="font-semibold">{selectedDispute.customerName}</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <Phone className="h-4 w-4 mr-2 text-gray-500" />
-                                            <span>{selectedDispute.customerPhone}</span>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Battery Info */}
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-lg flex items-center">
-                                            <Battery className="h-5 w-5 mr-2" />
-                                            Thông tin pin
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-3">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <Label className="text-xs text-gray-500">ID Pin</Label>
-                                                <Link to="/staff/battery-inventory" className="text-blue-600 hover:underline font-mono font-semibold block">
-                                                    {selectedDispute.batteryId}
-                                                </Link>
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-gray-500">Vị trí</Label>
-                                                <p className="flex items-center">
-                                                    <MapPin className="h-3 w-3 mr-1" />
-                                                    Dock {selectedDispute.dockId} - {selectedDispute.batteryLocation}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-gray-500">Loại pin</Label>
-                                                <p className="text-sm">{selectedDispute.batteryType}</p>
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-gray-500">SoH hiện tại</Label>
-                                                <p className="text-sm font-semibold flex items-center">
-                                                    {selectedDispute.currentSoh}
-                                                    {parseInt(selectedDispute.currentSoh) < 70 && <AlertTriangle className="h-4 w-4 ml-1 text-orange-500" />}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-gray-500">Mức sạc</Label>
-                                                <p className="text-sm">{selectedDispute.chargeLevel}%</p>
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-gray-500">Lần đổi gần nhất</Label>
-                                                <p className="text-sm">{selectedDispute.lastSwapDate}</p>
-                                            </div>
-                                        </div>
+                                    <CardContent>
+                                        <p className="text-sm font-semibold">{selectedTicket.title}</p>
                                     </CardContent>
                                 </Card>
 
                                 {/* Description */}
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="text-lg">Mô tả vấn đề</CardTitle>
+                                        <CardTitle className="text-lg">Mô tả chi tiết</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{selectedDispute.description}</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                            {selectedTicket.description}
+                                        </p>
                                     </CardContent>
                                 </Card>
 
-                                {/* Images */}
-                                {selectedDispute.images && selectedDispute.images.length > 0 && (
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="text-lg flex items-center">
-                                                <ImageIcon className="h-5 w-5 mr-2" />
-                                                Hình ảnh đính kèm
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="flex gap-2">
-                                                {selectedDispute.images.map((img, idx) => (
-                                                    <div key={idx} className="w-24 h-24 border rounded-lg overflow-hidden">
-                                                        <img src={img} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
-
-                                {/* History */}
-                                <Card>
+                                {/* Resolution Section - Always show as editable form */}
+                                <Card className={`border-2 ${selectedTicket.status === "RESOLVED" ? "border-green-200 dark:border-green-800" : "border-blue-200 dark:border-blue-800"}`}>
                                     <CardHeader>
                                         <CardTitle className="text-lg flex items-center">
-                                            <Clock className="h-5 w-5 mr-2" />
-                                            Lịch sử xử lý
+                                            {selectedTicket.status === "RESOLVED" ? (
+                                                <>
+                                                    <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                                                    Cập nhật giải quyết ticket
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="h-5 w-5 mr-2" />
+                                                    Giải quyết ticket
+                                                </>
+                                            )}
                                         </CardTitle>
+                                        {selectedTicket.status === "RESOLVED" && selectedTicket.resolvedAt && (
+                                            <CardDescription>
+                                                Đã giải quyết lúc: {dayjs(selectedTicket.resolvedAt).format("HH:mm:ss - DD/MM/YYYY")}
+                                            </CardDescription>
+                                        )}
                                     </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-3">
-                                            {selectedDispute.history.map((h, idx) => (
-                                                <div key={idx} className="flex items-start">
-                                                    <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-500 mr-3" />
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-medium">{h.action}</p>
-                                                        <p className="text-xs text-gray-500">
-                                                            {h.performer} • {h.timestamp}
-                                                        </p>
-                                                        {h.note && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">{h.note}</p>}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                    <CardContent className="space-y-4">
+                                        <div>
+                                            <Label htmlFor="resolutionMethod">
+                                                Phương án giải quyết <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                id="resolutionMethod"
+                                                placeholder="VD: Thay thế pin mới, Hoàn tiền, Bảo trì..."
+                                                value={resolutionMethod}
+                                                onChange={(e) => setResolutionMethod(e.target.value)}
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="resolutionDescription">
+                                                Mô tả giải quyết <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Textarea
+                                                id="resolutionDescription"
+                                                placeholder="Nhập mô tả chi tiết về cách giải quyết vấn đề..."
+                                                value={resolutionDescription}
+                                                onChange={(e) => setResolutionDescription(e.target.value)}
+                                                rows={4}
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+
+                                        <Separator />
+
+                                        <div className="flex gap-3">
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setIsDetailOpen(false)}
+                                                disabled={isSubmitting}
+                                                className="flex-1"
+                                            >
+                                                Đóng
+                                            </Button>
+                                            <Button
+                                                onClick={handleResolveTicket}
+                                                disabled={isSubmitting}
+                                                className={`flex-1 ${selectedTicket.status === "RESOLVED" ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600" : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"}`}
+                                            >
+                                                {isSubmitting ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                        Đang xử lý...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Check className="h-4 w-4 mr-2" />
+                                                        {selectedTicket.status === "RESOLVED" ? "Cập nhật lại" : "Giải quyết"}
+                                                    </>
+                                                )}
+                                            </Button>
                                         </div>
                                     </CardContent>
                                 </Card>
-
-                                {/* Processing Section */}
-                                {selectedDispute.status !== "resolved" && selectedDispute.status !== "rejected" && (
-                                    <Card className="border-2 border-blue-200 dark:border-blue-800">
-                                        <CardHeader>
-                                            <CardTitle className="text-lg flex items-center">
-                                                <Edit className="h-5 w-5 mr-2" />
-                                                Khu vực xử lý
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <Label>Trạng thái</Label>
-                                                    <Select value={processingStatus} onValueChange={setProcessingStatus}>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="pending">Chờ xử lý</SelectItem>
-                                                            <SelectItem value="investigating">Đang điều tra</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                <div>
-                                                    <Label>Hình thức bồi thường</Label>
-                                                    <Select value={compensationType} onValueChange={setCompensationType}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Chọn hình thức" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="refund">Hoàn tiền</SelectItem>
-                                                            <SelectItem value="replacement">Đổi pin mới</SelectItem>
-                                                            <SelectItem value="credit">Tích điểm</SelectItem>
-                                                            <SelectItem value="none">Không bồi thường</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-
-                                            {compensationType && compensationType !== "none" && (
-                                                <div>
-                                                    <Label>Số tiền bồi thường (VNĐ)</Label>
-                                                    <Input
-                                                        type="number"
-                                                        value={compensationAmount}
-                                                        onChange={(e) => setCompensationAmount(e.target.value)}
-                                                        placeholder="Nhập số tiền..."
-                                                    />
-                                                </div>
-                                            )}
-
-                                            <div>
-                                                <Label>Ghi chú xử lý / Kết luận</Label>
-                                                <Textarea
-                                                    value={processingNotes}
-                                                    onChange={(e) => setProcessingNotes(e.target.value)}
-                                                    placeholder="Nhập ghi chú chi tiết về quá trình xử lý, kết quả kiểm tra, kết luận..."
-                                                    rows={4}
-                                                />
-                                            </div>
-
-                                            <Separator />
-
-                                            <div className="flex gap-2">
-                                                <Button variant="destructive" onClick={handleReject} className="flex-1">
-                                                    <Ban className="h-4 w-4 mr-2" />
-                                                    Từ chối
-                                                </Button>
-                                                <Button variant="outline" onClick={handleUpdateStatus} className="flex-1">
-                                                    <Edit className="h-4 w-4 mr-2" />
-                                                    Lưu nháp
-                                                </Button>
-                                                <Button onClick={handleResolve} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500">
-                                                    <Check className="h-4 w-4 mr-2" />
-                                                    Giải quyết & Đóng
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
-
-                                {/* Resolution (for closed disputes) */}
-                                {(selectedDispute.status === "resolved" || selectedDispute.status === "rejected") && (
-                                    <Card className="border-2 border-green-200 dark:border-green-800">
-                                        <CardHeader>
-                                            <CardTitle className="text-lg flex items-center">
-                                                <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
-                                                Kết quả xử lý
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <div>
-                                                <Label className="text-xs text-gray-500">Kết luận</Label>
-                                                <p className="text-sm mt-1">{selectedDispute.resolution}</p>
-                                            </div>
-                                            {selectedDispute.compensationType && (
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <Label className="text-xs text-gray-500">Bồi thường</Label>
-                                                        <p className="text-sm font-semibold capitalize">{selectedDispute.compensationType}</p>
-                                                    </div>
-                                                    {selectedDispute.compensationAmount && selectedDispute.compensationAmount > 0 && (
-                                                        <div>
-                                                            <Label className="text-xs text-gray-500">Số tiền</Label>
-                                                            <p className="text-sm font-semibold">
-                                                                {selectedDispute.compensationAmount.toLocaleString("vi-VN")} đ
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                            <div>
-                                                <Label className="text-xs text-gray-500">Ngày giải quyết</Label>
-                                                <p className="text-sm">{selectedDispute.resolvedDate}</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
                             </div>
                         </>
                     )}
                 </SheetContent>
             </Sheet>
-
-            {/* Create Dialog (Placeholder) */}
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Tạo phiếu tranh chấp mới</DialogTitle>
-                        <DialogDescription>Nhập thông tin để tạo phiếu tranh chấp thủ công</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div>
-                            <Label>Tên khách hàng</Label>
-                            <Input placeholder="Nhập tên khách hàng..." />
-                        </div>
-                        <div>
-                            <Label>Số điện thoại</Label>
-                            <Input placeholder="Nhập số điện thoại..." />
-                        </div>
-                        <div>
-                            <Label>ID Pin</Label>
-                            <Input placeholder="Nhập ID pin..." />
-                        </div>
-                        <div>
-                            <Label>Loại tranh chấp</Label>
-                            <Select>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Chọn loại" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="defective">Pin hư hỏng</SelectItem>
-                                    <SelectItem value="low_soh">SoH quá thấp</SelectItem>
-                                    <SelectItem value="not_charging">Không sạc được</SelectItem>
-                                    <SelectItem value="damage">Pin bị hư hại</SelectItem>
-                                    <SelectItem value="performance">Hiệu suất kém</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Mô tả vấn đề</Label>
-                            <Textarea placeholder="Nhập mô tả chi tiết..." rows={4} />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                            Hủy
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                toast({
-                                    title: "Tính năng đang phát triển",
-                                    description: "Chức năng tạo phiếu mới sẽ được cập nhật sau"
-                                });
-                                setIsCreateOpen(false);
-                            }}
-                        >
-                            Tạo phiếu
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 };

@@ -45,7 +45,16 @@ const BookingHistory = () => {
       const res = await getBookingHistoryByUserId(userData.userId);
       if (res) {
         if (Array.isArray(res.data)) {
-          const filterRes = res.data.filter(b => (b.bookingStatus !== "PENDINGPAYMENT" && b.bookingStatus !== "FAILED"));
+          const filterRes = res.data.filter(b => (b.bookingStatus !== "PENDINGPAYMENT" && b.bookingStatus !== "FAILED"))
+            .sort((a, b) => { //sort chờ đổi pin lên đầu ds
+              if (a.bookingStatus === "PENDINGSWAPPING" && b.bookingStatus !== "PENDINGSWAPPING") {
+                return -1;
+              }
+              if (a.bookingStatus !== "PENDINGSWAPPING" && b.bookingStatus === "PENDINGSWAPPING") {
+                return 1;
+              }
+              return 0;
+            });
           setAllBookings(filterRes);
         }
       } else if (res?.error) {

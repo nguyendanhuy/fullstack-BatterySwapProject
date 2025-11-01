@@ -144,14 +144,6 @@ const StaffDashboard = () => {
               badge: "Chức năng chính"
             },
             {
-              icon: CreditCard,
-              title: "Lịch sử giao dịch",
-              desc: "Theo dõi và quản lý lịch sử giao dịch đã xác nhận",
-              link: "/staff/transaction-history",
-              color: "from-green-500 to-emerald-500",
-              badge: "Báo cáo"
-            },
-            {
               icon: FileText,
               title: "Lịch sử Swap",
               desc: "Xem lịch sử swap (đổi pin) đã thực hiện tại trạm",
@@ -174,6 +166,14 @@ const StaffDashboard = () => {
               link: "/staff/battery-inspection",
               color: "from-purple-500 to-pink-500",
               badge: "Chất lượng"
+            },
+            {
+              icon: TrendingUp,
+              title: "Quản lý tranh chấp pin",
+              desc: "Xem và xử lý các tranh chấp liên quan đến pin",
+              link: "/staff/battery-dispute",
+              color: "from-red-500 to-pink-500",
+              badge: "Tranh chấp"
             }
           ].map((feature, index) => (
             <Card

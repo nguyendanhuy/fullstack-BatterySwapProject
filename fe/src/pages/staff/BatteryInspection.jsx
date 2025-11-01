@@ -1,170 +1,188 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, AlertTriangle, CheckCircle, Wrench, Clock, User, Battery, Zap, Activity, TrendingUp, Sparkles } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, Wrench, Clock, User, Battery, Zap, Activity, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  getWattingBatteryInventory,
+  batteryStatusUpdate,
+  createInspection,
+  getInspectionByStaffId,
+} from "../../services/axios.services";
+import { SystemContext } from "../../contexts/system.context";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
 
 const BatteryInspection = () => {
   const { toast } = useToast();
   const [selectedBattery, setSelectedBattery] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+
+  const [waitingBatteries, setWaitingBatteries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [staffInspections, setStaffInspections] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [showFullHistory, setShowFullHistory] = useState(false);
 
-  const emptyBatteries = [
-    {
-      id: "BAT005",
-      type: "Lithium-ion",
-      lastUsed: "14/12/2024 16:30",
-      location: "Slot A3",
-      soh: "78%",
-      cycles: 345
-    },
-    {
-      id: "BAT009",
-      type: "Pin LFP",
-      lastUsed: "14/12/2024 15:20",
-      location: "Slot B3",
-      soh: "75%",
-      cycles: 389
-    },
-    {
-      id: "BAT014",
-      type: "Lithium-ion",
-      lastUsed: "14/12/2024 14:10",
-      location: "Slot C2",
-      soh: "72%",
-      cycles: 467
+  const { userData } = useContext(SystemContext);
+  const STATION_ID = userData?.assignedStationId;
+  const USER_ID = userData?.userId;
+  const maintenanceCount = staffInspections.filter(r => r.status === "Bảo trì").length;
+  const passCount = staffInspections.filter(r => r.status === "Đạt chuẩn").length;
+  // Helpers cho toast từ BE
+  const isErrorResponse = (res) =>
+    res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
+  const pickApiMessage = (res) =>
+    res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
+
+  // ---------- Fetch danh sách pin chờ ----------
+  const getWaitingBatteries = async () => {
+    try {
+      setLoading(true);
+      const response = await getWattingBatteryInventory(STATION_ID);
+      if (response) {
+        setWaitingBatteries(response);
+      } else {
+        toast({
+          title: "Không tải được danh sách pin chờ",
+          description: "Vui lòng thử lại sau",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Lỗi tải danh sách",
+        description: err?.message || "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const inspectionHistory = [
-    {
-      id: "BAT001",
-      type: "Lithium-ion",
-      inspectionDate: "14/12/2024 10:30",
-      inspector: "Nguyễn Văn A",
-      physicalCondition: "Tốt",
-      notes: "Pin trong tình trạng bình thường",
-      status: "Đạt chuẩn"
-    },
-    {
-      id: "BAT003",
-      type: "Pin LFP",
-      inspectionDate: "14/12/2024 09:15",
-      inspector: "Trần Thị B",
-      physicalCondition: "Có dấu hiệu ăn mòn nhẹ",
-      notes: "Cần theo dõi thêm",
-      status: "Bảo trì"
-    },
-    {
-      id: "BAT007",
-      type: "Lithium-ion",
-      inspectionDate: "13/12/2024 16:45",
-      inspector: "Nguyễn Văn A",
-      physicalCondition: "Tốt",
-      notes: "Pin hoạt động ổn định",
-      status: "Đạt chuẩn"
+  // ---------- Fetch lịch sử kiểm tra theo staff ----------
+  const fetchStaffInspections = async () => {
+    try {
+      setLoadingHistory(true);
+      const res = await getInspectionByStaffId(USER_ID);
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      const mapped = list
+        .map((it) => ({
+          id: it.id,
+          batteryId: it.batteryId,
+          inspectionDate: format(new Date(it.inspectionTime), "dd/MM/yyyy HH:mm", { locale: vi }),
+          inspector: userData?.fullName || "Bạn",
+          physicalCondition: it.physicalNotes || "—",
+          soh: it.stateOfHealth,
+          damaged: !!it.damaged,
+          status: it.status === "PASS" ? "Đạt chuẩn" : "Bảo trì",
+        }))
+        .sort((a, b) => {
+          // So sánh theo thời gian gốc sẽ chuẩn hơn, nhưng hiện đã stringify — vẫn ổn cho UI
+          // Nếu muốn chuẩn: giữ thêm inspectionTime gốc (Date) và sort theo Date.
+          return b.inspectionDate.localeCompare(a.inspectionDate);
+        });
+
+      setStaffInspections(mapped);
+    } catch (err) {
+      toast({
+        title: "Lỗi tải lịch sử",
+        description: err?.message || "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingHistory(false);
     }
-  ];
+  };
 
-  const fullInspectionHistory = [
-    ...inspectionHistory,
-    {
-      id: "BAT010",
-      type: "Pin LFP",
-      inspectionDate: "13/12/2024 14:20",
-      inspector: "Trần Thị B",
-      physicalCondition: "Tốt",
-      notes: "Pin trong tình trạng tốt",
-      status: "Đạt chuẩn"
-    },
-    {
-      id: "BAT012",
-      type: "Lithium-ion",
-      inspectionDate: "13/12/2024 11:30",
-      inspector: "Nguyễn Văn A",
-      physicalCondition: "Có vết xước nhẹ",
-      notes: "Vết xước không ảnh hưởng đến hoạt động",
-      status: "Đạt chuẩn"
-    },
-    {
-      id: "BAT008",
-      type: "Pin LFP",
-      inspectionDate: "12/12/2024 15:45",
-      inspector: "Trần Thị B",
-      physicalCondition: "Hư hại nặng",
-      notes: "Pin bị phồng, cần thay thế",
-      status: "Bảo trì"
-    },
-    {
-      id: "BAT015",
-      type: "Lithium-ion",
-      inspectionDate: "12/12/2024 13:10",
-      inspector: "Nguyễn Văn A",
-      physicalCondition: "Tốt",
-      notes: "Pin hoạt động bình thường",
-      status: "Đạt chuẩn"
-    },
-    {
-      id: "BAT002",
-      type: "Pin LFP",
-      inspectionDate: "12/12/2024 09:30",
-      inspector: "Trần Thị B",
-      physicalCondition: "Tốt",
-      notes: "Pin trong tình trạng tốt",
-      status: "Đạt chuẩn"
-    },
-    {
-      id: "BAT006",
-      type: "Lithium-ion",
-      inspectionDate: "11/12/2024 16:20",
-      inspector: "Nguyễn Văn A",
-      physicalCondition: "Có dấu hiệu ăn mòn",
-      notes: "Cần theo dõi và bảo trì định kỳ",
-      status: "Bảo trì"
-    },
-    {
-      id: "BAT011",
-      type: "Pin LFP",
-      inspectionDate: "11/12/2024 14:15",
-      inspector: "Trần Thị B",
-      physicalCondition: "Tốt",
-      notes: "Pin hoạt động ổn định",
-      status: "Đạt chuẩn"
-    }
-  ];
+  useEffect(() => {
+    getWaitingBatteries();
+    fetchStaffInspections();
+  }, []);
 
-  const displayedHistory = showFullHistory ? fullInspectionHistory : inspectionHistory;
-
-  const staffList = ["Nguyễn Văn A", "Trần Thị B"];
-
-  const InspectionForm = ({ battery, onClose }) => {
+  // ---------- Form kiểm tra ----------
+  const InspectionForm = ({ battery, onClose, bookingId, onSuccess }) => {
     const [physicalCondition, setPhysicalCondition] = useState("");
-    const [notes, setNotes] = useState("");
-    const [inspector, setInspector] = useState("");
+    const [soh, setSoh] = useState("");
+    const [status, setStatus] = useState(""); // AVAILABLE | MAINTENANCE
+    const [submitting, setSubmitting] = useState(false);
+    const { toast } = useToast();
 
-    const handleSubmit = () => {
-      toast({
-        title: "Kiểm tra pin thành công",
-        description: `Pin ${battery.id} đã được kiểm tra bởi ${inspector}`,
-      });
-      onClose();
-    };
+    const mapStatusToInspection = (s) => (s === "MAINTENANCE" ? "IN_MAINTENANCE" : "PASS");
 
-    const handleSendMaintenance = () => {
-      toast({
-        title: "Gửi pin bảo trì thành công",
-        description: `Pin ${battery.id} đã được chuyển sang trạng thái bảo trì`,
-      });
-      onClose();
+    const handleSubmit = async () => {
+      const sohNum = Number(soh);
+      if (Number.isNaN(sohNum) || sohNum < 0 || sohNum > 100) {
+        toast({
+          title: "SoH không hợp lệ",
+          description: "Vui lòng nhập từ 0 đến 100.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!status) {
+        toast({
+          title: "Chưa chọn trạng thái",
+          description: "Hãy chọn Tiếp tục sử dụng hoặc Gửi bảo trì.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        // 1) Cập nhật trạng thái pin
+        await batteryStatusUpdate(battery.id, status);
+
+        // 2) Tạo phiếu inspection
+        const payload = {
+          batteryInId: battery.id,
+          bookingId: Number(bookingId || 0),
+          stateOfHealth: sohNum,
+          physicalNotes: physicalCondition?.trim() || "",
+          status: mapStatusToInspection(status), // PASS | IN_MAINTENANCE
+          staffId: String(USER_ID || ""),
+        };
+
+        const res = await createInspection(payload);
+        if (res?.success) {
+          toast({
+            title: "Đã lưu kiểm tra pin",
+            description: `Pin ${battery.id}: ${status === "MAINTENANCE" ? "Gửi bảo trì" : "Tiếp tục sử dụng"
+              } • SoH ${sohNum}%`,
+            duration: 5000,
+          });
+        } else if (isErrorResponse(res)) {
+          toast({
+            title: "Lỗi khi tạo Inspection",
+            description: pickApiMessage(res),
+            variant: "destructive",
+          });
+        }
+
+        // refresh list + lịch sử + đóng form
+        await onSuccess?.();
+        onClose();
+      } catch (err) {
+        toast({
+          title: "Lỗi khi lưu kiểm tra",
+          description: err?.response?.data?.message || err?.message || "Vui lòng thử lại.",
+          variant: "destructive",
+        });
+      } finally {
+        setSubmitting(false);
+      }
     };
 
     return (
       <div className="space-y-4">
+        {/* Thông tin pin */}
         <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 border-2 border-blue-200 dark:border-blue-800 p-5 rounded-xl shadow-lg">
           <div className="flex items-center mb-4">
             <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg mr-3">
@@ -178,16 +196,6 @@ const BatteryInspection = () => {
               <p className="font-semibold text-foreground">{battery.type}</p>
             </div>
             <div className="p-3 bg-white/60 dark:bg-slate-700/50 rounded-lg backdrop-blur-sm">
-              <span className="text-muted-foreground text-xs block mb-1">State of Health</span>
-              <p
-                className={`font-bold text-lg ${parseInt(battery.soh) > 90 ? "text-green-600" :
-                  parseInt(battery.soh) > 80 ? "text-orange-500" : "text-red-500"
-                  }`}
-              >
-                {battery.soh}
-              </p>
-            </div>
-            <div className="p-3 bg-white/60 dark:bg-slate-700/50 rounded-lg backdrop-blur-sm">
               <span className="text-muted-foreground text-xs block mb-1">Chu kỳ sử dụng</span>
               <p className="font-semibold text-foreground">{battery.cycles} lần</p>
             </div>
@@ -198,11 +206,33 @@ const BatteryInspection = () => {
           </div>
         </div>
 
+        {/* Nhập dữ liệu kiểm tra */}
         <div className="space-y-4">
+          {/* SoH */}
+          <div className="space-y-2">
+            <Label htmlFor="soh" className="text-sm font-semibold flex items-center">
+              <Activity className="h-4 w-4 mr-2 text-purple-600" />
+              Chỉ số SoH (%)
+            </Label>
+            <input
+              id="soh"
+              type="number"
+              min="0"
+              max="100"
+              value={soh}
+              onChange={(e) => setSoh(e.target.value)}
+              placeholder="Nhập giá trị SoH (0 - 100)"
+              className="w-full border-2 rounded-lg px-3 py-2 focus:border-purple-400 focus:outline-none transition-colors"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              * SoH thể hiện tình trạng sức khỏe của pin. Giá trị ≥ 80% được xem là đạt chuẩn.
+            </p>
+          </div>
+
+          {/* Tình trạng vật lý */}
           <div className="space-y-2">
             <Label htmlFor="physical" className="text-sm font-semibold flex items-center">
-              <Activity className="h-4 w-4 mr-2 text-blue-600" />
-              Tình trạng vật lý
+              <Activity className="h-4 w-4 mr-2 text-blue-600" /> Tình trạng vật lý
             </Label>
             <Textarea
               id="physical"
@@ -213,56 +243,41 @@ const BatteryInspection = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-semibold flex items-center">
-              <Sparkles className="h-4 w-4 mr-2 text-purple-600" />
-              Ghi chú đánh giá
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Ghi chú bổ sung về hiệu suất, khuyến nghị bảo trì..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[100px] border-2 focus:border-purple-400 transition-colors"
-            />
-          </div>
-
+          {/* Chọn trạng thái pin */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold flex items-center">
-              <User className="h-4 w-4 mr-2 text-indigo-600" />
-              Người thực hiện kiểm tra
+              <Zap className="h-4 w-4 mr-2 text-amber-600" />
+              Trạng thái pin
             </Label>
-            <Select value={inspector} onValueChange={setInspector}>
-              <SelectTrigger className="border-2 focus:border-indigo-400">
-                <SelectValue placeholder="Chọn nhân viên kiểm tra" />
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="border-2 focus:border-amber-400">
+                <SelectValue placeholder="Chọn trạng thái xử lý" />
               </SelectTrigger>
               <SelectContent>
-                {staffList.map((staff) => (
-                  <SelectItem key={staff} value={staff}>
-                    {staff}
-                  </SelectItem>
-                ))}
+                <SelectItem value="AVAILABLE">Tiếp tục sử dụng</SelectItem>
+                <SelectItem value="MAINTENANCE">Gửi bảo trì</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
+        {/* Nút hành động */}
         <div className="flex gap-3 pt-4">
           <Button
-            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-60"
             onClick={handleSubmit}
-            disabled={!physicalCondition || !notes || !inspector}
+            disabled={submitting || !physicalCondition || !soh || !status}
           >
-            <CheckCircle className="h-4 w-4 mr-2" />
+            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
             Hoàn thành kiểm tra
           </Button>
           <Button
-            className="flex-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            onClick={handleSendMaintenance}
-            disabled={!inspector}
+            variant="outline"
+            className="flex-1 border-2 border-gray-300 hover:border-gray-400 text-gray-700 dark:text-gray-300 transition-all duration-300"
+            onClick={onClose}
+            disabled={submitting}
           >
-            <Wrench className="h-4 w-4 mr-2" />
-            Gửi bảo trì
+            Hủy
           </Button>
         </div>
       </div>
@@ -271,7 +286,7 @@ const BatteryInspection = () => {
 
   return (
     <div className="container mx-auto px-6 py-8 max-w-7xl">
-      {/* Animated Header */}
+      {/* Header */}
       <div className="mb-8 animate-fade-in">
         <div className="flex items-center mb-3">
           <div className="p-3 bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 rounded-2xl mr-4 shadow-lg animate-pulse">
@@ -286,17 +301,17 @@ const BatteryInspection = () => {
         </div>
       </div>
 
-      {/* Enhanced Stats Cards with Glassmorphism */}
+      {/* Stats (giữ nguyên demo) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="border-0 bg-gradient-to-br from-orange-50 via-yellow-50 to-amber-50 dark:from-orange-900/20 dark:via-yellow-900/20 dark:to-amber-900/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in group overflow-hidden relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <CardContent className="p-6 relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="p-4 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500">
                 <AlertTriangle className="h-8 w-8 text-white" />
               </div>
               <div className="text-right">
-                <h3 className="text-5xl font-black bg-gradient-to-br from-orange-600 to-yellow-600 bg-clip-text text-transparent">3</h3>
+                <h3 className="text-5xl font-black bg-gradient-to-br from-orange-600 to-yellow-600 bg-clip-text text-transparent">{waitingBatteries.length}</h3>
               </div>
             </div>
             <div className="space-y-1">
@@ -311,14 +326,14 @@ const BatteryInspection = () => {
         </Card>
 
         <Card className="border-0 bg-gradient-to-br from-red-50 via-rose-50 to-pink-50 dark:from-red-900/20 dark:via-rose-900/20 dark:to-pink-900/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in group overflow-hidden relative" style={{ animationDelay: "0.1s" }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 to-pink-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 to-pink-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <CardContent className="p-6 relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="p-4 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500">
                 <Wrench className="h-8 w-8 text-white" />
               </div>
               <div className="text-right">
-                <h3 className="text-5xl font-black bg-gradient-to-br from-red-600 to-pink-600 bg-clip-text text-transparent">2</h3>
+                <h3 className="text-5xl font-black bg-gradient-to-br from-red-600 to-pink-600 bg-clip-text text-transparent">{maintenanceCount}</h3>
               </div>
             </div>
             <div className="space-y-1">
@@ -333,14 +348,14 @@ const BatteryInspection = () => {
         </Card>
 
         <Card className="border-0 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-teal-900/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in group overflow-hidden relative" style={{ animationDelay: "0.2s" }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <CardContent className="p-6 relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="p-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500">
                 <CheckCircle className="h-8 w-8 text-white" />
               </div>
               <div className="text-right">
-                <h3 className="text-5xl font-black bg-gradient-to-br from-green-600 to-emerald-600 bg-clip-text text-transparent">8</h3>
+                <h3 className="text-5xl font-black bg-gradient-to-br from-green-600 to-emerald-600 bg-clip-text text-transparent">{passCount}</h3>
               </div>
             </div>
             <div className="space-y-1">
@@ -355,9 +370,9 @@ const BatteryInspection = () => {
         </Card>
       </div>
 
-      {/* Enhanced Batteries Requiring Inspection */}
+      {/* Danh sách pin cần kiểm tra */}
       <Card className="mb-8 border-0 shadow-2xl bg-gradient-to-br from-white via-orange-50/30 to-yellow-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 animate-fade-in hover:shadow-3xl transition-all duration-500 overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-orange-400/10 to-yellow-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-orange-400/10 to-yellow-400/10 rounded-full blur-3xl" />
         <CardHeader className="relative z-10 bg-gradient-to-r from-orange-500 via-yellow-500 to-amber-500 text-white pb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -366,119 +381,131 @@ const BatteryInspection = () => {
               </div>
               <div>
                 <CardTitle className="text-2xl font-bold">Pin cần kiểm tra ngay</CardTitle>
-                <CardDescription className="text-orange-100 mt-1">
-                  Danh sách pin yêu cầu giám định chất lượng
-                </CardDescription>
+                <CardDescription className="text-orange-100 mt-1">Danh sách pin yêu cầu giám định chất lượng</CardDescription>
               </div>
             </div>
             <Badge className="bg-white/20 text-white border-white/30 px-4 py-2 text-sm backdrop-blur-sm">
-              {emptyBatteries.length} pin
+              {waitingBatteries.length} pin
             </Badge>
           </div>
         </CardHeader>
+
         <CardContent className="p-6 relative z-10">
-          <div className="space-y-4">
-            {emptyBatteries.map((battery, index) => (
-              <Card
-                key={battery.id}
-                className="border-2 border-orange-200 dark:border-orange-800 shadow-lg bg-white dark:bg-slate-800 hover:shadow-2xl hover:border-orange-400 dark:hover:border-orange-600 transition-all duration-300 hover:scale-[1.02] animate-fade-in group overflow-hidden relative"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-50/50 to-yellow-50/50 dark:from-orange-900/10 dark:to-yellow-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <CardContent className="p-5 relative z-10">
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-3 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300">
-                        <Battery className="h-6 w-6 text-white" />
+          {loading ? (
+            <div className="py-10 flex items-center justify-center text-gray-600">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              Đang tải danh sách pin...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {waitingBatteries.map((battery, index) => (
+                <Card
+                  key={battery.batteryId}
+                  className="border-2 border-orange-200 dark:border-orange-800 shadow-lg bg-white dark:bg-slate-800 hover:shadow-2xl hover:border-orange-400 dark:hover:border-orange-600 transition-all duration-300 hover:scale-[1.02] animate-fade-in group overflow-hidden relative"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-50/50 to-yellow-50/50 dark:from-orange-900/10 dark:to-yellow-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <CardContent className="p-5 relative z-10">
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+                      <div className="flex items-center space-x-3 md:col-span-2">
+                        <div className="p-3 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl shadow-md">
+                          <Battery className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-800 dark:text-white">{battery.batteryId}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {String(battery.batteryType || "").replaceAll("_", " ")}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-lg text-gray-800 dark:text-white">{battery.id}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{battery.type}</p>
-                      </div>
-                    </div>
 
-                    <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vị trí</p>
-                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{battery.location}</p>
-                    </div>
-
-                    <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">State of Health</p>
-                      <div className="flex items-center space-x-2">
-                        <Activity
-                          className={`h-4 w-4 ${parseInt(battery.soh) > 90
-                            ? "text-green-600"
-                            : parseInt(battery.soh) > 80
-                              ? "text-orange-500"
-                              : "text-red-500"
-                            }`}
-                        />
-                        <p
-                          className={`font-black text-lg ${parseInt(battery.soh) > 90
-                            ? "text-green-600"
-                            : parseInt(battery.soh) > 80
-                              ? "text-orange-500"
-                              : "text-red-500"
-                            }`}
-                        >
-                          {battery.soh}
+                      <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vị trí</p>
+                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                          {`${battery.dockName || ""}${battery.slotNumber ?? ""}`}
                         </p>
                       </div>
-                    </div>
 
-                    <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Chu kỳ</p>
-                      <p className="text-sm font-bold text-green-600 dark:text-green-400">{battery.cycles} lần</p>
-                    </div>
+                      <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Chu kỳ</p>
+                        <p className="text-sm font-bold text-green-600 dark:text-green-400">
+                          {(battery.cycleCount ?? 0)} lần
+                        </p>
+                      </div>
 
-                    <div className="p-3 bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Lần cuối dùng</p>
-                      <div className="flex items-center">
-                        <Clock className="h-3 w-3 mr-1 text-gray-600 dark:text-gray-400" />
-                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{battery.lastUsed}</p>
+                      <div className="p-3 bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 rounded-lg">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Booking gần nhất</p>
+                        <div className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1 text-gray-600 dark:text-gray-400" />
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{battery.lastBookingId || "—"}</p>
+                        </div>
+                      </div>
+
+                      {/* Nút kiểm tra ở cột phải */}
+                      <div className="md:col-span-1 flex justify-end">
+                        <Button
+                          onClick={() => {
+                            setSelectedBattery({
+                              id: battery.batteryId,
+                              type: String(battery.batteryType || "").replaceAll("_", " "),
+                              cycles: battery.cycleCount ?? 0,
+                              location: `${battery.dockName || ""}${battery.slotNumber ?? ""}`,
+                              _bookingId: battery.lastBookingId || 0,
+                            });
+                            setOpenDialog(true);
+                          }}
+                          className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white font-semibold rounded-xl px-6 py-3 transition-all duration-300 hover:scale-105 shadow-lg"
+                        >
+                          <Search className="h-5 w-5 mr-2" />
+                          Kiểm tra ngay
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="flex justify-end">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            onClick={() => setSelectedBattery(battery)}
-                            className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white rounded-xl px-6 py-3 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-2xl font-bold"
-                          >
-                            <Search className="h-5 w-5 mr-2" />
-                            Kiểm tra ngay
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl border-2 border-blue-200 dark:border-blue-800 shadow-2xl">
-                          <DialogHeader className="border-b pb-4">
-                            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                              Kiểm tra pin {battery.id}
-                            </DialogTitle>
-                            <DialogDescription className="text-gray-600">
-                              Thực hiện giám định và đánh giá chất lượng pin
-                            </DialogDescription>
-                          </DialogHeader>
-                          {selectedBattery && (
-                            <InspectionForm
-                              battery={selectedBattery}
-                              onClose={() => setSelectedBattery(null)}
-                            />
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Enhanced Inspection History */}
-      <Card className="border-0 shadow-2xl bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 animate-fade-in hover:shadow-3xl transition-all duration-500 overflow-hidden" style={{ animationDelay: "0.3s" }}>
-        <div className="absolute top-0 left-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl"></div>
+      {/* Dialog kiểm tra pin (controlled) */}
+      <Dialog
+        open={openDialog}
+        onOpenChange={(v) => {
+          setOpenDialog(v);
+          if (!v) setSelectedBattery(null);
+        }}
+      >
+        {openDialog && selectedBattery && (
+          <DialogContent className="max-w-2xl border-2 border-blue-200 dark:border-blue-800 shadow-2xl">
+            <DialogHeader className="border-b pb-4">
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Kiểm tra pin {selectedBattery.id}
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Thực hiện giám định và đánh giá chất lượng pin cho booking {selectedBattery._bookingId || "—"}
+              </DialogDescription>
+            </DialogHeader>
+
+            <InspectionForm
+              battery={selectedBattery}
+              bookingId={selectedBattery._bookingId}
+              onClose={() => setOpenDialog(false)}
+              onSuccess={async () => {
+                await Promise.all([fetchStaffInspections(), getWaitingBatteries()]);
+              }}
+            />
+          </DialogContent>
+        )}
+      </Dialog>
+
+      {/* Lịch sử kiểm tra pin (data thật theo staff) */}
+      <Card
+        className="border-0 shadow-2xl bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 animate-fade-in hover:shadow-3xl transition-all duration-500 overflow-hidden"
+        style={{ animationDelay: "0.3s" }}
+      >
+        <div className="absolute top-0 left-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl" />
         <CardHeader className="relative z-10 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white pb-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center">
@@ -501,73 +528,89 @@ const BatteryInspection = () => {
             </Button>
           </div>
         </CardHeader>
+
         <CardContent className="p-6 relative z-10">
-          <div className="space-y-4">
-            {displayedHistory.map((record, index) => (
-              <Card
-                key={record.id}
-                className="border-2 border-blue-200 dark:border-blue-800 shadow-lg bg-white dark:bg-slate-800 hover:shadow-2xl hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300 hover:scale-[1.01] animate-fade-in group overflow-hidden relative"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <CardContent className="p-5 relative z-10">
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`p-3 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300 ${record.status === "Đạt chuẩn"
-                          ? "bg-gradient-to-br from-green-500 to-emerald-500"
-                          : "bg-gradient-to-br from-red-500 to-orange-500"
-                          }`}
-                      >
-                        {record.status === "Đạt chuẩn" ? (
-                          <CheckCircle className="h-6 w-6 text-white" />
-                        ) : (
-                          <Wrench className="h-6 w-6 text-white" />
-                        )}
+          {loadingHistory ? (
+            <div className="py-10 flex items-center justify-center text-gray-600">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              Đang tải lịch sử kiểm tra...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(showFullHistory ? staffInspections : staffInspections.slice(0, 8)).map((record, index) => (
+                <Card
+                  key={record.id}
+                  className="border-2 border-blue-200 dark:border-blue-800 shadow-lg bg-white dark:bg-slate-800 hover:shadow-2xl hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300 hover:scale-[1.01] animate-fade-in group overflow-hidden relative"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <CardContent className="p-5 relative z-10">
+                    <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-center">
+                      {/* Pin + trạng thái icon */}
+                      <div className="flex items-center space-x-3 md:col-span-2">
+                        <div
+                          className={`p-3 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300 ${record.status === "Đạt chuẩn"
+                            ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                            : "bg-gradient-to-br from-red-500 to-orange-500"
+                            }`}
+                        >
+                          {record.status === "Đạt chuẩn" ? (
+                            <CheckCircle className="h-6 w-6 text-white" />
+                          ) : (
+                            <Wrench className="h-6 w-6 text-white" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-800 dark:text-white">{record.batteryId}</h3>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            SoH: <span className="font-semibold">{record.soh}%</span>
+                            {" • "}
+                            Hư hại: <span className="font-semibold">{record.damaged ? "Có" : "Không"}</span>
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-lg text-gray-800 dark:text-white">{record.id}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{record.type}</p>
+
+                      {/* Thời gian */}
+                      <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg">
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Thời gian
+                        </div>
+                        <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">{record.inspectionDate}</p>
+                      </div>
+
+                      {/* Người kiểm tra */}
+                      <div className="p-3 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg">
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          <User className="h-3 w-3 mr-1" />
+                          Người kiểm tra
+                        </div>
+                        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{record.inspector}</p>
+                      </div>
+
+                      {/* Ghi chú */}
+                      <div className="p-3 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg md:col-span-2">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ghi chú</p>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{record.physicalCondition}</p>
+                      </div>
+
+                      {/* Badge trạng thái */}
+                      <div className="flex justify-end">
+                        <Badge
+                          className={`${record.status === "Đạt chuẩn"
+                            ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                            : "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600"
+                            } text-white border-0 px-4 py-2 text-sm font-bold shadow-lg hover:scale-110 transition-all duration-300`}
+                        >
+                          {record.status}
+                        </Badge>
                       </div>
                     </div>
-
-                    <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg">
-                      <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Thời gian
-                      </div>
-                      <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">{record.inspectionDate}</p>
-                    </div>
-
-                    <div className="p-3 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg">
-                      <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        <User className="h-3 w-3 mr-1" />
-                        Người kiểm tra
-                      </div>
-                      <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{record.inspector}</p>
-                    </div>
-
-                    <div className="p-3 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg col-span-1 md:col-span-2">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Tình trạng vật lý</p>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{record.physicalCondition}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">{record.notes}</p>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Badge
-                        className={`${record.status === "Đạt chuẩn"
-                          ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                          : "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600"
-                          } text-white border-0 px-4 py-2 text-sm font-bold shadow-lg hover:scale-110 transition-all duration-300`}
-                      >
-                        {record.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

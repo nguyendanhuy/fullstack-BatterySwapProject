@@ -155,7 +155,7 @@ const QRCheckIn = () => {
       }
     } catch (err) {
       toast({
-        title: "Lỗi mạng khi tải QR Code",
+        title: "Không thể bắt đầu dịch vụ",
         description: "Lỗi mạng",
         variant: "destructive",
       });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,22 @@ const Reports = () => {
   const [timeRange, setTimeRange] = useState("week")
   const [selectedStationDetails, setSelectedStationDetails] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  // Derived filtered list based on searchTerm and selectedStation
+  const filteredStations = useMemo(() => {
+    const term = (searchTerm || "").trim().toLowerCase();
+    const filterByText = (s) => {
+      if (!term) return true;
+      const name = (s.stationName || "").toLowerCase();
+      const address = (s.address || "").toLowerCase();
+      return name.includes(term) || address.includes(term);
+    };
+    const filterBySelect = (s) => {
+      if (!selectedStation || selectedStation === "all") return true;
+      return String(s.stationId) === String(selectedStation);
+    };
+    return (stations || []).filter((s) => filterByText(s) && filterBySelect(s));
+  }, [stations, searchTerm, selectedStation]);
   useEffect(() => {
     const load = async () => {
       try {
@@ -321,13 +337,14 @@ const Reports = () => {
                   </div>
                 </div>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {stations.length} Trạm Hoạt Động
+                  {/* show filtered count */}
+                  {filteredStations.length} Trạm Hoạt Động
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {stations.map((station, index) => <div key={station.stationId} className="group relative bg-white/50 backdrop-blur-sm border border-slate-200/60 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
+                {filteredStations.map((station, index) => <div key={station.stationId} className="group relative bg-white/50 backdrop-blur-sm border border-slate-200/60 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
                   <div className="grid lg:grid-cols-6 gap-6">

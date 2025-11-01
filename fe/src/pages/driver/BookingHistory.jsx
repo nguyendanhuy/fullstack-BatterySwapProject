@@ -125,7 +125,8 @@ const BookingHistory = () => {
     // Gọi API hủy đặt chỗ ở đây, sử dụng selectedBooking.bookingId
     try {
       const res = await cancelBookingById(selectedBooking.bookingId, userData.userId, cancelReason);
-      if (res) {
+      if (res.success) {
+        console.log("Hủy đặt chỗ thành công:", res);
         toast({
           title: "Yêu cầu hủy đặt chỗ đã được gửi",
           description: "Chúng tôi sẽ xử lý và hoàn tiền trong vòng 24h",
@@ -133,11 +134,12 @@ const BookingHistory = () => {
         setCancelDialogOpen(false);
         setCancelReason("");
         loadUserHistory();
-      } else if (res?.error) {
+      } else {
         toast({
           title: "Lỗi hủy đăt chỗ",
-          description: JSON.stringify(res.error?.message ?? res.error) || "Lỗi mạng",
+          description: JSON.stringify(res?.message ?? res.error) || "Lỗi mạng",
           variant: "destructive",
+          duration: 5000,
         });
       }
     } catch (err) {

@@ -10,6 +10,8 @@ public interface DisputeTicketRepository extends JpaRepository<DisputeTicket, Lo
     // Tìm tất cả các ticket đang MỞ hoặc ĐANG XỬ LÝ
     List<DisputeTicket> findByStatusIn(List<DisputeTicket.TicketStatus> statuses);
 
+    // Tìm tất cả các ticket có trạng thái chính xác
+    List<DisputeTicket> findByStatus(DisputeTicket.TicketStatus status);
 
      //Tìm tất cả các ticket (bất kể trạng thái) theo StationId
      //Sắp xếp theo ngày tạo mới nhất lên đầu.

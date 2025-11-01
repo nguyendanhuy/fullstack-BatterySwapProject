@@ -80,6 +80,17 @@ public class SubscriptionService {
         if (method.equalsIgnoreCase("WALLET")) {
             // 🟢 THANH TOÁN QUA VÍ
             Double balance = Optional.ofNullable(user.getWalletBalance()).orElse(0.0);
+
+            // 🛡️ KIỂM TRA VÍ BỊ OVERFLOW - KHÔNG RESET MÀ TỪ CHỐI GIAO DỊCH
+            if (balance > 1_000_000_000) { // 1 tỉ VNĐ
+                log.error("🚨 [WALLET ERROR] Phát hiện ví bị overflow: balance={} cho user {}", balance, user.getUserId());
+                throw new IllegalStateException(String.format(
+                    "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn bình thường). " +
+                    "Vui lòng liên hệ hỗ trợ để khắc phục trước khi thực hiện giao dịch.",
+                    balance
+                ));
+            }
+
             if (balance < planPrice) {
                 throw new IllegalStateException(String.format(
                         "Số dư ví không đủ để mua gói %s. Cần: %.0f, Hiện có: %.0f",
@@ -88,7 +99,12 @@ public class SubscriptionService {
             }
 
             // Trừ tiền ví
-            user.setWalletBalance(balance - planPrice);
+            double newBalance = balance - planPrice;
+            if (newBalance < 0) {
+                throw new IllegalStateException("Số dư ví sau giao dịch không thể âm");
+            }
+
+            user.setWalletBalance(newBalance);
             userRepository.save(user);
 
             // Đánh dấu invoice đã thanh toán

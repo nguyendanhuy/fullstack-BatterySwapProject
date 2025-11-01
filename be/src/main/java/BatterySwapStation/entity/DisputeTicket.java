@@ -40,15 +40,13 @@ public class DisputeTicket {
 
 
     public enum TicketStatus {
-        OPEN,
         IN_PROGRESS, // Đang xử lý
         RESOLVED,    // Đã giải quyết
-        CLOSED       // Đã đóng
     }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private TicketStatus status = TicketStatus.OPEN;
+    private TicketStatus status = TicketStatus.IN_PROGRESS;
 
     // ✅ THÊM ENUM CHO LÝ DO TRANH CHẤP
     public enum DisputeReason {
@@ -73,6 +71,14 @@ public class DisputeTicket {
 
     @Column(name = "resolvedat")
     private LocalDateTime resolvedAt;
+
+    // Cách giải quyết (ví dụ: "Hoàn tiền", "Thay pin")
+    @Column(name = "resolutionmethod", length = 255)
+    private String resolutionMethod;
+
+    // Mô tả chi tiết cách giải quyết
+    @Column(name = "resolutiondescription", length = 1000)
+    private String resolutionDescription;
 
     // Liên kết Nhiều-1: Nhiều DisputeTicket có thể thuộc về 1 Station
     @ManyToOne(fetch = FetchType.LAZY)

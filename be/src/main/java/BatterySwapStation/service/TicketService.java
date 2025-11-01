@@ -58,7 +58,7 @@ public class TicketService { // ✅ Đổi tên lớp
                 .user(booking.getUser())
                 .createdByStaff(staff)
                 .station(station)
-                .status(DisputeTicket.TicketStatus.OPEN)
+                .status(DisputeTicket.TicketStatus.IN_PROGRESS)
                 .title(title)
                 .description(description)
                 .reason(reasonEnum)
@@ -96,7 +96,14 @@ public class TicketService { // ✅ Đổi tên lớp
 
         if (request.getNewStatus() != null) {
             try {
-                ticket.setStatus(DisputeTicket.TicketStatus.valueOf(request.getNewStatus().toUpperCase()));
+                DisputeTicket.TicketStatus newStatus = DisputeTicket.TicketStatus.valueOf(request.getNewStatus().toUpperCase());
+                // Nếu chuyển sang RESOLVED, đặt resolvedAt; nếu chuyển đi khỏi RESOLVED, xóa resolvedAt
+                if (newStatus == DisputeTicket.TicketStatus.RESOLVED) {
+                    ticket.setResolvedAt(LocalDateTime.now());
+                } else {
+                    ticket.setResolvedAt(null);
+                }
+                ticket.setStatus(newStatus);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Trạng thái ticket không hợp lệ: " + request.getNewStatus());
             }
@@ -114,15 +121,29 @@ public class TicketService { // ✅ Đổi tên lớp
         return convertToTicketResponse(updatedTicket);
     }
 
+    /**
+     * Đánh dấu ticket là RESOLVED, thiết lập resolvedAt và lưu thông tin cách giải quyết.
+     */
+    @Transactional
+    public TicketResponse resolveTicket(Long ticketId, String resolutionMethod, String resolutionDescription) {
+        DisputeTicket ticket = disputeTicketRepository.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Ticket không tồn tại với ID: " + ticketId));
+
+        ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
+        ticket.setResolvedAt(LocalDateTime.now());
+        ticket.setResolutionMethod(resolutionMethod);
+        ticket.setResolutionDescription(resolutionDescription);
+
+        DisputeTicket saved = disputeTicketRepository.save(ticket);
+        return convertToTicketResponse(saved);
+    }
+
     // -------------------------------------------------------------------
     // --- 4. LẤY TICKET ĐANG MỞ (GET /tickets/open) ---
     // -------------------------------------------------------------------
     public List<TicketResponse> getOpenDisputes() {
-        List<DisputeTicket.TicketStatus> statuses = List.of(
-                DisputeTicket.TicketStatus.OPEN,
-                DisputeTicket.TicketStatus.IN_PROGRESS
-        );
-        List<DisputeTicket> tickets = disputeTicketRepository.findByStatusIn(statuses);
+        // "Open" hiện tương ứng với các ticket đang xử lý (IN_PROGRESS)
+        List<DisputeTicket> tickets = disputeTicketRepository.findByStatus(DisputeTicket.TicketStatus.IN_PROGRESS);
         return tickets.stream()
                 .map(this::convertToTicketResponse)
                 .toList();
@@ -148,6 +169,9 @@ public class TicketService { // ✅ Đổi tên lớp
         res.setTitle(ticket.getTitle());
         res.setDescription(ticket.getDescription());
         res.setStatus(ticket.getStatus().name());
+        res.setResolvedAt(ticket.getResolvedAt());
+        res.setResolutionMethod(ticket.getResolutionMethod());
+        res.setResolutionDescription(ticket.getResolutionDescription());
         res.setCreatedAt(ticket.getCreatedAt());
         if (ticket.getReason() != null) {
             res.setReason(ticket.getReason().name());

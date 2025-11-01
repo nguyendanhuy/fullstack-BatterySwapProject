@@ -55,13 +55,23 @@ public class PaymentService {
         if (amount <= 0)
             throw new IllegalArgumentException("Hóa đơn phải có giá trị lớn hơn 0");
 
+        // Prevent overflow: Max amount is 100 million VND
+        if (amount > 100_000_000)
+            throw new IllegalArgumentException("Số tiền thanh toán không được vượt quá 100,000,000 VNĐ");
+
         boolean alreadyPaid = paymentRepository.existsByInvoiceAndPaymentStatus(invoice, Payment.PaymentStatus.SUCCESS);
         if (alreadyPaid)
             throw new IllegalStateException("Hóa đơn đã được thanh toán");
 
         String ipAddr = VnPayUtils.getClientIp(http);
         String txnRef = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        long amountTimes100 = Math.round(amount) * 100L;
+
+        // 🛡️ KIỂM TRA OVERFLOW KHI NHÂN VỚI 100 CHO VNPAY
+        long roundedAmount = Math.round(amount);
+        if (roundedAmount > Long.MAX_VALUE / 100) {
+            throw new IllegalArgumentException("Số tiền quá lớn, có thể gây overflow khi xử lý thanh toán");
+        }
+        long amountTimes100 = roundedAmount * 100L;
 
         ZoneId zone = ZoneId.of("Asia/Ho_Chi_Minh");
         ZonedDateTime now = ZonedDateTime.now(zone);
@@ -177,7 +187,26 @@ public class PaymentService {
                         User u = userRepository.findById(invoice.getUserId())
                                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user: " + invoice.getUserId()));
                         double current = Optional.ofNullable(u.getWalletBalance()).orElse(0.0);
-                        u.setWalletBalance(current + invoice.getTotalAmount());
+                        double newBalance = current + invoice.getTotalAmount();
+
+                        // 🛡️ KIỂM TRA NGĂN CHẶN OVERFLOW TRƯỚC KHI LUU
+                        Double maxWalletLimit = 1_000_000_000.0; // 1 tỉ VNĐ
+                        if (newBalance > maxWalletLimit) {
+                            log.error("🚨 [WALLET ERROR] Phát hiện overflow khi cộng tiền: user={}, current={}, add={}, new={}",
+                                    u.getUserId(), current, invoice.getTotalAmount(), newBalance);
+
+                            // Đánh dấu payment thành công nhưng không cộng tiền (giữ PAID)
+                            invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+                            invoiceRepository.save(invoice);
+
+                            // Tạo log để admin xử lý thủ công
+                            log.error("💡 [ACTION REQUIRED] Admin cần xử lý thủ công cho user {} - Invoice {} - Amount {}",
+                                    u.getUserId(), invoice.getInvoiceId(), invoice.getTotalAmount());
+
+                            throw new IllegalStateException("Giao dịch thành công nhưng không thể cộng tiền do vượt giới hạn ví. Vui lòng liên hệ hỗ trợ.");
+                        }
+
+                        u.setWalletBalance(newBalance);
                         userRepository.save(u);
                         log.info("💰 [WALLET] User={} được cộng {} vào ví. Tổng mới={}",
                                 u.getUserId(), invoice.getTotalAmount(), u.getWalletBalance());
@@ -531,6 +560,10 @@ public class PaymentService {
                         .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giá cho gói " + plan.getPriceType()))
                 );
 
+        // Prevent overflow: Max amount is 100 million VND
+        if (amount > 100_000_000)
+            throw new IllegalArgumentException("Số tiền thanh toán gói không được vượt quá 100,000,000 VNĐ");
+
         // 3️⃣ Kiểm tra đã thanh toán chưa
         boolean alreadyPaid = paymentRepository.existsByInvoiceAndPaymentStatus(invoice, Payment.PaymentStatus.SUCCESS);
         if (alreadyPaid)
@@ -539,7 +572,13 @@ public class PaymentService {
         // 4️⃣ Chuẩn bị thông tin VNPay
         String ipAddr = VnPayUtils.getClientIp(http);
         String txnRef = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        long amountTimes100 = Math.round(amount) * 100L;
+
+        // 🛡️ KIỂM TRA OVERFLOW KHI NHÂN VỚI 100 CHO VNPAY
+        long roundedAmount = Math.round(amount);
+        if (roundedAmount > Long.MAX_VALUE / 100) {
+            throw new IllegalArgumentException("Số tiền quá lớn, có thể gây overflow khi xử lý thanh toán");
+        }
+        long amountTimes100 = roundedAmount * 100L;
 
         ZoneId zone = ZoneId.of("Asia/Ho_Chi_Minh");
         ZonedDateTime now = ZonedDateTime.now(zone);
@@ -599,8 +638,33 @@ public class PaymentService {
         if (req.getAmount() == null || req.getAmount() <= 0)
             throw new IllegalArgumentException("Số tiền nạp phải lớn hơn 0");
 
+        // Prevent overflow: Max amount is 100 million VND
+        if (req.getAmount() > 100_000_000)
+            throw new IllegalArgumentException("Số tiền nạp không được vượt quá 100,000,000 VNĐ");
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user: " + userId));
+
+        // 🛡️ KIỂM TRA NGĂN CHẶN OVERFLOW
+        Double currentBalance = Optional.ofNullable(user.getWalletBalance()).orElse(0.0);
+        Double maxWalletLimit = 1_000_000_000.0; // Giới hạn ví tối đa 1 tỉ VNĐ
+
+        if (currentBalance + req.getAmount() > maxWalletLimit) {
+            throw new IllegalArgumentException(String.format(
+                "Không thể nạp tiền. Số dư ví sau nạp (%.0f VNĐ) sẽ vượt quá giới hạn tối đa (%.0f VNĐ). " +
+                "Số dư hiện tại: %.0f VNĐ, Số tiền nạp: %.0f VNĐ",
+                currentBalance + req.getAmount(), maxWalletLimit, currentBalance, req.getAmount()
+            ));
+        }
+
+        // Kiểm tra nếu ví đã bị lỗi overflow trước đó
+        if (currentBalance > maxWalletLimit) {
+            throw new IllegalStateException(String.format(
+                "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn). " +
+                "Vui lòng liên hệ hỗ trợ để khắc phục trước khi nạp tiền.",
+                currentBalance
+            ));
+        }
 
         Invoice invoice = new Invoice();
         invoice.setUserId(userId);
@@ -618,7 +682,12 @@ public class PaymentService {
         String vnpCreateDate = now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String vnpExpireDate = now.plusMinutes(props.getExpireMinutes()).format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 
-        long amountTimes100 = Math.round(req.getAmount()) * 100L;
+        // 🛡️ KIỂM TRA OVERFLOW KHI NHÂN VỚI 100 CHO VNPAY
+        long roundedAmount = Math.round(req.getAmount());
+        if (roundedAmount > Long.MAX_VALUE / 100) {
+            throw new IllegalArgumentException("Số tiền quá lớn, có thể gây overflow khi xử lý thanh toán");
+        }
+        long amountTimes100 = roundedAmount * 100L;
 
         Map<String, String> params = new LinkedHashMap<>();
         params.put("vnp_Version", props.getApiVersion());

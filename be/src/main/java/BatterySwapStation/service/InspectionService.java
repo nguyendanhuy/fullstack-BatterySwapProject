@@ -1,10 +1,13 @@
 package BatterySwapStation.service;
 
+import BatterySwapStation.dto.BatteryRealtimeEvent;
 import BatterySwapStation.dto.InspectionRequest;
 import BatterySwapStation.dto.InspectionResponse;
 import BatterySwapStation.dto.InspectionUpdateRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
+import BatterySwapStation.websocket.BatterySocketController;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,10 @@ public class InspectionService { // ✅ Đổi tên lớp
     private final BatteryRepository batteryRepository;
     private final BatteryInspectionRepository inspectionRepository;
     private final UserRepository userRepository;
+    private final DockSlotRepository dockSlotRepository;
+    private final BatterySocketController batterySocketController;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
 
     // ----------------------------------------------------
     // --- 1. TẠO INSPECTION (POST /inspections) ---
@@ -192,6 +199,10 @@ public class InspectionService { // ✅ Đổi tên lớp
 
         log.info("Đã cập nhật thông tin pin {} sau kiểm tra: Status={}, StateOfHealth={}, CycleCount={}",
                 battery.getBatteryId(), battery.getBatteryStatus(), battery.getStateOfHealth(), battery.getCycleCount());
+
+        // Gửi cập nhật realtime qua WebSocket
+        sendRealtimeUpdate(battery, "STATUS_CHANGED");
+
     }
 
     // -----------------------------------------
@@ -213,5 +224,34 @@ public class InspectionService { // ✅ Đổi tên lớp
 
         log.info("Đã cập nhật lại thông tin pin {} sau chỉnh sửa inspection: Status={}, StateOfHealth={}",
                 battery.getBatteryId(), battery.getBatteryStatus(), battery.getStateOfHealth());
+
+        sendRealtimeUpdate(battery, "STATUS_CHANGED");
+
     }
+
+    private void sendRealtimeUpdate(Battery battery, String action) {
+        try {
+            DockSlot slot = battery.getDockSlot();
+            if (slot == null) return; // pin không nằm ở dock thì khỏi push realtime
+
+            BatteryRealtimeEvent event = BatteryRealtimeEvent.builder()
+                    .stationId(slot.getDock().getStation().getStationId())
+                    .dockId(slot.getDockSlotId())
+                    .dockName(slot.getDock().getDockName())
+                    .slotNumber(slot.getSlotNumber())
+                    .batteryId(battery.getBatteryId())
+                    .batteryStatus(battery.getBatteryStatus().name())
+                    .stateOfHealth(battery.getStateOfHealth())
+                    .currentCapacity(battery.getCurrentCapacity())
+                    .action(action) // e.g. "INSPECTED" / "STATUS_CHANGED"
+                    .timestamp(LocalDateTime.now().toString())
+                    .build();
+
+            String json = objectMapper.writeValueAsString(event);
+            batterySocketController.broadcastToStation(event.getStationId(), json);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 }

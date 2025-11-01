@@ -75,6 +75,18 @@ public class TicketController {
         return ResponseEntity.ok(response);
     }
 
+    // --- PUT: RESOLVE TICKET ---
+    @PutMapping("/{ticketId}/resolve")
+    @Operation(summary = "Đánh dấu ticket là RESOLVED",
+            description = "Staff/Admin cung cấp resolutionMethod và resolutionDescription để ghi lại cách giải quyết.")
+    public ResponseEntity<TicketResponse> resolveDisputeTicket(
+            @PathVariable Long ticketId,
+            @RequestBody TicketResolveRequest request) {
+
+        TicketResponse response = ticketService.resolveTicket(ticketId, request.getResolutionMethod(), request.getResolutionDescription());
+        return ResponseEntity.ok(response);
+    }
+
     // --- GET: LẤY OPEN DISPUTES ---
     @GetMapping("/open")
     @Operation(summary = "Staff lấy các Dispute CHƯA XỬ LÝ")

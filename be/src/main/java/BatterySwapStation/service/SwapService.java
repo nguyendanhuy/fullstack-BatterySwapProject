@@ -189,28 +189,30 @@ public class SwapService {
 
     // ====================== HANDLE SINGLE SWAP ======================
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected SwapResponseDTO handleSingleSwap(Booking booking, String batteryInId, String staffUserId, Set<String> usedDockSlots) {
+    protected SwapResponseDTO handleSingleSwap(
+            Booking booking, String batteryInId, String staffUserId, Set<String> usedDockSlots) {
+
         Integer stationId = booking.getStation().getStationId();
+
         Battery batteryIn = batteryRepository.findById(batteryInId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy pin khách đưa: " + batteryInId));
 
         if (!batteryIn.isActive())
-            throw new IllegalStateException("Pin " + batteryInId + " bị vô hiệu hóa.");
+            throw new IllegalStateException("Pin " + batteryInId + " bị vô hiệu hoá.");
+
         if (batteryIn.getBatteryStatus() == Battery.BatteryStatus.MAINTENANCE)
             throw new IllegalStateException("Pin " + batteryInId + " đang bảo trì.");
 
-        if (batteryIn.getStationId() != null && !batteryIn.getStationId().equals(stationId)) {
-            throw new IllegalStateException("Pin " + batteryIn.getBatteryId() +
-                    " hiện đang thuộc trạm khác (Station #" + batteryIn.getStationId() + ").");
-        }
+        if (batteryIn.getStationId() != null && !batteryIn.getStationId().equals(stationId))
+            throw new IllegalStateException("Pin nhập thuộc trạm khác (#" + batteryIn.getStationId() + ").");
+
         if (batteryIn.getDockSlot() != null) {
-            DockSlot currentSlot = batteryIn.getDockSlot();
+            DockSlot s = batteryIn.getDockSlot();
             throw new IllegalStateException("Pin " + batteryIn.getBatteryId() +
-                    " đang nằm ở dock " + currentSlot.getDock().getDockName() +
-                    currentSlot.getSlotNumber() + ", không thể gắn vào slot khác.");
+                    " đang nằm ở dock " + s.getDock().getDockName() + s.getSlotNumber());
         }
 
-        List<DockSlot> availableSlots = dockSlotRepository
+        List<DockSlot> candidateSlots = dockSlotRepository
                 .findAllByDock_Station_StationIdAndBattery_BatteryTypeAndBattery_BatteryStatusAndSlotStatusOrderByDock_DockNameAscSlotNumberAsc(
                         stationId,
                         batteryIn.getBatteryType(),
@@ -218,31 +220,32 @@ public class SwapService {
                         DockSlot.SlotStatus.OCCUPIED
                 );
 
-        availableSlots.removeIf(slot ->
+        candidateSlots.removeIf(slot ->
                 slot.getBattery() == null ||
-                        slot.getBattery().getBatteryId().equals(batteryInId) ||
+                        slot.getBattery().getBatteryStatus() != Battery.BatteryStatus.AVAILABLE ||
                         usedDockSlots.contains(slot.getDock().getDockName() + slot.getSlotNumber())
         );
 
-        DockSlot dockOutSlot = availableSlots.stream()
+        DockSlot dockOutSlot = candidateSlots.stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Không còn slot khả dụng khác cho swap."));
+                .orElseThrow(() -> new IllegalStateException("Không còn pin đầy sẵn sàng để swap."));
 
         Battery batteryOut = dockOutSlot.getBattery();
         String dockCode = dockOutSlot.getDock().getDockName() + dockOutSlot.getSlotNumber();
 
+        // 🟦 Pin OUT -> giao khách
         batteryOut.setBatteryStatus(Battery.BatteryStatus.IN_USE);
         batteryOut.setStationId(null);
         batteryOut.setDockSlot(null);
         dockOutSlot.setBattery(null);
         dockOutSlot.setSlotStatus(DockSlot.SlotStatus.EMPTY);
-
         batteryRepository.save(batteryOut);
         dockSlotRepository.save(dockOutSlot);
 
-        // Gửi realtime: pinOut bị lấy ra (STOMP)
+        // 📢 realtime: pin bị lấy ra
         sendRealtimeUpdate(dockOutSlot, "REMOVED");
 
+        // 🟩 Pin IN -> WAITING
         batteryIn.setBatteryStatus(Battery.BatteryStatus.WAITING);
         batteryIn.setStationId(stationId);
         batteryIn.setDockSlot(dockOutSlot);
@@ -251,13 +254,16 @@ public class SwapService {
 
         dockOutSlot.setBattery(batteryIn);
         dockOutSlot.setSlotStatus(DockSlot.SlotStatus.OCCUPIED);
-
         batteryRepository.save(batteryIn);
         dockSlotRepository.save(dockOutSlot);
 
-        //  Gửi realtime: pinIn mới được đưa vào trạm (STOMP)
+        // 📢 realtime theo CODE CŨ — INSERTED (KHÔNG phải INSERTED_WAITING)
         sendRealtimeUpdate(dockOutSlot, "INSERTED");
 
+        // 📢 realtime CODE CŨ — gửi STATUS_CHANGED
+        sendRealtimeUpdate(dockOutSlot, "STATUS_CHANGED");
+
+        // 📝 Lưu swap
         Swap swap = Swap.builder()
                 .booking(booking)
                 .dockId(dockOutSlot.getDock().getDockId())
@@ -269,18 +275,17 @@ public class SwapService {
                 .dockOutSlot(dockCode)
                 .dockInSlot(dockCode)
                 .completedTime(LocalDateTime.now())
-                .description("Swap hoàn tất: Trạm giao " + batteryOut.getBatteryId() +
-                        ", nhận lại " + batteryIn.getBatteryId() + " từ khách để sạc.")
+                .description("Swap xong: giao " + batteryOut.getBatteryId() +
+                        ", nhận " + batteryIn.getBatteryId() + " (chờ kiểm tra/sạc)")
                 .build();
-        swapRepository.save(swap);
 
-        sendRealtimeUpdate(dockOutSlot, "STATUS_CHANGED");
+        swapRepository.save(swap);
 
         return SwapResponseDTO.builder()
                 .swapId(swap.getSwapId())
                 .status("SUCCESS")
-                .message("Swap thành công: " + batteryOut.getBatteryId() + " đã giao, " +
-                        batteryIn.getBatteryId() + " đang chờ kiểm tra.")
+                .message("Swap thành công: giao " + batteryOut.getBatteryId() +
+                        ", nhận " + batteryIn.getBatteryId() + " (chờ kiểm tra/sạc)")
                 .bookingId(booking.getBookingId())
                 .batteryOutId(batteryOut.getBatteryId())
                 .batteryInId(batteryIn.getBatteryId())
@@ -288,6 +293,7 @@ public class SwapService {
                 .dockInSlot(dockCode)
                 .build();
     }
+
 
     // ====================== REALTIME (STOMP) ======================
     private void sendRealtimeUpdate(DockSlot slot, String action) {

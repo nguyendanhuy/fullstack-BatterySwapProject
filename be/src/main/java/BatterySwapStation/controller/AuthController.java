@@ -96,14 +96,17 @@ public class AuthController {
         Integer usedSwaps = null;
         String planName = null;
 
-        // 🔹 Nếu là Staff
+        // ✅ Nếu Staff -> trả stationId
         if (user.getRole().getRoleId() == 2) {
             StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
-        // 🔹 Nếu là Driver
+        // ✅ Nếu Driver -> trả subscription + ví
+        Double walletBalance = null;
         if (user.getRole().getRoleId() == 1) {
+            walletBalance = user.getWalletBalance(); // ✅ lấy ví
+
             UserSubscription sub = userSubscriptionRepository
                     .findFirstByUser_UserIdAndStatusAndEndDateAfter(
                             user.getUserId(),
@@ -118,20 +121,23 @@ public class AuthController {
             }
         }
 
-        // ✅ Dùng LinkedHashMap để giữ thứ tự khi serialize ra JSON
+        // ✅ Build response tùy role
         Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("userId", user.getUserId());
         result.put("fullName", user.getFullName());
         result.put("email", user.getEmail());
         result.put("phone", user.getPhone());
         result.put("role", user.getRole().getRoleName());
-        result.put("assignedStationId", assignedStationId);
-        result.put("activeSubscriptionId", activeSubscriptionId);
-        result.put("planName", planName);
-        result.put("usedSwaps", usedSwaps);
+
+        if (assignedStationId != null) result.put("assignedStationId", assignedStationId);
+        if (activeSubscriptionId != null) result.put("activeSubscriptionId", activeSubscriptionId);
+        if (planName != null) result.put("planName", planName);
+        if (usedSwaps != null) result.put("usedSwaps", usedSwaps);
+        if (walletBalance != null) result.put("walletBalance", walletBalance); // ✅ chỉ hiện khi có
 
         return ResponseEntity.ok(result);
     }
+
 
 
 

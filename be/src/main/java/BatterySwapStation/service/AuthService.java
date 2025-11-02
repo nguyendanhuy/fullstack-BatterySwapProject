@@ -37,33 +37,39 @@ public class AuthService {
         if (!userService.checkPassword(req.getPassword(), user.getPassword()))
             throw new RuntimeException("Mật khẩu không đúng");
         if (!user.isActive())
-            throw new RuntimeException("Ban đã bị ban khỏi server. Vui lòng liên hệ quản trị viên");
+            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
         if (!user.isVerified())
             throw new RuntimeException("Bạn chưa xác thực email");
 
         Integer assignedStationId = null;
         Long activeSubscriptionId = null;
+        Double walletBalance = null;
+        String planName = null;
+        Integer usedSwaps = null;
 
-        // 🔹 Nếu là Staff
+        // Staff
         if (user.getRole().getRoleId() == 2) {
             StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
-        // 🔹 Nếu là Driver
+        // Driver
         if (user.getRole().getRoleId() == 1) {
+            walletBalance = user.getWalletBalance();
             UserSubscription sub = userSubscriptionRepository
                     .findFirstByUser_UserIdAndStatusAndEndDateAfter(
                             user.getUserId(),
                             UserSubscription.SubscriptionStatus.ACTIVE,
                             LocalDateTime.now()
                     );
+
             if (sub != null && sub.getPlan() != null) {
                 activeSubscriptionId = sub.getPlan().getId();
+                planName = sub.getPlan().getPlanName();
+                usedSwaps = sub.getUsedSwaps();
             }
         }
 
-        // Token mới gắn thêm stationId / subscriptionId
         String token = jwtService.generateToken(
                 user.getUserId(),
                 user.getEmail(),
@@ -83,9 +89,10 @@ public class AuthService {
                 token,
                 assignedStationId,
                 activeSubscriptionId,
-                user.getRole().getRoleId() == 1 ? user.getWalletBalance() : null // ✅ chỉ driver
+                walletBalance,
+                planName,
+                usedSwaps
         );
-
     }
 
     // Cập nhật role cho user
@@ -115,9 +122,7 @@ public class AuthService {
 
         if (user == null) {
             Role defaultRole = roleRepository.findByRoleName("DRIVER");
-            if (defaultRole == null) {
-                throw new IllegalStateException("Role DRIVER chưa tồn tại trong hệ thống");
-            }
+            if (defaultRole == null) throw new IllegalStateException("Role DRIVER chưa tồn tại");
 
             user = new User();
             user.setUserId(userIdGenerator.generateUserId(defaultRole));
@@ -141,27 +146,33 @@ public class AuthService {
 
         Integer assignedStationId = null;
         Long activeSubscriptionId = null;
+        Double walletBalance = null;
+        String planName = null;
+        Integer usedSwaps = null;
 
-        // Nếu là Staff (trường hợp Google Staff)
+        // Staff
         if (user.getRole().getRoleId() == 2) {
             StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
-        // Nếu là Driver
+        // Driver
         if (user.getRole().getRoleId() == 1) {
+            walletBalance = user.getWalletBalance();
             UserSubscription sub = userSubscriptionRepository
                     .findFirstByUser_UserIdAndStatusAndEndDateAfter(
                             user.getUserId(),
                             UserSubscription.SubscriptionStatus.ACTIVE,
                             LocalDateTime.now()
                     );
+
             if (sub != null && sub.getPlan() != null) {
                 activeSubscriptionId = sub.getPlan().getId();
+                planName = sub.getPlan().getPlanName();
+                usedSwaps = sub.getUsedSwaps();
             }
         }
 
-        // Token mới gắn thêm stationId / subscriptionId
         String token = jwtService.generateToken(
                 user.getUserId(),
                 user.getEmail(),
@@ -171,12 +182,12 @@ public class AuthService {
                 activeSubscriptionId
         );
 
-        String message = isNew
-                ? "Đăng ký mới thành công, vui lòng bổ sung SĐT và địa chỉ sau nhé"
+        String msg = isNew
+                ? "Đăng ký Google thành công. Vui lòng cập nhật SĐT & địa chỉ"
                 : "Đăng nhập thành công";
 
         return new AuthResponse(
-                message,
+                msg,
                 user.getUserId(),
                 user.getEmail(),
                 user.getFullName(),
@@ -185,7 +196,10 @@ public class AuthService {
                 token,
                 assignedStationId,
                 activeSubscriptionId,
-                user.getRole().getRoleId() == 1 ? user.getWalletBalance() : null
+                walletBalance,
+                planName,
+                usedSwaps
         );
+
     }
 }

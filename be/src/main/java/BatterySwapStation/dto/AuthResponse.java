@@ -19,5 +19,7 @@ public class AuthResponse {
     private Integer assignedStationId; // Staff
     private Long activeSubscriptionId; // Driver
     private Double walletBalance;      // ✅ Driver mới có
+    private String planName;     // ✅ thêm
+    private Integer usedSwaps;
 }
 

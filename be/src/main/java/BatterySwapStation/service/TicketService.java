@@ -123,15 +123,24 @@ public class TicketService { // ✅ Đổi tên lớp
 
     /**
      * Đánh dấu ticket là RESOLVED, thiết lập resolvedAt và lưu thông tin cách giải quyết.
+     * - resolutionMethod: Enum để user chọn cách giải quyết
+     * - resolutionDescription: Chỉ bắt buộc nhập khi ticket.reason == OTHER
      */
     @Transactional
-    public TicketResponse resolveTicket(Long ticketId, String resolutionMethod, String resolutionDescription) {
+    public TicketResponse resolveTicket(Long ticketId, DisputeTicket.ResolutionMethod resolutionMethod, String resolutionDescription) {
         DisputeTicket ticket = disputeTicketRepository.findById(ticketId)
                 .orElseThrow(() -> new EntityNotFoundException("Ticket không tồn tại với ID: " + ticketId));
 
+        // Kiểm tra: Nếu phương thức giải quyết là OTHER thì bắt buộc phải có mô tả chi tiết
+        if (resolutionMethod == DisputeTicket.ResolutionMethod.OTHER) {
+            if (resolutionDescription == null || resolutionDescription.trim().isEmpty()) {
+                throw new IllegalArgumentException("Mô tả cách giải quyết là bắt buộc khi chọn phương thức OTHER");
+            }
+        }
+
         ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
         ticket.setResolvedAt(LocalDateTime.now());
-        ticket.setResolutionMethod(resolutionMethod);
+        ticket.setResolutionMethod(resolutionMethod.name()); // Lưu tên enum vào DB
         ticket.setResolutionDescription(resolutionDescription);
 
         DisputeTicket saved = disputeTicketRepository.save(ticket);

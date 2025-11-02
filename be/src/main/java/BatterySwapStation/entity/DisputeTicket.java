@@ -80,6 +80,14 @@ public class DisputeTicket {
     @Column(name = "resolutiondescription", length = 1000)
     private String resolutionDescription;
 
+    // Enum cho các phương thức giải quyết
+    public enum ResolutionMethod {
+        CHARGE_PENALTY,    // 1. Thu phí phạt
+        REFUND,            // 2. Hoàn tiền
+        //[Để dành cho tương lai - có thể thêm sau]
+        OTHER              // 3. Khác (tự nhập thoải mái)
+    }
+
     // Liên kết Nhiều-1: Nhiều DisputeTicket có thể thuộc về 1 Station
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "StationId") // Tên cột khóa ngoại trong DB

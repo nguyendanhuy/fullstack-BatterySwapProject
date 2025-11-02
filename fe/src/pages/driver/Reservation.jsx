@@ -473,9 +473,12 @@ const Reservation = () => {
                       <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
                         <div className="flex items-center space-x-2 mb-2">
                           <Zap className="h-5 w-5 text-green-600" />
-                          <span className="font-bold text-green-700">Gói Subscription đang hoạt động</span>
+                          <span className="font-bold text-green-700">Gói {userData?.planName || "SUBSCRIPTION"} của bạn đang hoạt động</span>
                         </div>
-                        <p className="text-sm text-gray-600">Bạn đang sử dụng gói subscription để thanh toán</p>
+                        <p className="text-sm text-gray-600">Bạn đang sử dụng gói tháng để thanh toán</p>
+                        {userData?.usedSwaps.toLocaleString() && (
+                          <p className="text-sm text-gray-600">Đã sử dụng: <b>{userData.usedSwaps}</b> lượt đổi pin</p>
+                        )}
                       </div>
                       <div className="flex justify-between mb-3">
                         <span className="text-gray-700">Tổng số pin:</span>
@@ -517,9 +520,6 @@ const Reservation = () => {
                         <Zap className="h-5 w-5 mr-2" />
                         {paymentLoading ? "Đang xử lý..." : "Thanh toán bằng Subscription"}
                       </Button>
-                      <p className="text-xs text-gray-500 text-center">
-                        ✨ Sử dụng gói subscription để đặt lịch miễn phí
-                      </p>
                     </>
                   )}
                 </div>

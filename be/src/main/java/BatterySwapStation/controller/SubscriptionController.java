@@ -232,19 +232,21 @@ public class SubscriptionController {
 
             Map<String, Object> result = subscriptionService.cancelSubscriptionImmediately(userId);
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Gói cước đã bị hủy ngay lập tức.",
-                    "refundAmount", result.get("refundAmount"),
-                    "remainingSwaps", result.get("remainingSwaps"),
-                    "status", result.get("status")
-            ));
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Gói cước đã bị hủy ngay lập tức.");
+            response.put("refundAmount", result.get("refundAmount")); // FE field giữ nguyên
+            response.put("remainingSwaps", result.get("remainingSwaps"));
+            response.put("status", result.get("status"));
+
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-            ));
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
+
 }

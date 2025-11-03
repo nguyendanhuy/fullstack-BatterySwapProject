@@ -103,4 +103,15 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             Invoice.InvoiceType invoiceType
     );
 
+
+    @Query("""
+SELECT i FROM Invoice i
+WHERE i.userId = :userId
+  AND i.invoiceStatus = 'PAID'
+  AND i.planToActivate IS NOT NULL
+ORDER BY i.createdDate DESC
+""")
+    List<Invoice> findLatestPaidSubscriptionInvoices(@Param("userId") String userId);
+
+
 }

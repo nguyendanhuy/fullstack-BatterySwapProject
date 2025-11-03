@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -460,52 +461,77 @@ public class SubscriptionService {
         return updatedSub; // Trả về thông tin gói cước đã cập nhật
     }
 
+    @Transactional
     public Map<String, Object> cancelSubscriptionImmediately(String userId) {
-        // 1. Lấy subscription ACTIVE
-        UserSubscription activeSub = userSubscriptionRepository.findActiveSubscription(userId)
-                .orElseThrow(() -> new IllegalStateException("Không tìm thấy gói cước đang hoạt động."));
 
-        // 2. Kiểm tra đã hết hạn chưa
+        // 1. Lấy subscription ACTIVE
+        List<UserSubscription> subs = userSubscriptionRepository.findActiveSubscriptions(userId);
+
+        if (subs.isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy gói cước đang hoạt động.");
+        }
+
+// lấy gói mới nhất
+        UserSubscription activeSub = subs.get(0);
+
+        // 2. Không cho hủy nếu đã hết hạn
         if (activeSub.getEndDate().isBefore(LocalDateTime.now())) {
             throw new IllegalStateException("Gói cước đã hết hạn, không thể hủy.");
         }
 
-        // 3. Tính số lượt còn lại
-        Integer swapLimit = activeSub.getPlan().getSwapLimit();
-        if (swapLimit == null || swapLimit < 0) {
-            swapLimit = 0; // Xử lý trường hợp Unlimited hoặc null
+        LocalDateTime now = LocalDateTime.now();
+        long totalDays = Math.max(1, Duration.between(activeSub.getStartDate(), activeSub.getEndDate()).toDays());
+        long usedDays = Math.max(0, Duration.between(activeSub.getStartDate(), now).toDays());
+        long remainingDays = Math.max(0, totalDays - usedDays);
+
+        // minimal days to allow refund
+        int MIN_REFUND_DAYS = 7;
+
+        double refundAmount = 0.0;
+        Double planPrice = systemPriceService.getPriceByType(activeSub.getPlan().getPriceType());
+
+        if (remainingDays >= MIN_REFUND_DAYS && planPrice != null && planPrice > 0) {
+            refundAmount = Math.round((remainingDays / (double) totalDays) * planPrice);
+            if (refundAmount < 1000) refundAmount = 0;
         }
 
-        int totalSwaps = swapLimit;
-        int usedSwaps = activeSub.getUsedSwaps();
-        int remainingSwaps = Math.max(0, totalSwaps - usedSwaps);
+        // ✅ Lấy invoice thanh toán gần nhất (wallet hoặc vnpay)
+        List<Invoice> invoices = invoiceRepository.findLatestPaidSubscriptionInvoices(userId);
+        if (invoices.isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy hóa đơn đã thanh toán.");
+        }
 
-//        // 4. Tính số tiền hoàn
-//        Double planPriceObj = systemPriceService.getPriceByType(activeSub.getPlan().getPriceType());
-//        double planPrice = (planPriceObj != null) ? planPriceObj : 0.0;
-//        double refundAmount = 0.0;
-//
-//        if (totalSwaps > 0 && remainingSwaps > 0) {
-//            double pricePerSwap = planPrice / totalSwaps;
-//            refundAmount = pricePerSwap * remainingSwaps;
-//        }                                                               chỗ này cũng vậy
+// lấy invoice mới nhất (row đầu tiên)
+        Invoice invoice = invoices.get(0);
 
-        // 5. Cập nhật status thành CANCELLED
+        // 3. Hủy gói
         activeSub.setStatus(UserSubscription.SubscriptionStatus.CANCELLED);
-        activeSub.setAutoRenew(false); // Tắt auto-renew
+        activeSub.setAutoRenew(false);
         userSubscriptionRepository.save(activeSub);
 
-//        // 6. Tạo giao dịch hoàn tiền (nếu có)
-//        if (refundAmount > 0) {
-//            createRefundTransaction(userId, activeSub, refundAmount);
-//        }                                                               tạm để đây vì tôi ko biết ví ở chỗ nào
+        // ✅ 4. Refund ví — áp dụng cho cả VNPay lẫn Wallet
+        if (refundAmount > 0) {
+            User user = activeSub.getUser();
+            user.setWalletBalance(user.getWalletBalance() + refundAmount);
+            userRepository.save(user);
 
-        // 7. Trả về kết quả
+            paymentRepository.save(Payment.builder()
+                    .invoice(invoice)
+                    .amount(refundAmount)
+                    .paymentMethod(Payment.PaymentMethod.WALLET) // refund to wallet
+                    .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                    .transactionType(Payment.TransactionType.REFUND)
+                    .message("Hoàn tiền hủy gói cước sớm")
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        }
+
+        // 5. Return result
         Map<String, Object> result = new HashMap<>();
         result.put("status", activeSub.getStatus().name());
-        result.put("remainingSwaps", remainingSwaps);
-//        result.put("refundAmount", refundAmount);
-        result.put("cancelledAt", LocalDate.now());
+        result.put("remainingDays", remainingDays);
+        result.put("refundAmount", refundAmount);
+        result.put("cancelledAt", LocalDateTime.now());
 
         return result;
     }

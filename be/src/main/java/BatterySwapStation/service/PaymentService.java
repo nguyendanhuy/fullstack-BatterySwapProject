@@ -751,6 +751,24 @@ public class PaymentService {
         return payUrl;
     }
 
+    @Transactional
+    public void refundSubscription(Long invoiceId, double amount) {
+
+        Payment refundRecord = Payment.builder()
+                .invoice(invoiceRepository.findById(invoiceId).orElse(null))
+                .amount(amount)
+                .paymentMethod(Payment.PaymentMethod.VNPAY)
+                .paymentStatus(Payment.PaymentStatus.PENDING)
+                .transactionType(Payment.TransactionType.REFUND)
+                .gateway("VNPAY")
+                .message("Hoàn tiền gói cước")
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        paymentRepository.save(refundRecord);
+
+        // call refund API VNPay here
+    }
 
 
 }

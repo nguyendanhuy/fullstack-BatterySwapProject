@@ -21,5 +21,7 @@ public class AuthResponse {
     private Double walletBalance;      // ✅ Driver mới có
     private String planName;     // ✅ thêm
     private Integer usedSwaps;
+    private Integer totalSwaps;
+
 }
 

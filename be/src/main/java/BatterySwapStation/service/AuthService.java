@@ -3,8 +3,7 @@ package BatterySwapStation.service;
 import BatterySwapStation.dto.RoleDTO;
 import BatterySwapStation.entity.StaffAssign;
 import BatterySwapStation.entity.UserSubscription;
-import BatterySwapStation.repository.StaffAssignRepository;
-import BatterySwapStation.repository.UserSubscriptionRepository;
+import BatterySwapStation.repository.*;
 import BatterySwapStation.utils.UserIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,8 +11,6 @@ import BatterySwapStation.dto.LoginRequest;
 import BatterySwapStation.dto.AuthResponse;
 import BatterySwapStation.entity.Role;
 import BatterySwapStation.entity.User;
-import BatterySwapStation.repository.RoleRepository;
-import BatterySwapStation.repository.UserRepository;
 import BatterySwapStation.dto.GoogleUserInfo;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +26,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final StaffAssignRepository staffAssignRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
+    private final SwapRepository swapRepository;
+
 
     // 🔹 Đăng nhập thường
     public AuthResponse login(LoginRequest req) {
@@ -46,6 +45,7 @@ public class AuthService {
         Double walletBalance = null;
         String planName = null;
         Integer usedSwaps = null;
+        Integer totalSwaps = null;
 
         // Staff
         if (user.getRole().getRoleId() == 2) {
@@ -68,6 +68,8 @@ public class AuthService {
                 planName = sub.getPlan().getPlanName();
                 usedSwaps = sub.getUsedSwaps();
             }
+
+            totalSwaps = swapRepository.countSwapsByUser(user.getUserId());
         }
 
         String token = jwtService.generateToken(
@@ -91,10 +93,10 @@ public class AuthService {
                 activeSubscriptionId,
                 walletBalance,
                 planName,
-                usedSwaps
+                usedSwaps,
+                totalSwaps
         );
     }
-
     // Cập nhật role cho user
     public boolean updateUserRole(String userId, RoleDTO roleDTO) {
         User user = userRepository.findById(userId).orElse(null);
@@ -149,6 +151,7 @@ public class AuthService {
         Double walletBalance = null;
         String planName = null;
         Integer usedSwaps = null;
+        Integer totalSwaps = null; //NEW
 
         // Staff
         if (user.getRole().getRoleId() == 2) {
@@ -171,6 +174,9 @@ public class AuthService {
                 planName = sub.getPlan().getPlanName();
                 usedSwaps = sub.getUsedSwaps();
             }
+
+            // Count swaps
+            totalSwaps = swapRepository.countSwapsByUser(user.getUserId());
         }
 
         String token = jwtService.generateToken(
@@ -198,8 +204,8 @@ public class AuthService {
                 activeSubscriptionId,
                 walletBalance,
                 planName,
-                usedSwaps
+                usedSwaps,
+                totalSwaps
         );
-
     }
 }

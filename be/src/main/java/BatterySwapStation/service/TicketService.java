@@ -219,7 +219,11 @@ public class TicketService { // ✅ Đổi tên lớp
                 case CASH -> {
                     // Staff sẽ confirm sau
                     ticket.setStatus(DisputeTicket.TicketStatus.IN_PROGRESS);
-                    ticket.setResolutionMethod("PENALTY_CASH");
+                    ticket.setResolutionMethod(DisputeTicket.ResolutionMethod.PENALTY.name());
+                    ticket.setResolutionDescription(
+                            (req.getResolutionDescription() == null ? "" : req.getResolutionDescription())
+                                    + " | Thanh toán tiền mặt chờ xác nhận"
+                    );
                 }
 
                 case WALLET -> {

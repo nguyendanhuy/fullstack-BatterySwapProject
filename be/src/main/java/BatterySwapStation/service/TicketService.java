@@ -245,6 +245,10 @@ public class TicketService { // ✅ Đổi tên lớp
                     ticket.setPenaltyLevel(req.getPenaltyLevel());
                     ticket.setResolutionDescription("Thanh toán ví thành công");
                     disputeTicketRepository.save(ticket);
+
+                    TicketResponse res = convertToTicketResponse(ticket);
+                    res.setInvoiceId(invoice.getInvoiceId());
+                    return res;
                 }
 
 

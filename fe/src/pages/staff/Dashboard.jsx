@@ -1,16 +1,67 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "antd";
+import { Progress, Spin } from "antd";
 import {
   QrCode, CreditCard, Battery, Search, BarChart3,
   Zap, Star, TrendingUp, Users, CheckCircle, Clock, FileText
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { SystemContext } from "../../contexts/system.context";
+import { getStationById, getWattingBatteryInventory, getSwapsByStation } from "../../services/axios.services";
+import { toast } from "sonner";
 
 const StaffDashboard = () => {
-
+  const { userData } = useContext(SystemContext);
+  const [stationData, setStationData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [waitingBatteryCount, setWaitingBatteryCount] = useState(0);
+  const [totalSwapCount, setTotalSwapCount] = useState(0);
+  const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
+  const isErrorResponse = (res) => res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
+  const stationInfo = async () => {
+    setLoading(true);
+    try {
+      const stationDataRes = await getStationById(userData.assignedStationId);
+      if (isErrorResponse(stationDataRes)) {
+        toast({
+          title: "Lỗi khi tải thông tin trạm",
+          description: pickApiMessage(stationDataRes),
+          variant: "destructive",
+        });
+      } else {
+        setStationData(stationDataRes);
+      }
+      const swapRes = await getSwapsByStation(userData.assignedStationId);
+      if (isErrorResponse(swapRes)) {
+        toast({
+          title: "Lỗi khi tải thông tin trạm",
+          description: pickApiMessage(swapRes),
+          variant: "destructive",
+        });
+      } else {
+        setTotalSwapCount(swapRes.length);
+      }
+      const waitingBatteryRes = await getWattingBatteryInventory(userData.assignedStationId);
+      if (isErrorResponse(waitingBatteryRes)) {
+        toast({
+          title: "Lỗi khi tải thông tin trạm",
+          description: pickApiMessage(waitingBatteryRes),
+          variant: "destructive",
+        });
+      } else {
+        setWaitingBatteryCount(waitingBatteryRes.length);
+      }
+    } catch (error) {
+      console.error("Error fetching station data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    stationInfo();
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* HEADER */}
@@ -38,10 +89,22 @@ const StaffDashboard = () => {
               <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg mr-2">
                 <Battery className="h-5 w-5 text-white" />
               </div>
-              Trạm đang quản lý (Hard Code/ConsoleLog check userData để xem)
+              Trạm đang quản lý
             </CardTitle>
           </CardHeader>
-
+          {loading && (
+            <div
+              className="fixed inset-0 z-[1000] flex items-center justify-center bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm"
+              aria-busy="true"
+              aria-live="polite"
+              role="status"
+            >
+              <div className="flex flex-col items-center gap-3">
+                <Spin size="large" tip="Đang tải dữ liệu..." />
+                <p className="text-sm text-gray-600 dark:text-gray-300">Vui lòng đợi trong giây lát</p>
+              </div>
+            </div>
+          )}
           <CardContent className="pt-4">
             {/* Thông tin trạm */}
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-md mb-6 border border-blue-100">
@@ -53,7 +116,7 @@ const StaffDashboard = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Tên trạm</p>
                     <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
-                      Trạm Bình Thạnh
+                      {stationData?.stationName}
                     </p>
                   </div>
                 </div>
@@ -66,7 +129,7 @@ const StaffDashboard = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Trạng thái</p>
                     <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center">
                       <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
-                      Hoạt động
+                      {stationData?.active ? "Hoạt động" : "Ngưng hoạt động"}
                     </p>
                   </div>
                 </div>
@@ -78,8 +141,17 @@ const StaffDashboard = () => {
                   <div className="flex-1">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Pin khả dụng</p>
                     <div className="flex items-center space-x-2">
-                      <p className="text-base font-bold text-blue-600 dark:text-blue-400">45/60</p>
-                      <Progress percent={75} showInfo={false} strokeColor="#3b82f6" className="flex-1" />
+                      <p className="text-base font-bold text-blue-600 dark:text-blue-400">{`${stationData?.availableCount}/${stationData?.totalBatteries}`}</p>
+                      <Progress
+                        percent={
+                          stationData?.totalBatteries
+                            ? (stationData.availableCount / stationData.totalBatteries) * 100
+                            : 0
+                        }
+                        showInfo={false}
+                        strokeColor="#3b82f6"
+                        className="flex-1"
+                      />
                     </div>
                   </div>
                 </div>
@@ -87,12 +159,11 @@ const StaffDashboard = () => {
             </div>
 
             {/* DAILY STATS */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-3 gap-4 mb-4">
               {[
-                { icon: QrCode, count: "23", label: "QR đã quét", color: "from-blue-500 to-indigo-500" },
-                { icon: CreditCard, count: "8", label: "Chờ thanh toán", color: "from-green-500 to-emerald-500" },
-                { icon: Battery, count: "45", label: "Pin trong kho", color: "from-orange-500 to-yellow-500" },
-                { icon: Search, count: "3", label: "Cần kiểm tra", color: "from-purple-500 to-pink-500" }
+                { icon: QrCode, count: `${totalSwapCount}`, label: "QR đã quét", color: "from-blue-500 to-indigo-500" },
+                { icon: Battery, count: `${stationData?.totalBatteries}`, label: "Pin trong kho", color: "from-orange-500 to-yellow-500" },
+                { icon: Search, count: `${waitingBatteryCount}`, label: "Cần kiểm tra", color: "from-purple-500 to-pink-500" }
               ].map((stat, index) => (
                 <div
                   key={index}
@@ -107,27 +178,8 @@ const StaffDashboard = () => {
               ))}
             </div>
 
+
             {/* PERFORMANCE */}
-            <div className="grid md:grid-cols-3 gap-3">
-              {[
-                { icon: TrendingUp, title: "Hiệu suất", value: "96%", color: "from-green-500 to-emerald-500" },
-                { icon: Users, title: "Khách hàng", value: "47", color: "from-blue-500 to-indigo-500" },
-                { icon: Star, title: "Đánh giá", value: "4.8/5", color: "from-purple-500 to-pink-500" }
-              ].map((metric, index) => (
-                <div
-                  key={index}
-                  className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700 flex items-center space-x-3"
-                >
-                  <div className={`p-2 bg-gradient-to-br ${metric.color} rounded-lg`}>
-                    <metric.icon className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{metric.title}</p>
-                    <p className="text-lg font-bold text-gray-800 dark:text-white">{metric.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </CardContent>
         </Card>
 

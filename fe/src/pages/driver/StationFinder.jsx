@@ -358,7 +358,7 @@ export default function StationFinder() {
       const t = setTimeout(() => getStationNearby(selectedLocation.lat, selectedLocation.lng, radius), 250);
       return () => clearTimeout(t);
     }
-  }, [selectedLocation, filters.distance]); // eslint-disable-line
+  }, [selectedLocation, filters.distance]);
 
   // --- Primary station cập nhật khi filter thay đổi ---
   useEffect(() => {

@@ -47,6 +47,9 @@ const deactivateVehicleByVin = (vin) => {
 const getAllStations = () => {
     return axios.get("/stations");
 }
+const getStationById=(stationId) => {
+    return axios.get(`/stations/${stationId}`);
+}
 const getStationNearbyLocation = (lat, lng, radiusKm = 50) => {
     return axios.get(`/stations/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
 }
@@ -286,5 +289,6 @@ export {
     getTicketByStationId,
     updateTicketSolution,
     cancelAutoRenewSubscription,
-    cancelSubscriptionImmediate
+    cancelSubscriptionImmediate,
+    getStationById
 };

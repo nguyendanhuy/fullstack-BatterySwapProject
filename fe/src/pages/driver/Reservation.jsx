@@ -121,8 +121,12 @@ const Reservation = () => {
     icon: idx === currentStep ? <LoadingOutlined /> : s.icon,
   }));
 
-  // Check if user has active subscription
-  const hasActiveSubscription = userData?.activeSubscriptionId && [1, 2, 3].includes(userData.activeSubscriptionId);
+  //Gói cước
+  const hasActiveSubscription = Boolean(userData?.activeSubscriptionId);
+  const used = Number(userData?.usedSwaps ?? 0);
+  const max = Number(userData?.maxSwaps ?? 0);
+  const remainingCount = Math.max(0, max - used);
+
 
   // Helpers
   const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
@@ -445,7 +449,13 @@ const Reservation = () => {
 
                 {/* Tổng cộng */}
                 <div className="border-t border-gray-200 pt-6">
-                  {!hasActiveSubscription && (
+                  {hasActiveSubscription && remainingCount < totalBatteries && (
+                    <p className="text-sm text-red-600 font-medium mb-3">
+                      ⚠️ Gói {userData?.planName} của bạn chỉ còn {remainingCount} lượt đổi pin. <br />
+                      ⚠️ Sẽ chuyển qua thanh toán thông thường
+                    </p>
+                  )}
+                  {(!hasActiveSubscription || remainingCount < totalBatteries) && (
                     <>
                       <div className="flex justify-between mb-3">
                         <span className="text-gray-700">Phí đổi pin :</span>
@@ -468,17 +478,19 @@ const Reservation = () => {
                     </>
                   )}
 
-                  {hasActiveSubscription && (
+                  {(hasActiveSubscription && remainingCount >= totalBatteries) && (
                     <div className="space-y-3">
                       <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
                         <div className="flex items-center space-x-2 mb-2">
                           <Zap className="h-5 w-5 text-green-600" />
-                          <span className="font-bold text-green-700">Gói {userData?.planName || "SUBSCRIPTION"} của bạn đang hoạt động</span>
+                          <span className="font-bold text-green-700">
+                            Gói {userData?.planName || "SUBSCRIPTION"} của bạn đang hoạt động
+                          </span>
                         </div>
                         <p className="text-sm text-gray-600">Bạn đang sử dụng gói tháng để thanh toán</p>
-                        {userData?.usedSwaps.toLocaleString() && (
-                          <p className="text-sm text-gray-600">Đã sử dụng: <b>{userData.usedSwaps}</b> lượt đổi pin</p>
-                        )}
+                        <p className="text-sm text-gray-600">
+                          Đã sử dụng: <b>{used} / {max}</b> lượt đổi pin
+                        </p>
                       </div>
                       <div className="flex justify-between mb-3">
                         <span className="text-gray-700">Tổng số pin:</span>
@@ -492,9 +504,10 @@ const Reservation = () => {
                   )}
                 </div>
 
+
                 {/* Thanh toán */}
                 <div className="space-y-3 pt-6">
-                  {!hasActiveSubscription ? (
+                  {!hasActiveSubscription || (remainingCount < totalBatteries) ? (
                     <>
                       <Link
                         to="/driver/payment"

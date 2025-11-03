@@ -48,7 +48,7 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (loading) return;
+    if (loading) return;  // chặn việc spam nút đăng nhập
     if (!formData.email || !formData.password) {
       toast({
         title: "Lỗi",
@@ -70,7 +70,7 @@ const Login = () => {
     try {
       const res = await loginAPI(formData.email.trim(), formData.password.trim());
 
-      console.log("Login response:", res);
+      console.log("✅Login response:", res);
 
       if (isErrorResponse(res)) {
         toast({
@@ -111,7 +111,7 @@ const Login = () => {
       const res = await loginByGoogleAPI({
         token: credentialResponse.credential
       });
-      console.log("Google login response:", res);
+      console.log("✅Google login response:", res);
 
       if (isErrorResponse(res)) {
         toast({
@@ -156,7 +156,7 @@ const Login = () => {
       }
 
       const res = await forgotPasswordAPI(forgotPasswordEmail.trim());
-      console.log("Forgot password response:", res);
+      console.log("✅Forgot password response:", res);
 
       if (isErrorResponse(res)) {
         toast({

@@ -30,6 +30,7 @@ public class AuthService {
 
 
     // 🔹 Đăng nhập thường
+    // 🔹 Đăng nhập thường
     public AuthResponse login(LoginRequest req) {
         User user = userService.findByEmail(req.getEmail());
         if (user == null) throw new RuntimeException("Email không tồn tại");
@@ -45,7 +46,7 @@ public class AuthService {
         Double walletBalance = null;
         String planName = null;
         Integer usedSwaps = null;
-        Integer totalSwaps = null;
+        Integer maxSwaps = null;
 
         // Staff
         if (user.getRole().getRoleId() == 2) {
@@ -67,9 +68,8 @@ public class AuthService {
                 activeSubscriptionId = sub.getPlan().getId();
                 planName = sub.getPlan().getPlanName();
                 usedSwaps = sub.getUsedSwaps();
+                maxSwaps = sub.getPlan().getSwapLimit();
             }
-
-            totalSwaps = swapRepository.countSwapsByUser(user.getUserId());
         }
 
         String token = jwtService.generateToken(
@@ -94,9 +94,10 @@ public class AuthService {
                 walletBalance,
                 planName,
                 usedSwaps,
-                totalSwaps
+                maxSwaps
         );
     }
+
     // Cập nhật role cho user
     public boolean updateUserRole(String userId, RoleDTO roleDTO) {
         User user = userRepository.findById(userId).orElse(null);
@@ -151,7 +152,7 @@ public class AuthService {
         Double walletBalance = null;
         String planName = null;
         Integer usedSwaps = null;
-        Integer totalSwaps = null; //NEW
+        Integer maxSwaps = null;
 
         // Staff
         if (user.getRole().getRoleId() == 2) {
@@ -173,10 +174,8 @@ public class AuthService {
                 activeSubscriptionId = sub.getPlan().getId();
                 planName = sub.getPlan().getPlanName();
                 usedSwaps = sub.getUsedSwaps();
+                maxSwaps = sub.getPlan().getSwapLimit();
             }
-
-            // Count swaps
-            totalSwaps = swapRepository.countSwapsByUser(user.getUserId());
         }
 
         String token = jwtService.generateToken(
@@ -205,7 +204,7 @@ public class AuthService {
                 walletBalance,
                 planName,
                 usedSwaps,
-                totalSwaps
+                maxSwaps
         );
     }
 

@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -422,19 +424,28 @@ public class SubscriptionService {
             throw new IllegalStateException("Hóa đơn này đã được xử lý (trạng thái: " + invoice.getInvoiceStatus() + ").");
         }
 
-        // c. Kiểm tra lượt đổi pin (Swap Limit)
+        // c. Kiểm tra số lượng pin cần đổi
+        int swapsNeeded = (invoice.getNumberOfSwaps() != null && invoice.getNumberOfSwaps() > 0)
+            ? invoice.getNumberOfSwaps()
+            : 1;
+
+        // d. Kiểm tra lượt đổi pin (Swap Limit)
         int limit = activeSub.getPlan().getSwapLimit();
         int used = activeSub.getUsedSwaps();
-        if (limit != -1 && used >= limit) {
-            throw new IllegalStateException("Bạn đã hết lượt đổi pin của gói cước này (" + used + "/" + limit + ").");
+        if (limit != -1 && (used + swapsNeeded) > limit) {
+            throw new IllegalStateException(String.format(
+                "Gói của bạn không đủ số lần đổi, cần %d lượt, bạn hiện còn lại %d/%d lượt. Vui lòng thử lại phương thức thanh toán khác.",
+                swapsNeeded, (limit - used), limit
+            ));
         }
 
         // --- 4. THỰC THI (EXECUTION) ---
 
-        // a. Trừ 1 lượt: Tăng 'usedSwaps' (Giữ nguyên)
-        activeSub.setUsedSwaps(activeSub.getUsedSwaps() + 1);
+        // a. Trừ đúng số lượt theo số pin: Tăng 'usedSwaps'
+        activeSub.setUsedSwaps(activeSub.getUsedSwaps() + swapsNeeded);
         UserSubscription updatedSub = userSubscriptionRepository.save(activeSub);
-        log.info("User {} đã dùng 1 lượt. (Còn lại: {}/{}).", request.getUserId(), (activeSub.getUsedSwaps()), activeSub.getPlan().getSwapLimit());
+        log.info("User {} đã dùng {} lượt. (Đã dùng: {}/{}).",
+            request.getUserId(), swapsNeeded, updatedSub.getUsedSwaps(), limit);
 
         // b. Chuyển Invoice sang PAID (Giữ nguyên)
         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
@@ -448,5 +459,56 @@ public class SubscriptionService {
 
         return updatedSub; // Trả về thông tin gói cước đã cập nhật
     }
+
+    public Map<String, Object> cancelSubscriptionImmediately(String userId) {
+        // 1. Lấy subscription ACTIVE
+        UserSubscription activeSub = userSubscriptionRepository.findActiveSubscription(userId)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy gói cước đang hoạt động."));
+
+        // 2. Kiểm tra đã hết hạn chưa
+        if (activeSub.getEndDate().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("Gói cước đã hết hạn, không thể hủy.");
+        }
+
+        // 3. Tính số lượt còn lại
+        Integer swapLimit = activeSub.getPlan().getSwapLimit();
+        if (swapLimit == null || swapLimit < 0) {
+            swapLimit = 0; // Xử lý trường hợp Unlimited hoặc null
+        }
+
+        int totalSwaps = swapLimit;
+        int usedSwaps = activeSub.getUsedSwaps();
+        int remainingSwaps = Math.max(0, totalSwaps - usedSwaps);
+
+//        // 4. Tính số tiền hoàn
+//        Double planPriceObj = systemPriceService.getPriceByType(activeSub.getPlan().getPriceType());
+//        double planPrice = (planPriceObj != null) ? planPriceObj : 0.0;
+//        double refundAmount = 0.0;
+//
+//        if (totalSwaps > 0 && remainingSwaps > 0) {
+//            double pricePerSwap = planPrice / totalSwaps;
+//            refundAmount = pricePerSwap * remainingSwaps;
+//        }                                                               chỗ này cũng vậy
+
+        // 5. Cập nhật status thành CANCELLED
+        activeSub.setStatus(UserSubscription.SubscriptionStatus.CANCELLED);
+        activeSub.setAutoRenew(false); // Tắt auto-renew
+        userSubscriptionRepository.save(activeSub);
+
+//        // 6. Tạo giao dịch hoàn tiền (nếu có)
+//        if (refundAmount > 0) {
+//            createRefundTransaction(userId, activeSub, refundAmount);
+//        }                                                               tạm để đây vì tôi ko biết ví ở chỗ nào
+
+        // 7. Trả về kết quả
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", activeSub.getStatus().name());
+        result.put("remainingSwaps", remainingSwaps);
+//        result.put("refundAmount", refundAmount);
+        result.put("cancelledAt", LocalDate.now());
+
+        return result;
+    }
+
 
 }

@@ -59,8 +59,8 @@ public class BookingResponse {
     // ✅ THÊM: Thông tin gói cước
     private Boolean isFreeSwap;              // Có phải booking miễn phí không
     private String subscriptionPlanName;      // Tên gói cước đang dùng
-    private Integer remainingSwaps;           // Số lượt còn lại (-1 = không giới hạn)
-    private Integer totalSwapLimit;           // Tổng số lượt của gói (-1 = không giới hạn)
+    private Integer usedSwaps;                // Số lượt đã sử dụng
+    private Integer totalSwapLimit;           // Tổng số lượt của gói
 
     // Thông tin thanh toán (nested object)
     private PaymentInfo payment;

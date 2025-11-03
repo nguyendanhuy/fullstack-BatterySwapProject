@@ -96,13 +96,13 @@ public class AuthController {
         Integer usedSwaps = null;
         String planName = null;
 
-        // ✅ Nếu Staff -> trả stationId
+        // Nếu Staff -> trả stationId
         if (user.getRole().getRoleId() == 2) {
             StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
-        // ✅ Nếu Driver -> trả subscription + ví
+        //  Nếu Driver -> trả subscription + ví
         Double walletBalance = null;
         if (user.getRole().getRoleId() == 1) {
             walletBalance = user.getWalletBalance(); // ✅ lấy ví
@@ -121,7 +121,6 @@ public class AuthController {
             }
         }
 
-        // ✅ Build response tùy role
         Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("userId", user.getUserId());
         result.put("fullName", user.getFullName());
@@ -129,11 +128,16 @@ public class AuthController {
         result.put("phone", user.getPhone());
         result.put("role", user.getRole().getRoleName());
 
-        if (assignedStationId != null) result.put("assignedStationId", assignedStationId);
-        if (activeSubscriptionId != null) result.put("activeSubscriptionId", activeSubscriptionId);
-        if (planName != null) result.put("planName", planName);
-        if (usedSwaps != null) result.put("usedSwaps", usedSwaps);
-        if (walletBalance != null) result.put("walletBalance", walletBalance); // ✅ chỉ hiện khi có
+        if (user.getRole().getRoleId() == 2) {
+            // ✅ STAFF
+            result.put("assignedStationId", assignedStationId);
+        } else if (user.getRole().getRoleId() == 1) {
+            // ✅ DRIVER — MUST always return these keys even if null
+            result.put("walletBalance", walletBalance);
+            result.put("activeSubscriptionId", activeSubscriptionId);
+            result.put("planName", planName);
+            result.put("usedSwaps", usedSwaps);
+        }
 
         return ResponseEntity.ok(result);
     }

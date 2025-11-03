@@ -100,9 +100,9 @@ public class AuthController {
             return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
 
-        MeResponse response = authService.getCurrentUserInfo(user);
-
+        Map<String, Object> response = authService.getCurrentUserInfo(user);
         return ResponseEntity.ok(response);
+
     }
 
 
@@ -179,7 +179,7 @@ public class AuthController {
     public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
         try {
             GoogleUserInfo info = googleService.verifyAndExtract(request.getToken());
-            AuthResponse result = authService.handleGoogleLogin(info);
+            Map<String, Object> result = authService.handleGoogleLogin(info);
 
             // trả thẳng result ra, KHÔNG bọc data
             return ResponseEntity.ok(result);

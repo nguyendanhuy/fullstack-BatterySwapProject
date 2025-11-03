@@ -453,7 +453,7 @@ public class BookingService {
         LocalDateTime minimumCancelTime = scheduledDateTime.minusHours(1);
         if (currentDateTime.isAfter(minimumCancelTime)) {
             throw new IllegalStateException(String.format(
-                    "Không thể hủy booking. Chỉ có thể hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
+                    "Không thể hủy booking. Chỉ hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
                     booking.getBookingDate(), booking.getTimeSlot(), minimumCancelTime));
         }
 
@@ -462,11 +462,10 @@ public class BookingService {
         booking.setCancellationReason(request.getCancelReason());
         Booking savedBooking = bookingRepository.save(booking);
 
-        // ✅ Tự động hoàn tiền về ví nếu booking có hóa đơn và payment thành công
+        // ✅ Tự động hoàn tiền về ví nếu có payment
         Invoice invoice = booking.getInvoice();
         if (invoice != null && invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
 
-            // Lấy payment thành công gần nhất
             Payment successfulPayment = invoice.getPayments().stream()
                     .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS)
                     .max(Comparator.comparing(Payment::getCreatedAt))
@@ -489,9 +488,18 @@ public class BookingService {
 
                 paymentRepository.save(refund);
 
-                // ✅ Cộng tiền ví người dùng
-                user.setWalletBalance(user.getWalletBalance() + refundAmount);
-                userRepository.save(user);
+                // ✅ Cộng tiền ví với xử lý lỗi giới hạn ví
+                try {
+                    user.setWalletBalance(user.getWalletBalance() + refundAmount);
+                    userRepository.save(user);
+                } catch (Exception ex) {
+                    if (ex.getMessage() != null && ex.getMessage().contains("chk_wallet_balance_limit")) {
+                        throw new IllegalStateException(
+                                "Ví đã đạt giới hạn, không thể hoàn tiền. Vui lòng xài bớt tiền"
+                        );
+                    }
+                    throw ex;
+                }
             }
         }
 
@@ -506,6 +514,7 @@ public class BookingService {
 
         return response;
     }
+
 
 
     /**

@@ -235,7 +235,7 @@ public class SubscriptionController {
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Gói cước đã bị hủy ngay lập tức.",
- //                   "refundAmount", result.get("refundAmount"),  tạm comment do chưa làm hoàn tiền
+                    "refundAmount", result.get("refundAmount"),
                     "remainingSwaps", result.get("remainingSwaps"),
                     "status", result.get("status")
             ));

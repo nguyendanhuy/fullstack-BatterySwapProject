@@ -86,7 +86,21 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user) {
+    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Object principal) {
+
+        // ✅ Fallback: convert principal -> User entity
+        User user = null;
+
+        // Khi principal là User (đúng với filter mới)
+        if (principal instanceof User u) {
+            user = u;
+        }
+        // Khi principal là UserDetails (trường hợp login cũ / Spring default)
+        else if (principal instanceof org.springframework.security.core.userdetails.User ud) {
+            user = userService.findById(ud.getUsername());
+        }
+
+        // Khi chưa nhận được user
         if (user == null) {
             return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
@@ -102,7 +116,7 @@ public class AuthController {
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
-        //  Nếu Driver -> trả subscription + ví
+        // Nếu Driver -> trả subscription + ví
         Double walletBalance = null;
         if (user.getRole().getRoleId() == 1) {
             walletBalance = user.getWalletBalance(); // ✅ lấy ví
@@ -132,7 +146,7 @@ public class AuthController {
             // ✅ STAFF
             result.put("assignedStationId", assignedStationId);
         } else if (user.getRole().getRoleId() == 1) {
-            // ✅ DRIVER — MUST always return these keys even if null
+            // ✅ DRIVER — luôn trả đủ key
             result.put("walletBalance", walletBalance);
             result.put("activeSubscriptionId", activeSubscriptionId);
             result.put("planName", planName);
@@ -141,6 +155,7 @@ public class AuthController {
 
         return ResponseEntity.ok(result);
     }
+
 
 
 

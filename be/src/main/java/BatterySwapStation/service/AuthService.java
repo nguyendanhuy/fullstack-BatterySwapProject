@@ -39,7 +39,7 @@ public class AuthService {
         if (!user.isActive())
             throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
         if (!user.isVerified())
-            throw new RuntimeException("Bạn chưa xác thực email");
+            throw new RuntimeException("Bạn chưa xác thực email. Vui lòng kiểm tra email.");
 
         Integer assignedStationId = null;
         Long activeSubscriptionId = null;

@@ -82,19 +82,21 @@ public class BookingController {
         }
     }
 
-
     @PutMapping("/cancel")
     @Operation(summary = "Hủy booking", description = "Hủy một booking đã tạo")
-    public ResponseEntity<ApiResponseDto> cancelBooking(
-            @RequestBody CancelBookingRequest request) {
+    public ResponseEntity<ApiResponseDto> cancelBooking(@RequestBody CancelBookingRequest request) {
         try {
             BookingResponse response = bookingService.cancelBooking(request);
             return ResponseEntity.ok(new ApiResponseDto(true, "Hủy booking thành công!", response));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponseDto(false, e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponseDto(false, "Lỗi hủy booking: " + e.getMessage()));
         }
     }
+
 
     @GetMapping("/status/{status}")
     @Operation(summary = "Lấy booking theo trạng thái", description = "Lấy danh sách booking theo trạng thái cụ thể (PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED)")

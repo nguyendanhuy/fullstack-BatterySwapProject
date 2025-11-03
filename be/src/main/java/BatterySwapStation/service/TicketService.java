@@ -1,5 +1,6 @@
 package BatterySwapStation.service;
 
+import BatterySwapStation.dto.TicketResolveRequest;
 import BatterySwapStation.dto.TicketResponse;
 import BatterySwapStation.dto.TicketUpdateRequest;
 import BatterySwapStation.entity.*;
@@ -23,6 +24,12 @@ public class TicketService { // ✅ Đổi tên lớp
     private final DisputeTicketRepository disputeTicketRepository;
     private final UserRepository userRepository;
     private final StationRepository stationRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService; // xử lý VNPAY redirect nếu cần
+    private final UserService userService;
+    private final SystemPriceService systemPriceService;
+
 
     // ----------------------------------------------------------------------
     // --- 1. TẠO DISPUTE TICKET (POST /tickets) ---
@@ -127,25 +134,155 @@ public class TicketService { // ✅ Đổi tên lớp
      * - resolutionDescription: Chỉ bắt buộc nhập khi ticket.reason == OTHER
      */
     @Transactional
-    public TicketResponse resolveTicket(Long ticketId, DisputeTicket.ResolutionMethod resolutionMethod, String resolutionDescription) {
-        DisputeTicket ticket = disputeTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new EntityNotFoundException("Ticket không tồn tại với ID: " + ticketId));
+    public TicketResponse resolveTicket(Long ticketId, TicketResolveRequest req) {
 
-        // Kiểm tra: Nếu phương thức giải quyết là OTHER thì bắt buộc phải có mô tả chi tiết
-        if (resolutionMethod == DisputeTicket.ResolutionMethod.OTHER) {
-            if (resolutionDescription == null || resolutionDescription.trim().isEmpty()) {
-                throw new IllegalArgumentException("Mô tả cách giải quyết là bắt buộc khi chọn phương thức OTHER");
+        DisputeTicket ticket = disputeTicketRepository.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Ticket không tồn tại: " + ticketId));
+
+        if (req.getResolutionMethod() == null) {
+            throw new IllegalArgumentException("Phải chọn phương thức xử lý.");
+        }
+
+        // ===== VALIDATION =====
+        switch (req.getResolutionMethod()) {
+
+            case PENALTY -> {
+                if (req.getPenaltyLevel() == null || req.getPenaltyLevel() == DisputeTicket.PenaltyLevel.NONE) {
+                    throw new IllegalArgumentException("Phải chọn mức phạt khi xử lý bằng PENALTY.");
+                }
+                if (req.getPaymentChannel() == null || req.getPaymentChannel() == Payment.PaymentChannel.NONE) {
+                    throw new IllegalArgumentException("Phải chọn phương thức thanh toán cho mức phạt.");
+                }
+            }
+
+            case REFUND -> {
+                if (req.getPenaltyLevel() != null && req.getPenaltyLevel() != DisputeTicket.PenaltyLevel.NONE) {
+                    throw new IllegalArgumentException("Không được chọn mức phạt khi REFUND.");
+                }
+                if (req.getPaymentChannel() != null && req.getPaymentChannel() != Payment.PaymentChannel.NONE) {
+                    throw new IllegalArgumentException("Không được chọn phương thức thanh toán khi REFUND.");
+                }
+            }
+
+            case NO_ACTION -> {
+                if (req.getPenaltyLevel() != null || req.getPaymentChannel() != null) {
+                    throw new IllegalArgumentException("NO_ACTION không cần mức phạt hoặc phương thức thanh toán.");
+                }
+            }
+
+            case OTHER -> {
+                if (req.getResolutionDescription() == null || req.getResolutionDescription().isBlank()) {
+                    throw new IllegalArgumentException("Phải nhập mô tả khi chọn OTHER.");
+                }
             }
         }
 
+        User user = ticket.getUser();
+
+        // ✅ CASE: PENALTY
+        if (req.getResolutionMethod() == DisputeTicket.ResolutionMethod.PENALTY) {
+
+            SystemPrice.PriceType priceType = mapPenaltyToPriceType(req.getPenaltyLevel());
+            Double penaltyAmount = systemPriceService.getPriceByType(priceType);
+
+            // ✅ Tạo invoice
+            Invoice invoice = new Invoice();
+            invoice.setUserId(user.getUserId());
+            invoice.setCreatedDate(LocalDateTime.now());
+            invoice.setInvoiceType(Invoice.InvoiceType.PENALTY);
+            invoice.setInvoiceStatus(Invoice.InvoiceStatus.PENDING);
+            invoice.setTotalAmount(penaltyAmount);
+            invoiceRepository.save(invoice);
+
+            // ✅ Gắn invoice vào ticket
+            ticket.setPenaltyInvoice(invoice);
+
+            Payment payment = Payment.builder()
+                    .invoice(invoice)
+                    .amount(penaltyAmount)
+                    .paymentMethod(req.getPaymentChannel() == Payment.PaymentChannel.WALLET ?
+                            Payment.PaymentMethod.WALLET :
+                            req.getPaymentChannel() == Payment.PaymentChannel.CASH ?
+                                    Payment.PaymentMethod.CASH :
+                                    Payment.PaymentMethod.VNPAY)
+                    .paymentChannel(req.getPaymentChannel())
+                    .transactionType(Payment.TransactionType.PAYMENT)
+                    .paymentStatus(Payment.PaymentStatus.PENDING)
+                    .createdAt(LocalDateTime.now())
+                    .message("Penalty ticket #" + ticketId)
+                    .build();
+
+            paymentRepository.save(payment);
+
+            switch (req.getPaymentChannel()) {
+
+                case CASH -> {
+                    // Staff sẽ confirm sau
+                    ticket.setStatus(DisputeTicket.TicketStatus.IN_PROGRESS);
+                    ticket.setResolutionMethod("PENALTY_CASH");
+                }
+
+                case WALLET -> {
+                    if (user.getWalletBalance() < penaltyAmount)
+                        throw new IllegalStateException("Ví không đủ tiền");
+
+                    user.setWalletBalance(user.getWalletBalance() - penaltyAmount);
+                    userRepository.save(user);
+
+                    payment.setPaymentStatus(Payment.PaymentStatus.SUCCESS);
+                    paymentRepository.save(payment);
+
+                    invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+                    invoiceRepository.save(invoice);
+
+                    ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
+                    ticket.setResolvedAt(LocalDateTime.now());
+                    ticket.setResolutionDescription("Thanh toán ví thành công");
+                }
+
+                case VNPAY -> {
+                    // FE lấy invoiceId để redirect
+                    TicketResponse res = convertToTicketResponse(ticket);
+                    res.setInvoiceId(invoice.getInvoiceId());
+                    disputeTicketRepository.save(ticket);
+                    return res;
+                }
+            }
+
+            disputeTicketRepository.save(ticket);
+            return convertToTicketResponse(ticket);
+        }
+
+        // ✅ CASE: REFUND
+        if (req.getResolutionMethod() == DisputeTicket.ResolutionMethod.REFUND) {
+            double refund = ticket.getBooking().getAmount();
+            user.setWalletBalance(user.getWalletBalance() + refund);
+            userRepository.save(user);
+            ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
+            ticket.setResolvedAt(LocalDateTime.now());
+        }
+
+        // ✅ CASE: NO_ACTION / OTHER
+        ticket.setResolutionMethod(req.getResolutionMethod().name());
+        ticket.setResolutionDescription(req.getResolutionDescription());
         ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
         ticket.setResolvedAt(LocalDateTime.now());
-        ticket.setResolutionMethod(resolutionMethod.name()); // Lưu tên enum vào DB
-        ticket.setResolutionDescription(resolutionDescription);
 
-        DisputeTicket saved = disputeTicketRepository.save(ticket);
-        return convertToTicketResponse(saved);
+        disputeTicketRepository.save(ticket);
+        return convertToTicketResponse(ticket);
     }
+
+
+
+    private SystemPrice.PriceType mapPenaltyToPriceType(DisputeTicket.PenaltyLevel level) {
+        return switch (level) {
+            case MINOR -> SystemPrice.PriceType.PENALTY_MINOR;
+            case MEDIUM -> SystemPrice.PriceType.PENALTY_MEDIUM;
+            case SEVERE -> SystemPrice.PriceType.PENALTY_SEVERE;
+            default -> throw new IllegalArgumentException("Không có mức phạt tương ứng trong SystemPrice");
+        };
+    }
+
 
     // -------------------------------------------------------------------
     // --- 4. LẤY TICKET ĐANG MỞ (GET /tickets/open) ---
@@ -190,4 +327,39 @@ public class TicketService { // ✅ Đổi tên lớp
         }
         return res;
     }
+
+    @Transactional
+    public TicketResponse confirmCashReceived(Long ticketId, String staffId) {
+
+        DisputeTicket ticket = disputeTicketRepository.findById(ticketId)
+                .orElseThrow(() -> new EntityNotFoundException("Ticket không tồn tại"));
+
+        Invoice invoice = ticket.getPenaltyInvoice();
+        if (invoice == null) throw new EntityNotFoundException("Ticket không gắn invoice phạt");
+
+        if (invoice.getInvoiceStatus() == Invoice.InvoiceStatus.PAID)
+            throw new IllegalStateException("Hóa đơn đã được thanh toán rồi");
+
+        Payment payment = paymentRepository
+                .findTopByInvoiceAndPaymentMethodAndPaymentStatus(
+                        invoice, Payment.PaymentMethod.CASH, Payment.PaymentStatus.PENDING
+                )
+                .orElseThrow(() -> new IllegalStateException("Không có giao dịch CASH đang chờ xác nhận"));
+
+        payment.setPaymentStatus(Payment.PaymentStatus.SUCCESS);
+        payment.setMessage("Cash received by staff " + staffId);
+        paymentRepository.save(payment);
+
+        invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+        invoiceRepository.save(invoice);
+
+        ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
+        ticket.setResolvedAt(LocalDateTime.now());
+        ticket.setResolutionDescription("Thanh toán tiền mặt thành công bởi staff " + staffId);
+        disputeTicketRepository.save(ticket);
+
+        return convertToTicketResponse(ticket);
+    }
+
+
 }

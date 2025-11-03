@@ -78,7 +78,8 @@ public class Payment {
     public enum PaymentMethod {
         SUBSCRIPTION,
         WALLET,
-        VNPAY
+        VNPAY,
+        CASH
     }
 
     public enum PaymentStatus {
@@ -92,4 +93,22 @@ public class Payment {
         PAYMENT,
         REFUND
     }
+    public enum PaymentChannel {
+        WALLET,
+        VNPAY,
+        CASH,
+        NONE // Khi không thu tiền hoặc refund
+    }
+
+    @Column(name = "penalty_level")
+    @Enumerated(EnumType.STRING)
+    private DisputeTicket.PenaltyLevel penaltyLevel;
+
+    @Column(name = "penalty_amount")
+    private Double penaltyAmount;
+
+    @Column(name = "payment_channel")
+    @Enumerated(EnumType.STRING)
+    private PaymentChannel paymentChannel;
+
 }

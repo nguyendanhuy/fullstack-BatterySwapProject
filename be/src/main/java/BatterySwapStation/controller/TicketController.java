@@ -77,15 +77,16 @@ public class TicketController {
 
     // --- PUT: RESOLVE TICKET ---
     @PutMapping("/{ticketId}/resolve")
-    @Operation(summary = "Đánh dấu ticket là RESOLVED",
-            description = "Staff/Admin cung cấp resolutionMethod và resolutionDescription để ghi lại cách giải quyết.")
+    @Operation(summary = "Giai quey ticket",
+            description = "Staff/Admin giải quyết ticket, chọn phương thức xử lý, mức phạt, kênh thanh toán nếu có.")
     public ResponseEntity<TicketResponse> resolveDisputeTicket(
             @PathVariable Long ticketId,
             @RequestBody TicketResolveRequest request) {
 
-        TicketResponse response = ticketService.resolveTicket(ticketId, request.getResolutionMethod(), request.getResolutionDescription());
+        TicketResponse response = ticketService.resolveTicket(ticketId, request);
         return ResponseEntity.ok(response);
     }
+
 
     // --- GET: LẤY OPEN DISPUTES ---
     @GetMapping("/open")
@@ -124,4 +125,19 @@ public class TicketController {
             ));
         }
     }
+
+
+    @PutMapping("/{ticketId}/confirm-cash")
+    public ResponseEntity<?> confirmCashPayment(
+            @PathVariable Long ticketId,
+            @RequestParam String staffId
+    ) {
+        TicketResponse res = ticketService.confirmCashReceived(ticketId, staffId);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Đã xác nhận thu tiền mặt",
+                "ticket", res
+        ));
+    }
+
 }

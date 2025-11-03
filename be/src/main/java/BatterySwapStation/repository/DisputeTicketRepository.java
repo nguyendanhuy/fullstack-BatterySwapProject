@@ -2,8 +2,11 @@ package BatterySwapStation.repository;
 
 import BatterySwapStation.entity.DisputeTicket;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DisputeTicketRepository extends JpaRepository<DisputeTicket, Long> {
@@ -19,5 +22,7 @@ public interface DisputeTicketRepository extends JpaRepository<DisputeTicket, Lo
 
     // Tìm tất cả các ticket được gán cho nhân viên cụ thể theo UserId của họ
     List<DisputeTicket> findByCreatedByStaff_UserId(String staffUserId);
+
+    Optional<DisputeTicket> findByPenaltyInvoice_InvoiceId(Long invoiceId);
 
 }

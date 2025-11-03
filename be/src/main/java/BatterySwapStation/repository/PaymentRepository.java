@@ -14,4 +14,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     boolean existsByInvoiceAndPaymentStatus(Invoice invoice, Payment.PaymentStatus status);
 
     List<Payment> findAllByInvoice(Invoice invoice);
+
+    Optional<Payment> findTopByInvoiceAndPaymentMethodAndPaymentStatus(
+            Invoice invoice,
+            Payment.PaymentMethod method,
+            Payment.PaymentStatus status
+    );
+
 }

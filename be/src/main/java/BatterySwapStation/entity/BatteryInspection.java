@@ -55,9 +55,6 @@ public class BatteryInspection {
         PASS, // đạt
         IN_MAINTENANCE // đang bảo trì
     }
-    public enum DamageLevel {
-        NONE, MINOR, MEDIUM, SEVERE
-    }
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private InspectionStatus status;

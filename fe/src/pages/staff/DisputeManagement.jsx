@@ -466,13 +466,20 @@ const DisputeManagement = () => {
                                             <Label htmlFor="resolutionMethod">
                                                 Phương án giải quyết <span className="text-red-500">*</span>
                                             </Label>
-                                            <Input
-                                                id="resolutionMethod"
-                                                placeholder="VD: Thay thế pin mới, Hoàn tiền, Bảo trì..."
+                                            <Select
                                                 value={resolutionMethod}
-                                                onChange={(e) => setResolutionMethod(e.target.value)}
+                                                onValueChange={(value) => setResolutionMethod(value)}
                                                 disabled={isSubmitting}
-                                            />
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Chọn phương án giải quyết..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CHARGE_PENALTY">Phạt tiền</SelectItem>
+                                                    <SelectItem value="REFUND">Hoàn tiền</SelectItem>
+                                                    <SelectItem value="OTHER">Khác</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
 
                                         <div>

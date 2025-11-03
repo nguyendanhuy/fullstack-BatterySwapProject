@@ -280,6 +280,9 @@ export default function SubscriptionCheckout() {
                                                 Ví hệ thống
                                             </Label>
                                             <p className="text-sm text-gray-600 mt-1">Thanh toán nhanh bằng số dư ví</p>
+                                            {userData?.walletBalance.toLocaleString() && (
+                                                <p className="text-sm text-gray-600 mt-1">Số dư: <b>{userData.walletBalance.toLocaleString()}</b> VNĐ</p>
+                                            )}
                                         </div>
                                         {paymentMethod === "WALLET" && <CheckCircle className="h-6 w-6 text-green-500" />}
                                     </button>

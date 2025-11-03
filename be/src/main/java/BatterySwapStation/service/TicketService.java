@@ -337,6 +337,10 @@ public class TicketService { // ✅ Đổi tên lớp
         if (ticket.getCreatedByStaff() != null) {
             res.setCreatedByStaffName(ticket.getCreatedByStaff().getFullName());
         }
+
+        if (ticket.getPenaltyInvoice() != null)
+            res.setInvoiceId(ticket.getPenaltyInvoice().getInvoiceId());
+
         return res;
     }
 

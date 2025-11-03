@@ -471,7 +471,7 @@ public class SubscriptionService {
             throw new IllegalStateException("Không tìm thấy gói cước đang hoạt động.");
         }
 
-// lấy gói mới nhất
+        // lấy gói mới nhất
         UserSubscription activeSub = subs.get(0);
 
         // 2. Không cho hủy nếu đã hết hạn
@@ -482,26 +482,41 @@ public class SubscriptionService {
         LocalDateTime now = LocalDateTime.now();
         long totalDays = Math.max(1, Duration.between(activeSub.getStartDate(), activeSub.getEndDate()).toDays());
         long usedDays = Math.max(0, Duration.between(activeSub.getStartDate(), now).toDays());
-        long remainingDays = Math.max(0, totalDays - usedDays);
 
-        // minimal days to allow refund
-        int MIN_REFUND_DAYS = 7;
-
-        double refundAmount = 0.0;
         Double planPrice = systemPriceService.getPriceByType(activeSub.getPlan().getPriceType());
-
-        if (remainingDays >= MIN_REFUND_DAYS && planPrice != null && planPrice > 0) {
-            refundAmount = Math.round((remainingDays / (double) totalDays) * planPrice);
-            if (refundAmount < 1000) refundAmount = 0;
+        if (planPrice == null || planPrice <= 0) {
+            planPrice = 0.0;
         }
 
-        // ✅ Lấy invoice thanh toán gần nhất (wallet hoặc vnpay)
+        // ✅ Rule mới: refund theo lượt nếu huỷ trong <= 14 ngày
+        int limit = activeSub.getPlan().getSwapLimit(); // total swaps
+        int used = activeSub.getUsedSwaps();            // used swaps
+        double refundAmount = 0.0;
+        int REFUND_WINDOW_DAYS = 14;
+
+        if (usedDays <= REFUND_WINDOW_DAYS) {
+            if (limit > 0) { // only for plans with limited swaps
+                int remainingSwaps = Math.max(0, limit - used);
+                double swapFactor = remainingSwaps / (double) limit; // percent left
+
+                refundAmount = Math.round(planPrice * swapFactor);
+
+                // minimum refund threshold
+                if (refundAmount < 1000) refundAmount = 0;
+            } else {
+                // unlimited swap package -> no refund
+                refundAmount = 0;
+            }
+        } else {
+            refundAmount = 0;
+        }
+
+        // ✅ Lấy invoice thanh toán gần nhất
         List<Invoice> invoices = invoiceRepository.findLatestPaidSubscriptionInvoices(userId);
         if (invoices.isEmpty()) {
             throw new IllegalStateException("Không tìm thấy hóa đơn đã thanh toán.");
         }
 
-// lấy invoice mới nhất (row đầu tiên)
         Invoice invoice = invoices.get(0);
 
         // 3. Hủy gói
@@ -509,7 +524,7 @@ public class SubscriptionService {
         activeSub.setAutoRenew(false);
         userSubscriptionRepository.save(activeSub);
 
-        // ✅ 4. Refund ví — áp dụng cho cả VNPay lẫn Wallet
+        // ✅ 4. Refund ví
         if (refundAmount > 0) {
             User user = activeSub.getUser();
             user.setWalletBalance(user.getWalletBalance() + refundAmount);
@@ -518,7 +533,7 @@ public class SubscriptionService {
             paymentRepository.save(Payment.builder()
                     .invoice(invoice)
                     .amount(refundAmount)
-                    .paymentMethod(Payment.PaymentMethod.WALLET) // refund to wallet
+                    .paymentMethod(Payment.PaymentMethod.WALLET)
                     .paymentStatus(Payment.PaymentStatus.SUCCESS)
                     .transactionType(Payment.TransactionType.REFUND)
                     .message("Hoàn tiền hủy gói cước sớm")
@@ -529,7 +544,7 @@ public class SubscriptionService {
         // 5. Return result
         Map<String, Object> result = new HashMap<>();
         result.put("status", activeSub.getStatus().name());
-        result.put("remainingDays", remainingDays);
+        result.put("remainingDays", Math.max(0, totalDays - usedDays));
         result.put("refundAmount", refundAmount);
         result.put("cancelledAt", LocalDateTime.now());
 

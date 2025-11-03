@@ -1,17 +1,14 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.RoleDTO;
+import BatterySwapStation.dto.*;
 import BatterySwapStation.entity.StaffAssign;
 import BatterySwapStation.entity.UserSubscription;
 import BatterySwapStation.repository.*;
 import BatterySwapStation.utils.UserIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import BatterySwapStation.dto.LoginRequest;
-import BatterySwapStation.dto.AuthResponse;
 import BatterySwapStation.entity.Role;
 import BatterySwapStation.entity.User;
-import BatterySwapStation.dto.GoogleUserInfo;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -29,8 +26,6 @@ public class AuthService {
     private final SwapRepository swapRepository;
 
 
-    // 🔹 Đăng nhập thường
-    // 🔹 Đăng nhập thường
     public AuthResponse login(LoginRequest req) {
         User user = userService.findByEmail(req.getEmail());
         if (user == null) throw new RuntimeException("Email không tồn tại");
@@ -42,19 +37,20 @@ public class AuthService {
             throw new RuntimeException("Bạn chưa xác thực email. Vui lòng kiểm tra email.");
 
         Integer assignedStationId = null;
-        Long activeSubscriptionId = null;
         Double walletBalance = null;
+        Long activeSubscriptionId = null;
         String planName = null;
         Integer usedSwaps = null;
         Integer maxSwaps = null;
 
-        // Staff
+        // STAFF
         if (user.getRole().getRoleId() == 2) {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            StaffAssign assign = staffAssignRepository
+                    .findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
-        // Driver
+        // DRIVER
         if (user.getRole().getRoleId() == 1) {
             walletBalance = user.getWalletBalance();
             UserSubscription sub = userSubscriptionRepository
@@ -117,7 +113,6 @@ public class AuthService {
         return true;
     }
 
-    //  Login bằng Google
     @Transactional
     public AuthResponse handleGoogleLogin(GoogleUserInfo info) {
         User user = userRepository.findByEmail(info.getEmail());
@@ -142,25 +137,22 @@ public class AuthService {
             isNew = true;
         }
 
-        if (!user.isActive())
-            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
-        if (!user.isVerified())
-            throw new RuntimeException("Bạn chưa xác thực email Google");
+        if (!user.isActive()) throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
+        if (!user.isVerified()) throw new RuntimeException("Bạn chưa xác thực email Google");
 
         Integer assignedStationId = null;
-        Long activeSubscriptionId = null;
         Double walletBalance = null;
+        Long activeSubscriptionId = null;
         String planName = null;
         Integer usedSwaps = null;
         Integer maxSwaps = null;
 
-        // Staff
         if (user.getRole().getRoleId() == 2) {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            StaffAssign assign = staffAssignRepository
+                    .findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
-        // Driver
         if (user.getRole().getRoleId() == 1) {
             walletBalance = user.getWalletBalance();
             UserSubscription sub = userSubscriptionRepository
@@ -208,7 +200,7 @@ public class AuthService {
         );
     }
 
-    public AuthResponse getCurrentUserInfo(User user) {
+    public MeResponse getCurrentUserInfo(User user) {
 
         Integer assignedStationId = null;
         Double walletBalance = null;
@@ -218,13 +210,13 @@ public class AuthService {
         Integer maxSwaps = null;
 
         if (user.getRole().getRoleId() == 2) {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            StaffAssign assign = staffAssignRepository
+                    .findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
             if (assign != null) assignedStationId = assign.getStationId();
         }
 
         if (user.getRole().getRoleId() == 1) {
             walletBalance = user.getWalletBalance();
-
             UserSubscription sub = userSubscriptionRepository
                     .findFirstByUser_UserIdAndStatusAndEndDateAfter(
                             user.getUserId(),
@@ -240,17 +232,15 @@ public class AuthService {
             }
         }
 
-        return new AuthResponse(
-                null,
+        return new MeResponse(
                 user.getUserId(),
-                user.getEmail(),
                 user.getFullName(),
+                user.getEmail(),
                 user.getPhone(),
                 user.getRole().getRoleName(),
-                null,
                 assignedStationId,
-                activeSubscriptionId,
                 walletBalance,
+                activeSubscriptionId,
                 planName,
                 usedSwaps,
                 maxSwaps

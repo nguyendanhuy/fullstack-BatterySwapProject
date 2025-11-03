@@ -87,6 +87,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Object principal) {
+
         User user = null;
 
         if (principal instanceof User u) {
@@ -99,16 +100,10 @@ public class AuthController {
             return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
 
-        AuthResponse res = authService.getCurrentUserInfo(user);
-        res.setMessage("OK");
-        res.setToken(null); // /me không cần token
+        MeResponse response = authService.getCurrentUserInfo(user);
 
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(response);
     }
-
-
-
-
 
 
     @GetMapping("/verify-email")

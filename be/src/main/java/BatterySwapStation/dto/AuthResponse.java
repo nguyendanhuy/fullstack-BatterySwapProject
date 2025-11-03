@@ -8,20 +8,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuthResponse {
-    private String message;
+    private String message; // login có, /me set null hoặc "OK"
     private String userId;
     private String email;
     private String fullName;
     private String phone;
     private String role;
-    private String token;
+    private String token; // /me có thể null
 
     private Integer assignedStationId; // Staff
     private Long activeSubscriptionId; // Driver
-    private Double walletBalance;      // ✅ Driver mới có
-    private String planName;     // ✅ thêm
+    private Double walletBalance;      // Driver
+    private String planName;
     private Integer usedSwaps;
-    private Integer totalSwaps;
-
+    private Integer maxSwaps;
 }
-

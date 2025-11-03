@@ -208,4 +208,54 @@ public class AuthService {
                 totalSwaps
         );
     }
+
+    public AuthResponse getCurrentUserInfo(User user) {
+
+        Integer assignedStationId = null;
+        Double walletBalance = null;
+        Long activeSubscriptionId = null;
+        String planName = null;
+        Integer usedSwaps = null;
+        Integer maxSwaps = null;
+
+        if (user.getRole().getRoleId() == 2) {
+            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            if (assign != null) assignedStationId = assign.getStationId();
+        }
+
+        if (user.getRole().getRoleId() == 1) {
+            walletBalance = user.getWalletBalance();
+
+            UserSubscription sub = userSubscriptionRepository
+                    .findFirstByUser_UserIdAndStatusAndEndDateAfter(
+                            user.getUserId(),
+                            UserSubscription.SubscriptionStatus.ACTIVE,
+                            LocalDateTime.now()
+                    );
+
+            if (sub != null && sub.getPlan() != null) {
+                activeSubscriptionId = sub.getPlan().getId();
+                planName = sub.getPlan().getPlanName();
+                usedSwaps = sub.getUsedSwaps();
+                maxSwaps = sub.getPlan().getSwapLimit();
+            }
+        }
+
+        return new AuthResponse(
+                null,
+                user.getUserId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPhone(),
+                user.getRole().getRoleName(),
+                null,
+                assignedStationId,
+                activeSubscriptionId,
+                walletBalance,
+                planName,
+                usedSwaps,
+                maxSwaps
+        );
+    }
+
 }

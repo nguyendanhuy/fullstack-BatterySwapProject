@@ -87,74 +87,25 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Object principal) {
-
-        // ✅ Fallback: convert principal -> User entity
         User user = null;
 
-        // Khi principal là User (đúng với filter mới)
         if (principal instanceof User u) {
             user = u;
-        }
-        // Khi principal là UserDetails (trường hợp login cũ / Spring default)
-        else if (principal instanceof org.springframework.security.core.userdetails.User ud) {
+        } else if (principal instanceof org.springframework.security.core.userdetails.User ud) {
             user = userService.findById(ud.getUsername());
         }
 
-        // Khi chưa nhận được user
         if (user == null) {
             return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
 
-        Integer assignedStationId = null;
-        Long activeSubscriptionId = null;
-        Integer usedSwaps = null;
-        String planName = null;
+        AuthResponse res = authService.getCurrentUserInfo(user);
+        res.setMessage("OK");
+        res.setToken(null); // /me không cần token
 
-        // Nếu Staff -> trả stationId
-        if (user.getRole().getRoleId() == 2) {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
-            if (assign != null) assignedStationId = assign.getStationId();
-        }
-
-        // Nếu Driver -> trả subscription + ví
-        Double walletBalance = null;
-        if (user.getRole().getRoleId() == 1) {
-            walletBalance = user.getWalletBalance(); // ✅ lấy ví
-
-            UserSubscription sub = userSubscriptionRepository
-                    .findFirstByUser_UserIdAndStatusAndEndDateAfter(
-                            user.getUserId(),
-                            UserSubscription.SubscriptionStatus.ACTIVE,
-                            LocalDateTime.now()
-                    );
-
-            if (sub != null && sub.getPlan() != null) {
-                activeSubscriptionId = sub.getPlan().getId();
-                planName = sub.getPlan().getPlanName();
-                usedSwaps = sub.getUsedSwaps();
-            }
-        }
-
-        Map<String, Object> result = new java.util.LinkedHashMap<>();
-        result.put("userId", user.getUserId());
-        result.put("fullName", user.getFullName());
-        result.put("email", user.getEmail());
-        result.put("phone", user.getPhone());
-        result.put("role", user.getRole().getRoleName());
-
-        if (user.getRole().getRoleId() == 2) {
-            // ✅ STAFF
-            result.put("assignedStationId", assignedStationId);
-        } else if (user.getRole().getRoleId() == 1) {
-            // ✅ DRIVER — luôn trả đủ key
-            result.put("walletBalance", walletBalance);
-            result.put("activeSubscriptionId", activeSubscriptionId);
-            result.put("planName", planName);
-            result.put("usedSwaps", usedSwaps);
-        }
-
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(res);
     }
+
 
 
 

@@ -87,6 +87,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Object principal) {
+
         User user = null;
 
         if (principal instanceof User u) {
@@ -99,16 +100,10 @@ public class AuthController {
             return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
 
-        AuthResponse res = authService.getCurrentUserInfo(user);
-        res.setMessage("OK");
-        res.setToken(null); // /me không cần token
+        Map<String, Object> response = authService.getCurrentUserInfo(user);
+        return ResponseEntity.ok(response);
 
-        return ResponseEntity.ok(res);
     }
-
-
-
-
 
 
     @GetMapping("/verify-email")
@@ -184,7 +179,7 @@ public class AuthController {
     public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
         try {
             GoogleUserInfo info = googleService.verifyAndExtract(request.getToken());
-            AuthResponse result = authService.handleGoogleLogin(info);
+            Map<String, Object> result = authService.handleGoogleLogin(info);
 
             // trả thẳng result ra, KHÔNG bọc data
             return ResponseEntity.ok(result);

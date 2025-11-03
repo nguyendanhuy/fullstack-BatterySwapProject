@@ -100,15 +100,6 @@ const SignUp = () => {
       });
       return;
     }
-    if (!formData.agreeTerms) {
-      toast({
-        title: "Lỗi",
-        description: "Bạn phải đồng ý với điều khoản sử dụng",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     try {
       const res = await registerAPI(
@@ -119,7 +110,6 @@ const SignUp = () => {
         formData.password,
         formData.confirmPassword);
 
-      console.log("Register response:", res);
       const pickApiMessage =
         res?.messages?.auth ||
         res?.messages?.business ||
@@ -173,7 +163,6 @@ const SignUp = () => {
         });
       }
     } catch (error) {
-      console.error("Register error:", error);
       toast({
         title: "Đăng ký thất bại!",
         description: "Có lỗi xảy ra, vui lòng thử lại",

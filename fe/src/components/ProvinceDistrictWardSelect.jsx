@@ -13,6 +13,7 @@ export default function ProvinceDistrictWardSelect({ value = {}, setFilterAddres
     const [lp, setLp] = useState(false), // loading tinh
         [ld, setLd] = useState(false), //loading huyen
         [lw, setLw] = useState(false);// loading xa
+
     //dùng để cập nhật state & thông báo ra ngoài thong qua onChange.
     const emit = (patch) => {
         const next = { ...v, ...patch };
@@ -27,8 +28,11 @@ export default function ProvinceDistrictWardSelect({ value = {}, setFilterAddres
                 setLp(true);
                 const data = await fetch(`${API}/p/`).then(r => r.json());
                 setPList(data.map(p => ({ label: p.name, value: p.code })));
-            } catch (e) { message.error("Không tải được tỉnh"); } finally { setLp(false); }
-        })();
+            } catch (e) {
+                message.error("Không tải được tỉnh");
+            } finally { setLp(false); }
+        })
+            ();
     }, []);
     // Load danh sách huyện khi tỉnh thay đổi
     useEffect(() => {

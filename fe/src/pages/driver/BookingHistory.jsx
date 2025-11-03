@@ -805,8 +805,6 @@ const BookingHistory = () => {
                         </div>
                       )}
                     </Drawer>
-
-
                   </div>
                 )}
               </Spin>

@@ -232,7 +232,7 @@ export default function StationFinder() {
       setFilters(f => ({ ...f, batteryType: first.batteryType }));
       setVehicleSelectValue(`0_${first.batteryType}`);
     }
-  }, [uniqueVehicleTypes]); // eslint-disable-line
+  }, [uniqueVehicleTypes]);
 
   // --- Lấy vị trí người dùng, reverse geocode để hiển thị địa chỉ ---
   const autoLocation = () => {

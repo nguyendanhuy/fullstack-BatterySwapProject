@@ -40,8 +40,14 @@ const DisputeManagement = () => {
 
     // Resolution form states
     const [resolutionMethod, setResolutionMethod] = useState("");
+    const [penaltyLevel, setPenaltyLevel] = useState("");
+    const [paymentMethod, setPaymentMethod] = useState("");
     const [resolutionDescription, setResolutionDescription] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Helpers
+    const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
+    const isErrorResponse = (res) => res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
 
     // Fetch tickets function (extracted to reuse)
     const fetchTickets = async () => {
@@ -59,12 +65,12 @@ const DisputeManagement = () => {
         try {
             const res = await getTicketByStationId(userData.assignedStationId);
             console.log("✅Fetched tickets:", res);
-            if (res?.success && res?.tickets) {
+            if (!isErrorResponse(res)) {
                 setTickets(res.tickets);
             } else {
                 toast({
                     title: "Lỗi",
-                    description: res?.message || "Không thể tải danh sách ticket",
+                    description: pickApiMessage(res) || "Không thể tải danh sách ticket",
                     variant: "destructive",
                 });
             }
@@ -138,6 +144,8 @@ const DisputeManagement = () => {
         setSelectedTicket(ticket);
         // Load existing resolution data if available
         setResolutionMethod(ticket.resolutionMethod || "");
+        setPenaltyLevel(ticket.penaltyLevel || "");
+        setPaymentMethod(ticket.paymentChannel || "");
         setResolutionDescription(ticket.resolutionDescription || "");
         setIsDetailOpen(true);
     };
@@ -163,18 +171,38 @@ const DisputeManagement = () => {
             return;
         }
 
+        if (!penaltyLevel.trim()) {
+            toast({
+                title: "Lỗi",
+                description: "Vui lòng chọn mức phạt",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (!paymentMethod.trim()) {
+            toast({
+                title: "Lỗi",
+                description: "Vui lòng chọn phương thức thanh toán",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await updateTicketSolution(selectedTicket.id, {
                 resolutionMethod: resolutionMethod.trim(),
+                penaltyLevel: penaltyLevel.trim(),
+                paymentChannel: paymentMethod.trim(),
                 resolutionDescription: resolutionDescription.trim()
             });
             console.log("✅Update ticket solution response:", res);
 
-            if (res?.success || !res?.error) {
+            if (!isErrorResponse(res)) {
                 toast({
                     title: "Thành công",
-                    description: res.message || "Đã giải quyết ticket thành công",
+                    description: res?.message || res?.resolutionDescription || "Đã giải quyết ticket thành công",
                     className: "bg-green-500 text-white",
                     duration: 3000,
                 });
@@ -187,7 +215,7 @@ const DisputeManagement = () => {
             } else {
                 toast({
                     title: "Thất bại",
-                    description: res?.message || "Không thể giải quyết ticket",
+                    description: pickApiMessage(res) || "Không thể giải quyết ticket",
                     variant: "destructive",
                 });
             }
@@ -472,12 +500,54 @@ const DisputeManagement = () => {
                                                 disabled={isSubmitting}
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Chọn phương án giải quyết..." />
+                                                    <SelectValue placeholder="Chọn phương pháp giải quyết..." />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="CHARGE_PENALTY">Phạt tiền</SelectItem>
+                                                    <SelectItem value="PENALTY">Thu phí phạt</SelectItem>
                                                     <SelectItem value="REFUND">Hoàn tiền</SelectItem>
+                                                    <SelectItem value="NO_ACTION">Không xử lý</SelectItem>
                                                     <SelectItem value="OTHER">Khác</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="penaltyLevel">
+                                                Mức phạt <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Select
+                                                value={penaltyLevel}
+                                                onValueChange={(value) => setPenaltyLevel(value)}
+                                                disabled={isSubmitting}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Chọn mức phạt..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="NONE">Không phạt</SelectItem>
+                                                    <SelectItem value="MINOR">Mức phạt nhẹ</SelectItem>
+                                                    <SelectItem value="MEDIUM">Mức phạt vừa</SelectItem>
+                                                    <SelectItem value="SEVERE">Mức phạt nặng</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="paymentMethod">
+                                                Thanh toán (nếu có) <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Select
+                                                value={paymentMethod}
+                                                onValueChange={(value) => setPaymentMethod(value)}
+                                                disabled={isSubmitting}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Chọn phương pháp thanh toán..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="WALLET">Ví hệ thống của khách hàng</SelectItem>
+                                                    <SelectItem value="VNPAY">Ví điện tử VNPAY</SelectItem>
+                                                    <SelectItem value="CASH">Tiền mặt</SelectItem>
+                                                    <SelectItem value="NONE">Không thanh toán</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>

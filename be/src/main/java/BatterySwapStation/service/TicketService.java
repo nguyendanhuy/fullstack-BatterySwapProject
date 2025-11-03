@@ -241,8 +241,12 @@ public class TicketService { // ✅ Đổi tên lớp
 
                     ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
                     ticket.setResolvedAt(LocalDateTime.now());
+                    ticket.setResolutionMethod(DisputeTicket.ResolutionMethod.PENALTY.name());
+                    ticket.setPenaltyLevel(req.getPenaltyLevel());
                     ticket.setResolutionDescription("Thanh toán ví thành công");
+                    disputeTicketRepository.save(ticket);
                 }
+
 
                 case VNPAY -> {
                     // FE lấy invoiceId để redirect

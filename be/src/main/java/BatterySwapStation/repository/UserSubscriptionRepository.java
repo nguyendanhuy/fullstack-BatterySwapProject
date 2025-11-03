@@ -62,4 +62,16 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
             @Param("checkDate") LocalDateTime checkDate
     );
 
+    /**
+     * Tìm gói cước ACTIVE của user (hiện tại)
+     * Wrapper đơn giản cho findActiveSubscriptionForUser
+     */
+    default Optional<UserSubscription> findActiveSubscription(String userId) {
+        return findActiveSubscriptionForUser(
+            userId,
+            UserSubscription.SubscriptionStatus.ACTIVE,
+            LocalDateTime.now()
+        );
+    }
+
 }

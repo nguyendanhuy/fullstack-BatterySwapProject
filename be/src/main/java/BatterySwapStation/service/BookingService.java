@@ -394,7 +394,7 @@ public class BookingService {
         // Đặt mặc định
         result.put("isFreeSwap", false);
         result.put("subscriptionPlanName", null);
-        result.put("remainingSwaps", null);
+        result.put("usedSwaps", null);
         result.put("totalSwapLimit", null);
 
         // Kiểm tra và thêm thông tin gói cước
@@ -415,11 +415,10 @@ public class BookingService {
                 SubscriptionPlan plan = sub.getPlan();
 
                 int limit = (plan.getSwapLimit() == null || plan.getSwapLimit() < 0) ? -1 : plan.getSwapLimit();
-                int remaining = limit == -1 ? -1 : (limit - sub.getUsedSwaps());
 
                 result.put("isFreeSwap", true); // Ghi đè (true)
                 result.put("subscriptionPlanName", plan.getPlanName());
-                result.put("remainingSwaps", remaining);
+                result.put("usedSwaps", sub.getUsedSwaps()); // Hiển thị số lượt đã dùng
                 result.put("totalSwapLimit", limit);
             }
         }
@@ -454,7 +453,7 @@ public class BookingService {
         LocalDateTime minimumCancelTime = scheduledDateTime.minusHours(1);
         if (currentDateTime.isAfter(minimumCancelTime)) {
             throw new IllegalStateException(String.format(
-                    "Không thể hủy booking. Chỉ có thể hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
+                    "Không thể hủy booking. Chỉ hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
                     booking.getBookingDate(), booking.getTimeSlot(), minimumCancelTime));
         }
 
@@ -463,11 +462,10 @@ public class BookingService {
         booking.setCancellationReason(request.getCancelReason());
         Booking savedBooking = bookingRepository.save(booking);
 
-        // ✅ Tự động hoàn tiền về ví nếu booking có hóa đơn và payment thành công
+        // ✅ Tự động hoàn tiền về ví nếu có payment
         Invoice invoice = booking.getInvoice();
         if (invoice != null && invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
 
-            // Lấy payment thành công gần nhất
             Payment successfulPayment = invoice.getPayments().stream()
                     .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS)
                     .max(Comparator.comparing(Payment::getCreatedAt))
@@ -490,9 +488,18 @@ public class BookingService {
 
                 paymentRepository.save(refund);
 
-                // ✅ Cộng tiền ví người dùng
-                user.setWalletBalance(user.getWalletBalance() + refundAmount);
-                userRepository.save(user);
+                // ✅ Cộng tiền ví với xử lý lỗi giới hạn ví
+                try {
+                    user.setWalletBalance(user.getWalletBalance() + refundAmount);
+                    userRepository.save(user);
+                } catch (Exception ex) {
+                    if (ex.getMessage() != null && ex.getMessage().contains("chk_wallet_balance_limit")) {
+                        throw new IllegalStateException(
+                                "Ví đã đạt giới hạn, không thể hoàn tiền. Vui lòng xài bớt tiền"
+                        );
+                    }
+                    throw ex;
+                }
             }
         }
 
@@ -507,6 +514,7 @@ public class BookingService {
 
         return response;
     }
+
 
 
     /**
@@ -1181,21 +1189,21 @@ public class BookingService {
             response.setInvoiceId(String.valueOf(booking.getInvoice().getInvoiceId()));
         }
 
-        // ✅ THÔNG TIN GÓI CƯỚC (sử dụng subscription đã truyền vào)
+       // ✅ THÔNG TIN GÓI CƯỚC (sử dụng subscription đã truyền vào)
         if (subscription != null) {
             SubscriptionPlan plan = subscription.getPlan();
 
             int limit = (plan.getSwapLimit() == null || plan.getSwapLimit() < 0) ? -1 : plan.getSwapLimit();
-            int remaining = limit == -1 ? -1 : limit - subscription.getUsedSwaps();
+            int usedSwaps = subscription.getUsedSwaps(); // ✅ Lấy số lượt đã dùng
 
             response.setIsFreeSwap(true);
             response.setSubscriptionPlanName(plan.getPlanName());
-            response.setRemainingSwaps(remaining);
+            response.setUsedSwaps(usedSwaps); // ✅ Set số lượt đã dùng
             response.setTotalSwapLimit(limit);
         } else {
             response.setIsFreeSwap(false);
             response.setSubscriptionPlanName(null);
-            response.setRemainingSwaps(null);
+            response.setUsedSwaps(null); // ✅ Đổi tên
             response.setTotalSwapLimit(null);
         }
 
@@ -1376,6 +1384,18 @@ public class BookingService {
             if (paymentMethodRequest == null || paymentMethodRequest.isBlank()) {
                 throw new IllegalArgumentException("Batch này có tính phí. Phương thức thanh toán là bắt buộc (WALLET hoặc VNPAY).");
             }
+
+            // 🛡️ KIỂM TRA NẾU USER CHỌN SUBSCRIPTION NHƯNG HẾT LƯỢT
+            if (paymentMethodRequest.equalsIgnoreCase("SUBSCRIPTION")) {
+                if (!hasActivePlan) {
+                    throw new IllegalStateException("Bạn không có gói đăng ký nào đang hoạt động. Vui lòng chọn phương thức thanh toán khác (WALLET hoặc VNPAY).");
+                }
+                throw new IllegalStateException(String.format(
+                    "Bạn đã hết lượt đổi pin trong gói đăng ký (đã dùng: %d/%d). Vui lòng thanh toán bằng WALLET hoặc VNPAY.",
+                    currentUsedSwaps, currentSwapLimit
+                ));
+            }
+
             if (paymentMethodRequest.equalsIgnoreCase("WALLET")) {
                 Double userWallet = user.getWalletBalance();
                 if (userWallet < totalCost) {

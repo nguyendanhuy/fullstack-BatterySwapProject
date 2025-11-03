@@ -80,6 +80,32 @@ public class DisputeTicket {
     @Column(name = "resolutiondescription", length = 1000)
     private String resolutionDescription;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "penaltylevel", length = 20)
+    private PenaltyLevel penaltyLevel; // NEW: cấp độ phạt
+
+
+    public enum ResolutionMethod {
+        PENALTY,   // Thu phí phạt
+        REFUND,    // Hoàn tiền khách
+        NO_ACTION, // Không xử lý (false alarm)
+        OTHER
+    }
+
+
+    public enum PenaltyLevel {
+        NONE,      // (refund nếu bên mình sai)
+        MINOR,     // mức phạt nhẹ
+        MEDIUM,    // mức phạt vừa
+        SEVERE     // mức phạt nặng
+    }
+    // ✅ Liên kết tới hóa đơn phạt
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoiceid")
+    @JsonIgnore
+    private Invoice penaltyInvoice;
+
+
     // Liên kết Nhiều-1: Nhiều DisputeTicket có thể thuộc về 1 Station
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "StationId") // Tên cột khóa ngoại trong DB

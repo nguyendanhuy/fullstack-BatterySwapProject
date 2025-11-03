@@ -220,4 +220,31 @@ public class SubscriptionController {
             ));
         }
     }
+
+    @PostMapping("/cancel-immediately")
+    @Operation(summary = "Hủy gói cước ngay lập tức có hoàn tiền",
+            description = "Hủy gói ngay, chuyển status thành CANCELLED và hoàn tiền theo lượt còn lại.")
+    public ResponseEntity<Map<String, Object>> cancelSubscriptionImmediately(
+            @RequestBody CancelRequest request
+    ) {
+        try {
+            String userId = request.getUserId();
+
+            Map<String, Object> result = subscriptionService.cancelSubscriptionImmediately(userId);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Gói cước đã bị hủy ngay lập tức.",
+                    "refundAmount", result.get("refundAmount"),
+                    "remainingSwaps", result.get("remainingSwaps"),
+                    "status", result.get("status")
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
+    }
 }

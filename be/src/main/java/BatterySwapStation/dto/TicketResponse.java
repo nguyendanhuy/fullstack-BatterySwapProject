@@ -3,6 +3,7 @@ package BatterySwapStation.dto;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+
 @Data
 public class TicketResponse {
     private Long id;
@@ -16,4 +17,7 @@ public class TicketResponse {
     private LocalDateTime createdAt;
     private String createdByStaffName;
     private String reason;
+
+    // ➕ Add cho trường hợp phạt cần thanh toán
+    private Long invoiceId;
 }

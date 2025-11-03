@@ -1,23 +1,19 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.RoleDTO;
+import BatterySwapStation.dto.*;
 import BatterySwapStation.entity.StaffAssign;
 import BatterySwapStation.entity.UserSubscription;
-import BatterySwapStation.repository.StaffAssignRepository;
-import BatterySwapStation.repository.UserSubscriptionRepository;
+import BatterySwapStation.repository.*;
 import BatterySwapStation.utils.UserIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import BatterySwapStation.dto.LoginRequest;
-import BatterySwapStation.dto.AuthResponse;
 import BatterySwapStation.entity.Role;
 import BatterySwapStation.entity.User;
-import BatterySwapStation.repository.RoleRepository;
-import BatterySwapStation.repository.UserRepository;
-import BatterySwapStation.dto.GoogleUserInfo;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,64 +25,29 @@ public class AuthService {
     private final JwtService jwtService;
     private final StaffAssignRepository staffAssignRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
+    private final SwapRepository swapRepository;
 
-    // 🔹 Đăng nhập thường
-    public AuthResponse login(LoginRequest req) {
+
+    public Map<String, Object> login(LoginRequest req) {
         User user = userService.findByEmail(req.getEmail());
         if (user == null) throw new RuntimeException("Email không tồn tại");
         if (!userService.checkPassword(req.getPassword(), user.getPassword()))
             throw new RuntimeException("Mật khẩu không đúng");
-        if (!user.isActive())
-            throw new RuntimeException("Ban đã bị ban khỏi server. Vui lòng liên hệ quản trị viên");
-        if (!user.isVerified())
-            throw new RuntimeException("Bạn chưa xác thực email");
+        if (!user.isActive()) throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
+        if (!user.isVerified()) throw new RuntimeException("Bạn chưa xác thực email");
 
-        Integer assignedStationId = null;
-        Long activeSubscriptionId = null;
-
-        // 🔹 Nếu là Staff
-        if (user.getRole().getRoleId() == 2) {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
-            if (assign != null) assignedStationId = assign.getStationId();
-        }
-
-        // 🔹 Nếu là Driver
-        if (user.getRole().getRoleId() == 1) {
-            UserSubscription sub = userSubscriptionRepository
-                    .findFirstByUser_UserIdAndStatusAndEndDateAfter(
-                            user.getUserId(),
-                            UserSubscription.SubscriptionStatus.ACTIVE,
-                            LocalDateTime.now()
-                    );
-            if (sub != null && sub.getPlan() != null) {
-                activeSubscriptionId = sub.getPlan().getId();
-            }
-        }
-
-        // Token mới gắn thêm stationId / subscriptionId
         String token = jwtService.generateToken(
                 user.getUserId(),
                 user.getEmail(),
                 user.getPhone(),
                 user.getRole().getRoleName(),
-                assignedStationId,
-                activeSubscriptionId
+                null,
+                null
         );
 
-        return new AuthResponse(
-                "Đăng nhập thành công",
-                user.getUserId(),
-                user.getEmail(),
-                user.getFullName(),
-                user.getPhone(),
-                user.getRole().getRoleName(),
-                token,
-                assignedStationId,
-                activeSubscriptionId,
-                user.getRole().getRoleId() == 1 ? user.getWalletBalance() : null // ✅ chỉ driver
-        );
-
+        return buildUserResponse(user, token, "Đăng nhập thành công");
     }
+
 
     // Cập nhật role cho user
     public boolean updateUserRole(String userId, RoleDTO roleDTO) {
@@ -107,18 +68,13 @@ public class AuthService {
         return true;
     }
 
-    //  Login bằng Google
     @Transactional
-    public AuthResponse handleGoogleLogin(GoogleUserInfo info) {
+    public Map<String, Object> handleGoogleLogin(GoogleUserInfo info) {
         User user = userRepository.findByEmail(info.getEmail());
         boolean isNew = false;
 
         if (user == null) {
             Role defaultRole = roleRepository.findByRoleName("DRIVER");
-            if (defaultRole == null) {
-                throw new IllegalStateException("Role DRIVER chưa tồn tại trong hệ thống");
-            }
-
             user = new User();
             user.setUserId(userIdGenerator.generateUserId(defaultRole));
             user.setFullName(info.getName());
@@ -129,63 +85,73 @@ public class AuthService {
             user.setActive(true);
             user.setVerified(info.isEmailVerified());
             user.setRole(defaultRole);
-
             userRepository.save(user);
             isNew = true;
         }
 
-        if (!user.isActive())
-            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
-        if (!user.isVerified())
-            throw new RuntimeException("Bạn chưa xác thực email Google");
+        if (!user.isActive()) throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
+        if (!user.isVerified()) throw new RuntimeException("Bạn chưa xác thực email Google");
 
-        Integer assignedStationId = null;
-        Long activeSubscriptionId = null;
+        String token = jwtService.generateToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getRole().getRoleName(),
+                null,
+                null
+        );
 
-        // Nếu là Staff (trường hợp Google Staff)
+        String msg = isNew
+                ? "Đăng ký Google thành công. Vui lòng cập nhật SĐT & địa chỉ"
+                : "Đăng nhập thành công";
+
+        return buildUserResponse(user, token, msg);
+    }
+
+
+    public Map<String, Object> getCurrentUserInfo(User user) {
+        return buildUserResponse(user, null, "OK");
+    }
+
+    private Map<String, Object> buildUserResponse(User user, String token, String message) {
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("message", message);
+        res.put("userId", user.getUserId());
+        res.put("email", user.getEmail());
+        res.put("fullName", user.getFullName());
+        res.put("phone", user.getPhone());
+        res.put("role", user.getRole().getRoleName());
+        if (token != null) res.put("token", token);
+
+        // STAFF
         if (user.getRole().getRoleId() == 2) {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
-            if (assign != null) assignedStationId = assign.getStationId();
+            StaffAssign assign = staffAssignRepository
+                    .findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
+            Integer assignedStationId = assign != null ? assign.getStationId() : null;
+
+            res.put("assignedStationId", assignedStationId);
         }
 
-        // Nếu là Driver
+        // DRIVER
         if (user.getRole().getRoleId() == 1) {
+            res.put("walletBalance", user.getWalletBalance());
+
             UserSubscription sub = userSubscriptionRepository
                     .findFirstByUser_UserIdAndStatusAndEndDateAfter(
                             user.getUserId(),
                             UserSubscription.SubscriptionStatus.ACTIVE,
                             LocalDateTime.now()
                     );
-            if (sub != null && sub.getPlan() != null) {
-                activeSubscriptionId = sub.getPlan().getId();
-            }
+
+            res.put("activeSubscriptionId", sub != null ? sub.getPlan().getId() : null);
+            res.put("planName", sub != null ? sub.getPlan().getPlanName() : null);
+            res.put("usedSwaps", sub != null ? sub.getUsedSwaps() : 0);
+            res.put("maxSwaps", sub != null ? sub.getPlan().getSwapLimit() : 0);
         }
 
-        // Token mới gắn thêm stationId / subscriptionId
-        String token = jwtService.generateToken(
-                user.getUserId(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getRole().getRoleName(),
-                assignedStationId,
-                activeSubscriptionId
-        );
-
-        String message = isNew
-                ? "Đăng ký mới thành công, vui lòng bổ sung SĐT và địa chỉ sau nhé"
-                : "Đăng nhập thành công";
-
-        return new AuthResponse(
-                message,
-                user.getUserId(),
-                user.getEmail(),
-                user.getFullName(),
-                user.getPhone(),
-                user.getRole().getRoleName(),
-                token,
-                assignedStationId,
-                activeSubscriptionId,
-                user.getRole().getRoleId() == 1 ? user.getWalletBalance() : null
-        );
+        return res;
     }
+
+
 }

@@ -97,5 +97,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             @Param("end") LocalDate end
     );
 
+    // Lấy hóa đơn phạt mới nhất của user theo thời gian tạo
+    Optional<Invoice> findTopByUserIdAndInvoiceTypeOrderByCreatedDateDesc(
+            String userId,
+            Invoice.InvoiceType invoiceType
+    );
 
 }

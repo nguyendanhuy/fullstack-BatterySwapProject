@@ -3,24 +3,32 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Battery, Check, Crown, Star, Zap, Shield, TrendingUp } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { getAllPlans, getDriverSubscription } from "../../services/axios.services";
-import { toast } from "sonner";
+import {
+  getAllPlans, getDriverSubscription, getBookingHistoryByUserId, cancelAutoRenewSubscription, cancelSubscriptionImmediate
+} from "../../services/axios.services";
+import { useToast } from "@/hooks/use-toast";
+
+
 import { useEffect, useState, useContext } from "react";
 import { SystemContext } from "../../contexts/system.context";
+import dayjs from "dayjs";
 
 const Subscriptions = () => {
   const { userData } = useContext(SystemContext);
   const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [currentSubscription, setCurrentSubscription] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); //loading đợi danh sách gói
+  const [usageHistory, setUsageHistory] = useState([]);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch plans
         const plansResponse = await getAllPlans();
-        console.log("Plans response:", plansResponse);
+        console.log("✅Plans response:", plansResponse);
 
         if (plansResponse && plansResponse.success && plansResponse.plans) {
           // Map API data to UI format
@@ -60,7 +68,7 @@ const Subscriptions = () => {
               id: plan.planId,
               name: plan.planName === "BASIC" ? "Gói Cơ bản"
                 : plan.planName === "PREMIUM" ? "Gói Premium"
-                  : "Gói Không giới hạn",
+                  : "Gói doanh nghiệp",
               price: plan.price.toLocaleString('vi-VN'),
               period: "tháng",
               description: plan.description,
@@ -80,17 +88,33 @@ const Subscriptions = () => {
         // Fetch current subscription
         if (userData && userData.userId) {
           const subscriptionResponse = await getDriverSubscription(userData.userId);
-          console.log("Subscription response:", subscriptionResponse);
+          console.log("✅Subscription response:", subscriptionResponse);
 
           if (subscriptionResponse && subscriptionResponse.success && subscriptionResponse.subscription) {
             setCurrentSubscription(subscriptionResponse.subscription);
+          }
+
+          // Fetch booking history and filter by SUBSCRIPTION payment method
+          const bookingHistory = await getBookingHistoryByUserId(userData.userId);
+          console.log("✅Booking history response:", bookingHistory);
+          const bookingHistoryData = bookingHistory.data || [];
+          if (bookingHistoryData && Array.isArray(bookingHistoryData)) {
+            // Filter bookings with SUBSCRIPTION payment method and sort by date
+            const subscriptionBookings = bookingHistoryData
+              .filter(booking => booking.payment?.paymentMethod === "SUBSCRIPTION")
+              .sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate))
+            setUsageHistory(subscriptionBookings);
           }
         }
 
         setLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
-        toast.error("Không thể tải dữ liệu");
+        toast({
+          title: 'Lỗi tải dữ liệu',
+          description: 'Không thể tải dữ liệu gói thuê pin',
+          variant: 'destructive',
+        });
         setLoading(false);
       }
     };
@@ -108,6 +132,49 @@ const Subscriptions = () => {
       </div>
     );
   }
+
+  const handleCancelAutoRenew = async () => {
+    if (currentSubscription) {
+      const response = await cancelAutoRenewSubscription(userData.userId);
+      console.log("✅Cancel auto-renew response:", response);
+      if (response && response.success) {
+        toast({
+          title: 'Hủy gia hạn tự động thành công!',
+          description: response?.message || 'Gói thuê pin của bạn sẽ không tự động gia hạn',
+          className: 'bg-green-500 text-white',
+        });
+        setCurrentSubscription(prev => ({ ...prev, autoRenew: false }));
+        // setLoading(true);
+      } else {
+        toast({
+          title: 'Hủy gia hạn thất bại',
+          description: response?.error || 'Không thể hủy gia hạn tự động. Vui lòng thử lại',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const handleCancelSubscriptionImmediate = async () => {
+    if (currentSubscription) {
+      const response = await cancelSubscriptionImmediate(userData.userId);
+      console.log("✅Cancel subscription immediate response:", response);
+      if (response && response.success) {
+        toast({
+          title: 'Hủy gói thuê pin thành công!',
+          description: response?.message || 'Gói thuê pin của bạn đã được hủy',
+          className: 'bg-green-500 text-white',
+        });
+        setCurrentSubscription(null);
+      } else {
+        toast({
+          title: 'Hủy gói thất bại',
+          description: 'Không thể hủy gói thuê pin. Vui lòng thử lại',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -138,7 +205,7 @@ const Subscriptions = () => {
                       : currentSubscription.plan.planName === "PREMIUM" ? "Premium"
                         : "Không giới hạn"}
                   </h3>
-                  <p className="text-gray-600">Đang hoạt động</p>
+                  <p className="text-gray-600">{currentSubscription.autoRenew ? "Đang bật gia hạn tự động" : "Đã tắt tự động gia hạn"}</p>
                   {currentSubscription.plan.planName === "PREMIUM" && (
                     <Badge className="mt-2 bg-green-100 text-green-800">Gói phổ biến</Badge>
                   )}
@@ -167,8 +234,8 @@ const Subscriptions = () => {
                     {new Date(currentSubscription.endDate).toLocaleDateString('vi-VN')}
                   </h3>
                   <p className="text-gray-600">Ngày hết hạn</p>
-                  <Button variant="outline" className="mt-2 text-sm" onClick={() => toast.info("Chức năng gia hạn chưa khả dụng")}>Gia hạn</Button>{' '}
-                  <Button variant="outline" className="mt-2 text-sm" onClick={() => toast.info("Chức năng hủy gia hạn chưa khả dụng")}>Hủy gia hạn</Button>
+                  <Button variant="outline" className="mt-2 text-sm" onClick={handleCancelAutoRenew}>Hủy gia hạn</Button>{' '}
+                  <Button variant="outline" className="mt-2 text-sm" onClick={handleCancelSubscriptionImmediate}>Hủy gói</Button>
 
                 </div>
               </div>
@@ -271,31 +338,74 @@ const Subscriptions = () => {
               <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl mr-4">
                 <Battery className="h-6 w-6 text-white" />
               </div>
-              Lịch sử sử dụng gần đây (FE đang hard code)
+              Lịch sử sử dụng gần đây
             </CardTitle>
             <CardDescription className="text-gray-600">Theo dõi việc sử dụng dịch vụ đổi pin của bạn</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { station: "Trạm Quận 1", date: "12/12/2024 - 14:30", status: "Đã sử dụng", color: "green" },
-                { station: "Trạm Quận 3", date: "10/12/2024 - 09:15", status: "Đã sử dụng", color: "green" },
-                { station: "Trạm Bình Thạnh", date: "08/12/2024 - 16:45", status: "Đã sử dụng", color: "green" }
-              ].map((usage, index) => (<div key={index} className="flex justify-between items-center p-6 bg-gray-50 rounded-3xl hover:bg-gray-100 transition-colors group">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl group-hover:scale-110 transition-transform duration-300">
-                    <Zap className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-800">{usage.station}</p>
-                    <p className="text-sm text-gray-600">{usage.date}</p>
-                  </div>
+              {usageHistory.length > 0 ? (
+                usageHistory.map((booking) => {
+                  const getStatusInfo = (status) => {
+                    switch (status) {
+                      case "COMPLETED":
+                        return { label: "Đã hoàn thành", color: "green" };
+                      case "CANCELLED":
+                        return { label: "Đã hủy", color: "red" };
+                      case "FAILED":
+                        return { label: "Thất bại", color: "gray" };
+                      default:
+                        return { label: "Đang xử lý", color: "blue" };
+                    }
+                  };
+
+                  const statusInfo = getStatusInfo(booking.bookingStatus);
+
+                  return (
+                    <div key={booking.bookingId} className="flex justify-between items-center p-6 bg-gray-50 rounded-3xl hover:bg-gray-100 transition-colors group">
+                      <div className="flex items-center space-x-4">
+                        <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl group-hover:scale-110 transition-transform duration-300">
+                          <Zap className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800">{booking.stationName}</p>
+                          <p className="text-sm text-gray-600">
+                            {dayjs(booking.bookingDate).format("DD/MM/YYYY")} - {booking.timeSlot}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {booking.vehicleType} ({booking.batteryCount} pin)
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge
+                          variant="secondary"
+                          className={
+                            statusInfo.color === "green"
+                              ? "bg-green-100 text-green-800"
+                              : statusInfo.color === "red"
+                                ? "bg-red-100 text-red-800"
+                                : statusInfo.color === "blue"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-800"
+                          }
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          {statusInfo.label}
+                        </Badge>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Gói: {booking.subscriptionPlanName}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Battery className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>Chưa có lịch sử sử dụng gói thuê bao</p>
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  <Check className="h-4 w-4 mr-1" />
-                  {usage.status}
-                </Badge>
-              </div>))}
+              )}
             </div>
           </CardContent>
         </Card>

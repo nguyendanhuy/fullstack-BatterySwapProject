@@ -1,12 +1,14 @@
 package BatterySwapStation.service;
 
 import BatterySwapStation.config.VnPayProperties;
+import BatterySwapStation.dto.TicketRealtimeEvent;
 import BatterySwapStation.dto.VnPayCreatePaymentRequest;
 import BatterySwapStation.dto.WalletTopupRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
 import BatterySwapStation.entity.Invoice.InvoiceType;
 import BatterySwapStation.entity.Payment.PaymentMethod;
+import BatterySwapStation.websocket.TicketSocketController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import BatterySwapStation.utils.VnPayUtils;
@@ -39,6 +41,8 @@ public class PaymentService {
     private final SystemPriceRepository systemPriceRepository;
     private final UserRepository userRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final DisputeTicketRepository disputeTicketRepository;
+    private final TicketSocketController ticketSocketController;
 
     /**
      * 1️⃣ Tạo URL thanh toán (FE gọi)
@@ -158,7 +162,7 @@ public class PaymentService {
             String transStatus = fields.get("vnp_TransactionStatus");
             boolean success = "00".equals(respCode) && "00".equals(transStatus);
 
-            // 🔹 Cập nhật trạng thái Payment
+            // ✅ Update Payment
             payment.setChecksumOk(true);
             payment.setVnpResponseCode(respCode);
             payment.setVnpTransactionStatus(transStatus);
@@ -169,7 +173,7 @@ public class PaymentService {
             payment.setPaymentStatus(success ? Payment.PaymentStatus.SUCCESS : Payment.PaymentStatus.FAILED);
             paymentRepository.save(payment);
 
-            // 🔹 Cập nhật Invoice và logic phân nhánh
+            // ✅ Update Invoice
             Invoice invoice = payment.getInvoice();
             if (invoice != null) {
                 if (success) {
@@ -178,43 +182,62 @@ public class PaymentService {
 
                     if (invoice.getPlanToActivate() != null) {
                         subscriptionService.activateSubscription(invoice);
-                    } else if (invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
+                    }
+                    else if (invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
                         for (Booking booking : invoice.getBookings()) {
                             booking.setBookingStatus(Booking.BookingStatus.PENDINGSWAPPING);
                             bookingRepository.save(booking);
                         }
-                    } else if (invoice.getInvoiceType() == Invoice.InvoiceType.WALLET_TOPUP) {
+                    }
+                    else if (invoice.getInvoiceType() == Invoice.InvoiceType.WALLET_TOPUP) {
                         User u = userRepository.findById(invoice.getUserId())
                                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user: " + invoice.getUserId()));
+
                         double current = Optional.ofNullable(u.getWalletBalance()).orElse(0.0);
                         double newBalance = current + invoice.getTotalAmount();
 
-                        // 🛡️ KIỂM TRA NGĂN CHẶN OVERFLOW TRƯỚC KHI LUU
-                        Double maxWalletLimit = 1_000_000_000.0; // 1 tỉ VNĐ
+                        Double maxWalletLimit = 1_000_000_000.0;
                         if (newBalance > maxWalletLimit) {
-                            log.error("🚨 [WALLET ERROR] Phát hiện overflow khi cộng tiền: user={}, current={}, add={}, new={}",
-                                    u.getUserId(), current, invoice.getTotalAmount(), newBalance);
-
-                            // Đánh dấu payment thành công nhưng không cộng tiền (giữ PAID)
                             invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
                             invoiceRepository.save(invoice);
 
-                            // Tạo log để admin xử lý thủ công
-                            log.error("💡 [ACTION REQUIRED] Admin cần xử lý thủ công cho user {} - Invoice {} - Amount {}",
-                                    u.getUserId(), invoice.getInvoiceId(), invoice.getTotalAmount());
-
-                            throw new IllegalStateException("Giao dịch thành công nhưng không thể cộng tiền do vượt giới hạn ví. Vui lòng liên hệ hỗ trợ.");
+                            throw new IllegalStateException("Ví vượt giới hạn, cần xử lý thủ công.");
                         }
 
                         u.setWalletBalance(newBalance);
                         userRepository.save(u);
-                        log.info("💰 [WALLET] User={} được cộng {} vào ví. Tổng mới={}",
-                                u.getUserId(), invoice.getTotalAmount(), u.getWalletBalance());
                     }
+
+                    // ✅ CASE: PENALTY PAYMENT SUCCESS
+                    if (invoice.getInvoiceType() == Invoice.InvoiceType.PENALTY) {
+
+                        DisputeTicket ticket = disputeTicketRepository
+                                .findByPenaltyInvoice_InvoiceId(invoice.getInvoiceId())
+                                .orElse(null);
+
+
+                        if (ticket != null) {
+                            ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
+                            ticket.setResolvedAt(LocalDateTime.now());
+                            ticket.setResolutionDescription("Thanh toán phạt thành công (VNPAY)");
+                            disputeTicketRepository.save(ticket);
+
+                            log.info("✅ Ticket #{} RESOLVED sau thanh toán VNPay", ticket.getId());
+
+                            // Gửi realtime đến staff tại trạm
+                            Integer stationId = ticket.getStation().getStationId();
+                            ticketSocketController.notifyPenaltyPaid(ticket.getId(), stationId);
+                        }
+                    }
+
+
+
+
 
                 } else {
                     invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAYMENTFAILED);
                     invoiceRepository.save(invoice);
+
                     if (invoice.getBookings() != null) {
                         for (Booking booking : invoice.getBookings()) {
                             booking.setBookingStatus(Booking.BookingStatus.FAILED);
@@ -235,6 +258,7 @@ public class PaymentService {
             return response;
         }
     }
+
     /**
      * 3️⃣ Return URL (VNPAY → BE → FE)
      */

@@ -86,59 +86,24 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user) {
+    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Object principal) {
+
+        User user = null;
+
+        if (principal instanceof User u) {
+            user = u;
+        } else if (principal instanceof org.springframework.security.core.userdetails.User ud) {
+            user = userService.findById(ud.getUsername());
+        }
+
         if (user == null) {
             return ResponseEntity.status(401).body("Không có quyền truy cập");
         }
 
-        Integer assignedStationId = null;
-        Long activeSubscriptionId = null;
-        Integer usedSwaps = null;
-        String planName = null;
+        Map<String, Object> response = authService.getCurrentUserInfo(user);
+        return ResponseEntity.ok(response);
 
-        // ✅ Nếu Staff -> trả stationId
-        if (user.getRole().getRoleId() == 2) {
-            StaffAssign assign = staffAssignRepository.findFirstByUser_UserIdAndIsActiveTrue(user.getUserId());
-            if (assign != null) assignedStationId = assign.getStationId();
-        }
-
-        // ✅ Nếu Driver -> trả subscription + ví
-        Double walletBalance = null;
-        if (user.getRole().getRoleId() == 1) {
-            walletBalance = user.getWalletBalance(); // ✅ lấy ví
-
-            UserSubscription sub = userSubscriptionRepository
-                    .findFirstByUser_UserIdAndStatusAndEndDateAfter(
-                            user.getUserId(),
-                            UserSubscription.SubscriptionStatus.ACTIVE,
-                            LocalDateTime.now()
-                    );
-
-            if (sub != null && sub.getPlan() != null) {
-                activeSubscriptionId = sub.getPlan().getId();
-                planName = sub.getPlan().getPlanName();
-                usedSwaps = sub.getUsedSwaps();
-            }
-        }
-
-        // ✅ Build response tùy role
-        Map<String, Object> result = new java.util.LinkedHashMap<>();
-        result.put("userId", user.getUserId());
-        result.put("fullName", user.getFullName());
-        result.put("email", user.getEmail());
-        result.put("phone", user.getPhone());
-        result.put("role", user.getRole().getRoleName());
-
-        if (assignedStationId != null) result.put("assignedStationId", assignedStationId);
-        if (activeSubscriptionId != null) result.put("activeSubscriptionId", activeSubscriptionId);
-        if (planName != null) result.put("planName", planName);
-        if (usedSwaps != null) result.put("usedSwaps", usedSwaps);
-        if (walletBalance != null) result.put("walletBalance", walletBalance); // ✅ chỉ hiện khi có
-
-        return ResponseEntity.ok(result);
     }
-
-
 
 
     @GetMapping("/verify-email")
@@ -214,7 +179,7 @@ public class AuthController {
     public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
         try {
             GoogleUserInfo info = googleService.verifyAndExtract(request.getToken());
-            AuthResponse result = authService.handleGoogleLogin(info);
+            Map<String, Object> result = authService.handleGoogleLogin(info);
 
             // trả thẳng result ra, KHÔNG bọc data
             return ResponseEntity.ok(result);

@@ -225,6 +225,14 @@ const updateTicketSolution = (ticketId, data) => {
     return axios.put(`staff/tickets/${ticketId}/resolve`, data);
 }
 
+const cancelAutoRenewSubscription = (userId) => {
+    return axios.post("/plans/cancel", { userId });
+}
+
+const cancelSubscriptionImmediate = (userId) => {
+    return axios.post("/plans/cancel-immediately", { userId });
+}
+
 export {
     registerAPI,
     loginAPI,
@@ -276,5 +284,7 @@ export {
     createInspection,
     getInspectionByStaffId,
     getTicketByStationId,
-    updateTicketSolution
+    updateTicketSolution,
+    cancelAutoRenewSubscription,
+    cancelSubscriptionImmediate
 };

@@ -16,4 +16,7 @@ public class InspectionRequest {
     private String status;
 
     private String staffId;
+
+    private String damageLevel;   // MINOR, MEDIUM, SEVERE
+
 }

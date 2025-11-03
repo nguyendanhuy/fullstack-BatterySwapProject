@@ -85,5 +85,7 @@ ORDER BY s.completedTime DESC
 """)
     List<Integer> findLatestBookingIdByBattery(@Param("batteryId") String batteryId);
 
+    @Query(value = "SELECT COUNT(*) FROM swap WHERE userid = :userId", nativeQuery = true)
+    int countSwapsByUser(String userId);
 
 }

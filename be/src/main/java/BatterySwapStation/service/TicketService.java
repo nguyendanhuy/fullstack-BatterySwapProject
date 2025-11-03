@@ -219,7 +219,11 @@ public class TicketService { // ✅ Đổi tên lớp
                 case CASH -> {
                     // Staff sẽ confirm sau
                     ticket.setStatus(DisputeTicket.TicketStatus.IN_PROGRESS);
-                    ticket.setResolutionMethod("PENALTY_CASH");
+                    ticket.setResolutionMethod(DisputeTicket.ResolutionMethod.PENALTY.name());
+                    ticket.setResolutionDescription(
+                            (req.getResolutionDescription() == null ? "" : req.getResolutionDescription())
+                                    + " | Thanh toán tiền mặt chờ xác nhận"
+                    );
                 }
 
                 case WALLET -> {
@@ -237,8 +241,16 @@ public class TicketService { // ✅ Đổi tên lớp
 
                     ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
                     ticket.setResolvedAt(LocalDateTime.now());
+                    ticket.setResolutionMethod(DisputeTicket.ResolutionMethod.PENALTY.name());
+                    ticket.setPenaltyLevel(req.getPenaltyLevel());
                     ticket.setResolutionDescription("Thanh toán ví thành công");
+                    disputeTicketRepository.save(ticket);
+
+                    TicketResponse res = convertToTicketResponse(ticket);
+                    res.setInvoiceId(invoice.getInvoiceId());
+                    return res;
                 }
+
 
                 case VNPAY -> {
                     // FE lấy invoiceId để redirect
@@ -325,6 +337,10 @@ public class TicketService { // ✅ Đổi tên lớp
         if (ticket.getCreatedByStaff() != null) {
             res.setCreatedByStaffName(ticket.getCreatedByStaff().getFullName());
         }
+
+        if (ticket.getPenaltyInvoice() != null)
+            res.setInvoiceId(ticket.getPenaltyInvoice().getInvoiceId());
+
         return res;
     }
 

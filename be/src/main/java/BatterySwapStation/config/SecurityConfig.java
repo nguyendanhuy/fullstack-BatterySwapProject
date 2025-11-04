@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers("/ws-battery/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
                         // Các request khác đều cho phép truy cập (phải để cuối cùng)
                         .anyRequest().permitAll()
                 )

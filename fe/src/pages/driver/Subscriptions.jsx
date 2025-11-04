@@ -28,67 +28,15 @@ const Subscriptions = () => {
       try {
         // Fetch plans
         const plansResponse = await getAllPlans();
-        console.log("✅Plans response:", plansResponse);
+        console.log("✅All Subscription Plans response:", plansResponse);
 
         if (plansResponse && plansResponse.success && plansResponse.plans) {
-          // Map API data to UI format
-          const mappedPackages = plansResponse.plans.map(plan => {
-            let icon, color, bgColor;
-
-            // Map based on planName
-            switch (plan.planName) {
-              case "BASIC":
-                icon = Battery;
-                color = "from-blue-500 to-indigo-500";
-                bgColor = "from-blue-50 to-indigo-50";
-                break;
-              case "PREMIUM":
-                icon = Star;
-                color = "from-green-500 to-emerald-500";
-                bgColor = "from-green-50 to-emerald-50";
-                break;
-              case "BUSINESS":
-                icon = Crown;
-                color = "from-purple-500 to-pink-500";
-                bgColor = "from-purple-50 to-pink-50";
-                break;
-              default:
-                icon = Battery;
-                color = "from-gray-500 to-slate-500";
-                bgColor = "from-gray-50 to-slate-50";
-            }
-
-            // Split description into feature list
-            const features = plan.description
-              .split('. ')
-              .filter(item => item.trim().length > 0)
-              .map(item => item.trim().endsWith('.') ? item.trim() : item.trim() + '.');
-
-            return {
-              id: plan.planId,
-              name: plan.planName === "BASIC" ? "Gói Cơ bản"
-                : plan.planName === "PREMIUM" ? "Gói Premium"
-                  : "Gói doanh nghiệp",
-              price: plan.price.toLocaleString('vi-VN'),
-              period: "tháng",
-              description: plan.description,
-              features: features,
-              popular: plan.planName === "PREMIUM",
-              icon: icon,
-              color: color,
-              bgColor: bgColor,
-              planName: plan.planName,
-              swapLimit: plan.swapLimit,
-              priceType: plan.priceType
-            };
-          });
-
-          setPackages(mappedPackages);
+          setPackages(plansResponse.plans);
         }
         // Fetch current subscription
         if (userData && userData.userId) {
           const subscriptionResponse = await getDriverSubscription(userData.userId);
-          console.log("✅Subscription response:", subscriptionResponse);
+          console.log("✅User subscription response:", subscriptionResponse);
 
           if (subscriptionResponse && subscriptionResponse.success && subscriptionResponse.subscription) {
             setCurrentSubscription(subscriptionResponse.subscription);
@@ -212,9 +160,7 @@ const Subscriptions = () => {
                 </div>
                 <div className="text-center p-6 bg-white/60 rounded-3xl">
                   <h3 className="text-3xl font-bold text-blue-600 mb-2">
-                    {currentSubscription.plan.swapLimit === "Không giới hạn"
-                      ? "∞"
-                      : parseInt(currentSubscription.plan.swapLimit) - currentSubscription.usedSwaps}
+                    {parseInt(currentSubscription.plan.swapLimit) - currentSubscription.usedSwaps}/{currentSubscription.plan.swapLimit}
                   </h3>
                   <p className="text-gray-600">Lần đổi còn lại</p>
                   {currentSubscription.plan.swapLimit !== "Không giới hạn" && (
@@ -234,7 +180,9 @@ const Subscriptions = () => {
                     {new Date(currentSubscription.endDate).toLocaleDateString('vi-VN')}
                   </h3>
                   <p className="text-gray-600">Ngày hết hạn</p>
-                  <Button variant="outline" className="mt-2 text-sm" onClick={handleCancelAutoRenew}>Hủy gia hạn</Button>{' '}
+                  {currentSubscription.autoRenew && (
+                    <Button variant="outline" className="mt-2 text-sm" onClick={handleCancelAutoRenew}>Hủy gia hạn</Button>
+                  )}
                   <Button variant="outline" className="mt-2 text-sm" onClick={handleCancelSubscriptionImmediate}>Hủy gói</Button>
 
                 </div>
@@ -267,29 +215,79 @@ const Subscriptions = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             {packages.map((pkg, index) => {
-              const IconComponent = pkg.icon;
-              return (<Card key={pkg.id} className={`relative border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 overflow-hidden group ${pkg.popular ? 'ring-2 ring-green-500 scale-105' : ''}`} style={{ animationDelay: `${index * 0.1}s` }}>
-                {pkg.popular && (<div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+              // Helper function to get display name
+              const getDisplayName = (planName) => {
+                switch (planName) {
+                  case "BASIC": return "Gói Cơ bản";
+                  case "PREMIUM": return "Gói Premium";
+                  case "BUSINESS": return "Gói Doanh nghiệp";
+                  default: return planName;
+                }
+              };
+
+              // Helper function to get icon
+              const getIcon = (planName) => {
+                switch (planName) {
+                  case "BASIC": return Battery;
+                  case "PREMIUM": return Star;
+                  case "BUSINESS": return Crown;
+                  default: return Battery;
+                }
+              };
+
+              // Helper function to get color
+              const getColor = (planName) => {
+                switch (planName) {
+                  case "BASIC": return "from-blue-500 to-indigo-500";
+                  case "PREMIUM": return "from-green-500 to-emerald-500";
+                  case "BUSINESS": return "from-purple-500 to-pink-500";
+                  default: return "from-gray-500 to-slate-500";
+                }
+              };
+
+              // Helper function to get background color
+              const getBgColor = (planName) => {
+                switch (planName) {
+                  case "BASIC": return "from-blue-50 to-indigo-50";
+                  case "PREMIUM": return "from-green-50 to-emerald-50";
+                  case "BUSINESS": return "from-purple-50 to-pink-50";
+                  default: return "from-gray-50 to-slate-50";
+                }
+              };
+
+              // Split description into features
+              const features = pkg.description
+                .split('. ')
+                .filter(item => item.trim().length > 0)
+                .map(item => item.trim().endsWith('.') ? item.trim() : item.trim() + '.');
+
+              const IconComponent = getIcon(pkg.planName);
+              const color = getColor(pkg.planName);
+              const bgColor = getBgColor(pkg.planName);
+              const popular = pkg.planName === "PREMIUM";
+
+              return (<Card key={pkg.planId} className={`relative border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 overflow-hidden group ${popular ? 'ring-2 ring-green-500 scale-105' : ''}`} style={{ animationDelay: `${index * 0.1}s` }}>
+                {popular && (<div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                   <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-2 text-sm font-semibold">
                     ⭐ Phổ biến nhất
                   </Badge>
                 </div>)}
 
-                <div className={`h-3 bg-gradient-to-r ${pkg.color}`}></div>
+                <div className={`h-3 bg-gradient-to-r ${color}`}></div>
 
                 <CardHeader className="text-center pb-6">
-                  <div className={`mx-auto mb-6 p-4 bg-gradient-to-br ${pkg.bgColor} rounded-2xl w-fit group-hover:scale-110 transition-transform duration-300`}>
-                    <div className={`p-3 bg-gradient-to-r ${pkg.color} rounded-xl`}>
+                  <div className={`mx-auto mb-6 p-4 bg-gradient-to-br ${bgColor} rounded-2xl w-fit group-hover:scale-110 transition-transform duration-300`}>
+                    <div className={`p-3 bg-gradient-to-r ${color} rounded-xl`}>
                       <IconComponent className="h-8 w-8 text-white" />
                     </div>
                   </div>
-                  <CardTitle className="text-2xl font-bold text-gray-800 mb-2">{pkg.name}</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-gray-800 mb-2">{getDisplayName(pkg.planName)}</CardTitle>
                   {/* <CardDescription className="text-gray-600 text-base mb-4">{pkg.description}</CardDescription> */}
                   <div className="text-4xl font-bold text-gray-800 mb-2">
-                    {pkg.price} VNĐ
-                    <span className="text-base text-gray-500 font-normal">/{pkg.period}</span>
+                    {pkg.price.toLocaleString('vi-VN')} VNĐ
+                    <span className="text-base text-gray-500 font-normal">/tháng</span>
                   </div>
-                  {pkg.popular && (<div className="flex items-center justify-center text-green-600 text-sm font-semibold">
+                  {popular && (<div className="flex items-center justify-center text-green-600 text-sm font-semibold">
                     <TrendingUp className="h-4 w-4 mr-1" />
                     Tiết kiệm 20% so với gói cơ bản
                   </div>)}
@@ -297,8 +295,8 @@ const Subscriptions = () => {
 
                 <CardContent className="px-6 pb-8">
                   <ul className="space-y-4 mb-8">
-                    {pkg.features.map((feature, index) => (<li key={index} className="flex items-center">
-                      <div className={`p-1 bg-gradient-to-r ${pkg.color} rounded-full mr-3`}>
+                    {features.map((feature, index) => (<li key={index} className="flex items-center">
+                      <div className={`p-1 bg-gradient-to-r ${color} rounded-full mr-3`}>
                         <Check className="h-3 w-3 text-white" />
                       </div>
                       <span className="text-gray-700">{feature}</span>
@@ -306,24 +304,20 @@ const Subscriptions = () => {
                   </ul>
 
                   <Button
+                    disabled={!!currentSubscription}
                     onClick={() => {
-                      // Tránh đưa React component (icon) vào history state vì không serializable
-                      const { icon, ...plan } = pkg;
-                      navigate("/driver/subscriptions/checkout", { state: { plan } });
+                      navigate("/driver/subscriptions/checkout", { state: { plan: pkg } });
                     }}
-                    className={`w-full h-12 text-lg font-semibold rounded-xl transition-all duration-300 hover:scale-105 shadow-lg ${pkg.popular
-                      ? `bg-gradient-to-r ${pkg.color} hover:opacity-90 text-white`
+                    className={`w-full h-12 text-lg font-semibold rounded-xl transition-all duration-300 hover:scale-105 shadow-lg ${popular
+                      ? `bg-gradient-to-r ${color} hover:opacity-90 text-white`
                       : 'border-2 border-gray-200 text-gray-700 hover:bg-gray-50'}`}
-                    variant={pkg.popular ? "default" : "outline"}
+                    variant={popular ? "default" : "outline"}
                   >
                     <Zap className="h-5 w-5 mr-2" />
-                    {currentSubscription && currentSubscription.plan.planId === pkg.id ? "Gia hạn gói" : "Chọn gói này"}
+                    {!!currentSubscription ? "Đã có gói" : "Chọn gói này"}
                   </Button>
 
-                  {pkg.popular && (<div className="flex items-center justify-center mt-3 text-sm text-green-600">
-                    <Shield className="h-4 w-4 mr-1" />
-                    Đảm bảo hoàn tiền trong 7 ngày
-                  </div>)}
+
                 </CardContent>
               </Card>);
             })}

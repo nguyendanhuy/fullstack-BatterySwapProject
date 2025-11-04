@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Select, Space, message } from "antd";
 
-const API = "https://provinces.open-api.vn/api/v1";
+const API = "http://provinces.open-api.vn/api/v1";
 
 export default function ProvinceDistrictWardSelect({ value = {}, setFilterAddress, style }) {
     const [pList, setPList] = useState([]);// danh sách tỉnh

@@ -16,11 +16,13 @@ const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userData } = useContext(SystemContext);
-  const { reservationData, totalPrice } = location.state || {};
+  const { reservationData, totalPrice, pendingInvoice } = location.state || {};
   const { toast } = useToast();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("VNPAY"); // "VNPAY" or "WALLET"
+
+  const isPayingPendingInvoice = !!pendingInvoice;
 
   const items = Object.values(reservationData || {});
   const groupedByStation = items.reduce((acc, item) => {
@@ -92,6 +94,46 @@ const Payment = () => {
     checkStatus();
   };
 
+  // Xử lý thanh toán hóa đơn pending
+  const handlePendingInvoicePayment = async () => {
+    const invoiceId = pendingInvoice.invoiceId;
+
+    if (paymentMethod === "WALLET") {
+      toast({
+        title: "Thông báo",
+        description: "Tính năng thanh toán ví cho hóa đơn pending đang được phát triển",
+        className: "bg-blue-500 text-white",
+      });
+      return;
+    }
+
+    if (paymentMethod === "VNPAY") {
+      console.log("📤 Creating VNPay URL for pending invoice:", invoiceId);
+      const vnpayResponse = await createVNPayUrl({
+        invoiceId,
+        bankCode: "VNPAY",
+        orderType: "Bookings"
+      });
+      console.log("✅ VNPay response:", vnpayResponse);
+
+      if (isErrorResponse(vnpayResponse) || !vnpayResponse.paymentUrl) {
+        toast({
+          title: "Lỗi thanh toán",
+          description: pickApiMessage(vnpayResponse),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Chuyển hướng...",
+        description: "Đang chuyển đến cổng thanh toán...",
+        className: "bg-green-500 text-white",
+      });
+      setTimeout(() => window.location.href = vnpayResponse.paymentUrl, 1000);
+    }
+  };
+
   // Format booking data theo format mới
   const formatBookingData = () => {
     return {
@@ -122,6 +164,13 @@ const Payment = () => {
     try {
       setIsProcessing(true);
 
+      // Nếu đang thanh toán hóa đơn pending
+      if (isPayingPendingInvoice) {
+        await handlePendingInvoicePayment();
+        return;
+      }
+
+      // Nếu là booking mới
       const bookingData = formatBookingData();
       console.log("📤 Creating bookings:", bookingData);
 
@@ -270,27 +319,29 @@ const Payment = () => {
                   </button>
 
                   {/* Wallet Option */}
-                  <button
-                    onClick={() => setPaymentMethod("WALLET")}
-                    className={`w-full flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all ${paymentMethod === "WALLET"
-                      ? "border-green-500 bg-green-50 shadow-md"
-                      : "border-gray-200 hover:border-green-300 hover:bg-gray-50"
-                      }`}
-                  >
-                    <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
-                      <Wallet className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <Label className="text-lg font-semibold text-gray-800 cursor-pointer">
-                        Ví hệ thống
-                      </Label>
-                      <p className="text-sm text-gray-600 mt-1">Thanh toán nhanh bằng số dư ví</p>
-                      {userData?.walletBalance.toLocaleString() && (
-                        <p className="text-sm text-gray-600 mt-1">Số dư: <b>{userData.walletBalance.toLocaleString()}</b> VNĐ</p>
-                      )}
-                    </div>
-                    {paymentMethod === "WALLET" && <CheckCircle className="h-6 w-6 text-green-500" />}
-                  </button>
+                  {!!!pendingInvoice && (
+                    <button
+                      onClick={() => setPaymentMethod("WALLET")}
+                      className={`w-full flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all ${paymentMethod === "WALLET"
+                        ? "border-green-500 bg-green-50 shadow-md"
+                        : "border-gray-200 hover:border-green-300 hover:bg-gray-50"
+                        }`}
+                    >
+                      <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                        <Wallet className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <Label className="text-lg font-semibold text-gray-800 cursor-pointer">
+                          Ví hệ thống
+                        </Label>
+                        <p className="text-sm text-gray-600 mt-1">Thanh toán nhanh bằng số dư ví</p>
+                        {userData?.walletBalance.toLocaleString() && (
+                          <p className="text-sm text-gray-600 mt-1">Số dư: <b>{userData.walletBalance.toLocaleString()}</b> VNĐ</p>
+                        )}
+                      </div>
+                      {paymentMethod === "WALLET" && <CheckCircle className="h-6 w-6 text-green-500" />}
+                    </button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -327,8 +378,8 @@ const Payment = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Hiển thị theo từng trạm */}
-                {stations.map((stationItems, idx) => (
+                {/* Hiển thị theo từng trạm - CHỈ cho booking mới */}
+                {!isPayingPendingInvoice && stations.map((stationItems, idx) => (
                   <div key={idx}>
                     <div className="mb-4 pb-4 border-b border-gray-200">
                       <div className="flex justify-between items-start mb-2">
@@ -361,15 +412,78 @@ const Payment = () => {
                   </div>
                 ))}
 
+                {/* Hiển thị cho hóa đơn pending nạp tiền ví hệ thống */}
+                {isPayingPendingInvoice && pendingInvoice.invoiceType === "WALLET_TOPUP" && (
+                  <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-blue-800">Hóa đơn nạp tiền ví của bạn</span>
+                    </div>
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <div>📅 Ngày tạo: {format(new Date(pendingInvoice.createdDate), "dd/MM/yyyy HH:mm", { locale: vi })}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hiển thị cho hóa đơn book pending */}
+                {isPayingPendingInvoice && pendingInvoice.invoiceType !== "WALLET_TOPUP" && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-xl">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="h-5 w-5 text-orange-600" />
+                        <span className="font-semibold text-orange-800">Hóa đơn #{pendingInvoice.invoiceId}</span>
+                      </div>
+                      <div className="text-sm text-gray-700 space-y-1">
+                        <div>📅 Ngày tạo: {format(new Date(pendingInvoice.createdDate), "dd/MM/yyyy HH:mm", { locale: vi })}</div>
+                        <div>🔋 Số lượt đổi: {pendingInvoice.numberOfSwaps} lượt</div>
+                        <div>💰 Giá mỗi lượt: {pendingInvoice.pricePerSwap?.toLocaleString("vi-VN")} VNĐ</div>
+                        {pendingInvoice.invoiceType && (
+                          <div>📋 Loại: {pendingInvoice.invoiceType}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Danh sách bookings trong invoice */}
+                    {pendingInvoice.bookings && pendingInvoice.bookings.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-gray-700">Chi tiết các booking:</h4>
+                        {pendingInvoice.bookings.map((booking, i) => (
+                          <div key={i} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                            <div className="flex justify-between">
+                              <div className="text-sm">
+                                <div className="font-semibold">Booking #{booking.bookingId}</div>
+                                <div className="text-gray-600">{booking.stationName}</div>
+                                <div className="text-gray-600">{booking.vehicleType} - {booking.vehicleBatteryType}</div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              📅 {format(new Date(booking.bookingDate), "dd/MM/yyyy", { locale: vi })} - ⏰ {booking.timeSlot}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="border-t pt-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-700">Phí dịch vụ:</span>
-                    <span className="font-semibold">{totalPrice?.toLocaleString("vi-VN")} VNĐ</span>
-                  </div>
-                  <div className="flex justify-between text-xl font-bold">
-                    <span>Tổng thanh toán:</span>
-                    <span className="text-blue-600">{totalPrice?.toLocaleString("vi-VN")} VNĐ</span>
-                  </div>
+                  {!isPayingPendingInvoice ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Phí dịch vụ:</span>
+                        <span className="font-semibold">{totalPrice?.toLocaleString("vi-VN")} VNĐ</span>
+                      </div>
+                      <div className="flex justify-between text-xl font-bold">
+                        <span>Tổng thanh toán:</span>
+                        <span className="text-blue-600">{totalPrice?.toLocaleString("vi-VN")} VNĐ</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-xl font-bold">
+                      <span>Tổng thanh toán:</span>
+                      <span className="text-blue-600">{pendingInvoice.totalAmount?.toLocaleString("vi-VN")} VNĐ</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4 pt-6">

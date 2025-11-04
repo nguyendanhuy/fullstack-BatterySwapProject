@@ -21,7 +21,7 @@ import {
     Loader2,
     Check
 } from "lucide-react";
-import { getTicketByStationId, updateTicketSolution } from "../../services/axios.services";
+import { getTicketByStationId, updateTicketSolution, confirmCashPenalty } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 import dayjs from "dayjs";
 
@@ -44,6 +44,7 @@ const DisputeManagement = () => {
     const [paymentMethod, setPaymentMethod] = useState("");
     const [resolutionDescription, setResolutionDescription] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isConfirmingCash, setIsConfirmingCash] = useState(false);
 
     // Helpers
     const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
@@ -227,6 +228,45 @@ const DisputeManagement = () => {
             });
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleConfirmCashPayment = async () => {
+        if (!selectedTicket) return;
+
+        setIsConfirmingCash(true);
+        try {
+            const res = await confirmCashPenalty(selectedTicket.id, userData?.userId);
+            console.log("✅Confirm cash penalty response:", res);
+
+            if (!isErrorResponse(res)) {
+                toast({
+                    title: "Xác nhận thành công",
+                    description: res?.message || "Đã xác nhận thanh toán tiền mặt",
+                    className: "bg-green-500 text-white",
+                    duration: 3000,
+                });
+
+                // Reload tickets to get fresh data
+                await fetchTickets();
+
+                // Close sheet
+                setIsDetailOpen(false);
+            } else {
+                toast({
+                    title: "Xác nhận thất bại",
+                    description: pickApiMessage(res) || "Không thể xác nhận thanh toán",
+                    variant: "destructive",
+                });
+            }
+        } catch (err) {
+            toast({
+                title: "Lỗi",
+                description: err?.message || "Đã xảy ra lỗi khi xác nhận thanh toán",
+                variant: "destructive",
+            });
+        } finally {
+            setIsConfirmingCash(false);
         }
     };
 
@@ -572,14 +612,14 @@ const DisputeManagement = () => {
                                             <Button
                                                 variant="outline"
                                                 onClick={() => setIsDetailOpen(false)}
-                                                disabled={isSubmitting}
+                                                disabled={isSubmitting || isConfirmingCash}
                                                 className="flex-1"
                                             >
                                                 Đóng
                                             </Button>
                                             <Button
                                                 onClick={handleResolveTicket}
-                                                disabled={isSubmitting}
+                                                disabled={isSubmitting || isConfirmingCash}
                                                 className={`flex-1 ${selectedTicket.status === "RESOLVED" ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600" : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"}`}
                                             >
                                                 {isSubmitting ? (
@@ -595,6 +635,34 @@ const DisputeManagement = () => {
                                                 )}
                                             </Button>
                                         </div>
+
+                                        {/* Confirm Cash Payment Button */}
+                                        {selectedTicket.status === "IN_PROGRESS" && selectedTicket.paymentChannel === "CASH" && (
+                                            <div className="mt-4 pt-4 border-t">
+                                                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg mb-3">
+                                                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                                                        💵 Thanh toán bằng tiền mặt - Cần xác nhận đã nhận tiền
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    onClick={handleConfirmCashPayment}
+                                                    disabled={isSubmitting || isConfirmingCash}
+                                                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                                                >
+                                                    {isConfirmingCash ? (
+                                                        <>
+                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                            Đang xác nhận...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                            Xác nhận đã thanh toán tiền mặt
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </div>

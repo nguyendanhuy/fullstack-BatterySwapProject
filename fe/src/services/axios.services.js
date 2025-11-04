@@ -47,7 +47,7 @@ const deactivateVehicleByVin = (vin) => {
 const getAllStations = () => {
     return axios.get("/stations");
 }
-const getStationById=(stationId) => {
+const getStationById = (stationId) => {
     return axios.get(`/stations/${stationId}`);
 }
 const getStationNearbyLocation = (lat, lng, radiusKm = 50) => {
@@ -236,6 +236,10 @@ const cancelSubscriptionImmediate = (userId) => {
     return axios.post("/plans/cancel-immediately", { userId });
 }
 
+
+const confirmCashPenalty = (ticketId, staffId) => {
+    return axios.put(`/staff/tickets/${ticketId}/confirm-cash?staffId=${staffId}`);
+}
 export {
     registerAPI,
     loginAPI,
@@ -290,5 +294,6 @@ export {
     updateTicketSolution,
     cancelAutoRenewSubscription,
     cancelSubscriptionImmediate,
-    getStationById
+    getStationById,
+    confirmCashPenalty
 };

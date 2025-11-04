@@ -25,22 +25,34 @@ export default function SubscriptionCheckout() {
     const planFromState = location.state?.plan || null;
     const pendingInvoice = location.state?.pendingInvoice || null;
 
-    const planFromQuery = useMemo(() => {
-        const params = new URLSearchParams(location.search);
-        const id = params.get("plan");
-        const name = params.get("name");
-        const price = params.get("price");
-        const period = params.get("period");
-        if (!id || !name || !price) return null;
-        return { id, name, price, period: period || "tháng", icon: Star, color: "from-green-500 to-emerald-500", bgColor: "from-green-50 to-emerald-50" };
-    }, [location.search]);
+    console.log("✅ Selected plan from state:", planFromState);
+    console.log("✅ Pending invoice from state:", pendingInvoice);
 
-    const plan = planFromState || planFromQuery;
+    const plan = planFromState;
+
+    const priceNumber = Number(plan?.price || 0);
+
+    const getDisplayName = (planName) => {
+        switch (planName) {
+            case "BASIC": return "Gói Cơ bản";
+            case "PREMIUM": return "Gói Premium";
+            case "BUSINESS": return "Gói Doanh nghiệp";
+            default: return planName;
+        }
+    };
+
+    const getIcon = (planName) => {
+        switch (planName) {
+            case "BASIC": return Battery;
+            case "PREMIUM": return Star;
+            case "BUSINESS": return Crown;
+            default: return Battery;
+        }
+    };
 
     const [isProcessing, setIsProcessing] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState("VNPAY"); // "VNPAY" or "WALLET"
+    const [paymentMethod, setPaymentMethod] = useState("VNPAY"); // VNPAY HOẶC WALLET
 
-    const priceNumber = useMemo(() => Number(String(plan?.price || "0").replace(/[^0-9]/g, "")), [plan]);
 
     // Helpers
     const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
@@ -152,7 +164,7 @@ export default function SubscriptionCheckout() {
                 console.log("✅ Using existing pending invoice:", invoiceId);
             } else {
                 // Create new invoice for subscription
-                const invoiceResponse = await createInvoiceForSubscription(plan.id, userData.userId, paymentMethod);
+                const invoiceResponse = await createInvoiceForSubscription(plan.planId, userData.userId, paymentMethod);
                 console.log("✅ Invoice response:", invoiceResponse);
 
                 if (isErrorResponse(invoiceResponse)) {
@@ -168,9 +180,7 @@ export default function SubscriptionCheckout() {
                 invoiceId = invoiceResponse.invoiceId;
             }
 
-            // Handle payment based on method
             if (paymentMethod === "WALLET") {
-                // Wallet payment is completed immediately
                 toast({
                     title: "Thanh toán thành công!",
                     description: "Gói subscription đã được kích hoạt bằng ví hệ thống.",
@@ -178,7 +188,6 @@ export default function SubscriptionCheckout() {
                 });
                 setTimeout(() => navigate("/driver/subscriptions"), 2000);
             } else if (paymentMethod === "VNPAY") {
-                // Redirect to VNPay
                 await redirectToVNPay(invoiceId);
             }
 
@@ -265,27 +274,29 @@ export default function SubscriptionCheckout() {
                                     </button>
 
                                     {/* Wallet Option */}
-                                    <button
-                                        onClick={() => setPaymentMethod("WALLET")}
-                                        className={`w-full flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all ${paymentMethod === "WALLET"
-                                            ? "border-green-500 bg-green-50 shadow-md"
-                                            : "border-gray-200 hover:border-green-300 hover:bg-gray-50"
-                                            }`}
-                                    >
-                                        <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
-                                            <Wallet className="h-6 w-6 text-white" />
-                                        </div>
-                                        <div className="flex-1 text-left">
-                                            <Label className="text-lg font-semibold text-gray-800 cursor-pointer">
-                                                Ví hệ thống
-                                            </Label>
-                                            <p className="text-sm text-gray-600 mt-1">Thanh toán nhanh bằng số dư ví</p>
-                                            {userData?.walletBalance.toLocaleString() && (
-                                                <p className="text-sm text-gray-600 mt-1">Số dư: <b>{userData.walletBalance.toLocaleString()}</b> VNĐ</p>
-                                            )}
-                                        </div>
-                                        {paymentMethod === "WALLET" && <CheckCircle className="h-6 w-6 text-green-500" />}
-                                    </button>
+                                    {!!!pendingInvoice && (
+                                        <button
+                                            onClick={() => setPaymentMethod("WALLET")}
+                                            className={`w-full flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all ${paymentMethod === "WALLET"
+                                                ? "border-green-500 bg-green-50 shadow-md"
+                                                : "border-gray-200 hover:border-green-300 hover:bg-gray-50"
+                                                }`}
+                                        >
+                                            <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                                                <Wallet className="h-6 w-6 text-white" />
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <Label className="text-lg font-semibold text-gray-800 cursor-pointer">
+                                                    Ví hệ thống
+                                                </Label>
+                                                <p className="text-sm text-gray-600 mt-1">Thanh toán nhanh bằng số dư ví</p>
+                                                {userData?.walletBalance.toLocaleString() && (
+                                                    <p className="text-sm text-gray-600 mt-1">Số dư: <b>{userData.walletBalance.toLocaleString()}</b> VNĐ</p>
+                                                )}
+                                            </div>
+                                            {paymentMethod === "WALLET" && <CheckCircle className="h-6 w-6 text-green-500" />}
+                                        </button>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -315,7 +326,10 @@ export default function SubscriptionCheckout() {
                             <CardHeader>
                                 <CardTitle className="flex items-center text-2xl font-bold text-gray-800">
                                     <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl mr-4">
-                                        {plan?.icon ? <plan.icon className="h-6 w-6 text-white" /> : <Battery className="h-6 w-6 text-white" />}
+                                        {(() => {
+                                            const IconComponent = getIcon(plan?.planName);
+                                            return <IconComponent className="h-6 w-6 text-white" />;
+                                        })()}
                                     </div>
                                     Xác nhận đơn hàng
                                 </CardTitle>
@@ -326,10 +340,10 @@ export default function SubscriptionCheckout() {
                                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border border-emerald-200">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <div className="text-lg font-bold text-gray-800">{plan.name}</div>
-                                                <div className="text-sm text-gray-600">Chu kỳ: {plan.period || "tháng"}</div>
+                                                <div className="text-lg font-bold text-gray-800">{getDisplayName(plan.planName)}</div>
+                                                <div className="text-sm text-gray-600">Chu kỳ: tháng</div>
                                             </div>
-                                            <Badge className="bg-emerald-100 text-emerald-800">Gói {plan.id}</Badge>
+                                            <Badge className="bg-emerald-100 text-emerald-800">Gói {plan.planId}</Badge>
                                         </div>
                                         <div className="mt-3 text-3xl font-extrabold text-emerald-600">{currencyVN(priceNumber)} VNĐ</div>
                                     </div>

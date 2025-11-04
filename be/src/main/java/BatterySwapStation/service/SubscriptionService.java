@@ -88,9 +88,9 @@ public class SubscriptionService {
             if (balance > 1_000_000_000) { // 1 tỉ VNĐ
                 log.error("🚨 [WALLET ERROR] Phát hiện ví bị overflow: balance={} cho user {}", balance, user.getUserId());
                 throw new IllegalStateException(String.format(
-                    "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn bình thường). " +
-                    "Vui lòng liên hệ hỗ trợ để khắc phục trước khi thực hiện giao dịch.",
-                    balance
+                        "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn bình thường). " +
+                                "Vui lòng liên hệ hỗ trợ để khắc phục trước khi thực hiện giao dịch.",
+                        balance
                 ));
             }
 
@@ -427,16 +427,16 @@ public class SubscriptionService {
 
         // c. Kiểm tra số lượng pin cần đổi
         int swapsNeeded = (invoice.getNumberOfSwaps() != null && invoice.getNumberOfSwaps() > 0)
-            ? invoice.getNumberOfSwaps()
-            : 1;
+                ? invoice.getNumberOfSwaps()
+                : 1;
 
         // d. Kiểm tra lượt đổi pin (Swap Limit)
         int limit = activeSub.getPlan().getSwapLimit();
         int used = activeSub.getUsedSwaps();
         if (limit != -1 && (used + swapsNeeded) > limit) {
             throw new IllegalStateException(String.format(
-                "Gói của bạn không đủ số lần đổi, cần %d lượt, bạn hiện còn lại %d/%d lượt. Vui lòng thử lại phương thức thanh toán khác.",
-                swapsNeeded, (limit - used), limit
+                    "Gói của bạn không đủ số lần đổi, cần %d lượt, bạn hiện còn lại %d/%d lượt. Vui lòng thử lại phương thức thanh toán khác.",
+                    swapsNeeded, (limit - used), limit
             ));
         }
 
@@ -446,7 +446,7 @@ public class SubscriptionService {
         activeSub.setUsedSwaps(activeSub.getUsedSwaps() + swapsNeeded);
         UserSubscription updatedSub = userSubscriptionRepository.save(activeSub);
         log.info("User {} đã dùng {} lượt. (Đã dùng: {}/{}).",
-            request.getUserId(), swapsNeeded, updatedSub.getUsedSwaps(), limit);
+                request.getUserId(), swapsNeeded, updatedSub.getUsedSwaps(), limit);
 
         // b. Chuyển Invoice sang PAID (Giữ nguyên)
         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);

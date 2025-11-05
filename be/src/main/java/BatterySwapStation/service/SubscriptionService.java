@@ -513,7 +513,6 @@ public class SubscriptionService {
         if (invoices.isEmpty()) {
             throw new IllegalStateException("Không tìm thấy hóa đơn đã thanh toán.");
         }
-
         Invoice invoice = invoices.get(0);
 
         // 3. Hủy gói

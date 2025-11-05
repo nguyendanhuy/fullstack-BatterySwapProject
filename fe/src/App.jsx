@@ -41,6 +41,7 @@ import { StaffLayout } from "./components/StaffLayout";
 import { AdminLayout } from "./components/AdminLayout";
 import Invoices from "./pages/driver/Invoice";
 import DisputeManagement from "./pages/staff/DisputeManagement";
+import PriceManagement from "./pages/admin/PriceManagement";
 const queryClient = new QueryClient();
 const App = () => (<QueryClientProvider client={queryClient}>
   <SystemProvider>
@@ -105,6 +106,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
             >
               <Route index element={<AdminDashboard />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="/admin/price-management" element={<PriceManagement />} />
               <Route path="battery-dispatch" element={<BatteryDispatch />} />
               <Route path="staff-management" element={<StaffManagement />} />
             </Route>

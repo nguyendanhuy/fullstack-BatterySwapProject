@@ -23,6 +23,7 @@ const mainItems = [
     { title: "Báo cáo", url: "/admin/reports", icon: FileText },
     { title: "Điều phối pin", url: "/admin/battery-dispatch", icon: Battery },
     { title: "Quản lý nhân viên", url: "/admin/staff-management", icon: Users },
+    { title: "Quản lý giá", url: "/admin/price-management", icon: FileText },
 ];
 
 export function AdminSidebar() {

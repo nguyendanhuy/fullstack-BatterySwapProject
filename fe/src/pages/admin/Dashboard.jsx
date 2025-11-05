@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BarChart3, TrendingUp, Users, Battery, MapPin, Home, Settings } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Battery, MapPin, Home, Settings, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import AccountSettings from "@/components/AccountSettings";
@@ -168,6 +168,28 @@ const AdminDashboard = () => {
                 <Link to="/admin/staff-management">
                   <Button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md">
                     Quản lý nhân viên
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+
+            <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center text-gray-800">
+                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3 shadow-md">
+                    <DollarSign className="h-5 w-5 text-white" />
+                  </div>
+                  Quản lý Giá cả
+                </CardTitle>
+                <CardDescription>
+                  Điều chỉnh giá dịch vụ và gói đăng ký
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link to="/admin/price-management">
+                  <Button className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-md">
+                    Quản lý giá
                   </Button>
                 </Link>
               </CardContent>

@@ -537,6 +537,7 @@ public class SubscriptionService {
                     .build());
         }
 
+        // 5. Return result
         Map<String, Object> result = new HashMap<>();
         result.put("status", activeSub.getStatus().name());
         result.put("remainingDays", Math.max(0, totalDays - usedDays));
@@ -546,5 +547,6 @@ public class SubscriptionService {
 
         return result;
     }
+
 
 }

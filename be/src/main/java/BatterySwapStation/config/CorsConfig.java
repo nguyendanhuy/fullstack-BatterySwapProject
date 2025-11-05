@@ -16,4 +16,5 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowCredentials(true) // Cho phép gửi Cookie, Authorization Header (Rất quan trọng cho JWT)
                 .maxAge(3600); // Thời gian cache kết quả CORS pre-flight request
     }
+
 }

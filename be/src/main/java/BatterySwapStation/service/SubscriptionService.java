@@ -491,20 +491,17 @@ public class SubscriptionService {
         // ✅ Rule mới: refund theo lượt nếu huỷ trong <= 14 ngày
         int limit = activeSub.getPlan().getSwapLimit(); // total swaps
         int used = activeSub.getUsedSwaps();            // used swaps
-        double refundAmount = 0.0;
         int REFUND_WINDOW_DAYS = 14;
+        double refundAmount = 0.0;
 
         if (usedDays <= REFUND_WINDOW_DAYS) {
-            if (limit > 0) { // only for plans with limited swaps
+            if (limit > 0) {
                 int remainingSwaps = Math.max(0, limit - used);
-                double swapFactor = remainingSwaps / (double) limit; // percent left
+                double swapFactor = remainingSwaps / (double) limit;
 
                 refundAmount = Math.round(planPrice * swapFactor);
-
-                // minimum refund threshold
                 if (refundAmount < 1000) refundAmount = 0;
             } else {
-                // unlimited swap package -> no refund
                 refundAmount = 0;
             }
         } else {
@@ -541,15 +538,14 @@ public class SubscriptionService {
                     .build());
         }
 
-        // 5. Return result
         Map<String, Object> result = new HashMap<>();
         result.put("status", activeSub.getStatus().name());
         result.put("remainingDays", Math.max(0, totalDays - usedDays));
+        result.put("remainingSwaps", limit > 0 ? Math.max(0, limit - used) : null);
         result.put("refundAmount", refundAmount);
         result.put("cancelledAt", LocalDateTime.now());
 
         return result;
     }
-
 
 }

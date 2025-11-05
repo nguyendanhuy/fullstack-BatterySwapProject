@@ -49,3 +49,12 @@ if (!global.DOMRect) {
 if (!window.open) {
   window.open = jest.fn();
 }
+
+// --- Mock getComputedStyle for Ant Design (rc-util) ---
+if (!window.getComputedStyle) {
+  window.getComputedStyle = jest.fn().mockImplementation(() => ({
+    getPropertyValue: jest.fn(),
+    width: '0px',
+    height: '0px',
+  }));
+}

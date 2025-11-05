@@ -22,4 +22,13 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
     List<Vehicle> findByUserAndIsActiveTrueWithOwner(@Param("user") User user);
 
     Optional<Vehicle> findByVehicleIdAndUser_UserId(int vehicleId, String userId);
+
+
+    // ✅ Thêm methods cho CSV Import
+    boolean existsByVIN(String VIN);
+
+    boolean existsByLicensePlate(String licensePlate);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.VIN IN :vins")
+    List<Vehicle> findAllByVINs(@Param("vins") List<String> vins);
 }

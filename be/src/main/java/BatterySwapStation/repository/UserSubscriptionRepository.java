@@ -73,5 +73,13 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
             LocalDateTime.now()
         );
     }
+    @Query("""
+    SELECT us FROM UserSubscription us 
+    WHERE us.user.userId = :userId 
+      AND us.status = 'ACTIVE'
+      AND us.endDate > CURRENT_TIMESTAMP 
+    ORDER BY us.startDate DESC
+""")
+    List<UserSubscription> findActiveSubscriptions(@Param("userId") String userId);
 
 }

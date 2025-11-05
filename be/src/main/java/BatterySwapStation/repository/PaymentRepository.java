@@ -20,5 +20,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             Payment.PaymentMethod method,
             Payment.PaymentStatus status
     );
+    Optional<Payment> findTopByInvoiceOrderByCreatedAtDesc(Invoice invoice);
 
 }

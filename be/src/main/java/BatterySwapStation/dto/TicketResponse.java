@@ -20,4 +20,6 @@ public class TicketResponse {
 
     // ➕ Add cho trường hợp phạt cần thanh toán
     private Long invoiceId;
+    private String penaltyLevel;
+    private String paymentChannel;
 }

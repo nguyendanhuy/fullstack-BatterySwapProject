@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import jakarta.persistence.EntityNotFoundException;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -87,9 +88,9 @@ public class SubscriptionService {
             if (balance > 1_000_000_000) { // 1 tỉ VNĐ
                 log.error("🚨 [WALLET ERROR] Phát hiện ví bị overflow: balance={} cho user {}", balance, user.getUserId());
                 throw new IllegalStateException(String.format(
-                    "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn bình thường). " +
-                    "Vui lòng liên hệ hỗ trợ để khắc phục trước khi thực hiện giao dịch.",
-                    balance
+                        "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn bình thường). " +
+                                "Vui lòng liên hệ hỗ trợ để khắc phục trước khi thực hiện giao dịch.",
+                        balance
                 ));
             }
 
@@ -426,16 +427,16 @@ public class SubscriptionService {
 
         // c. Kiểm tra số lượng pin cần đổi
         int swapsNeeded = (invoice.getNumberOfSwaps() != null && invoice.getNumberOfSwaps() > 0)
-            ? invoice.getNumberOfSwaps()
-            : 1;
+                ? invoice.getNumberOfSwaps()
+                : 1;
 
         // d. Kiểm tra lượt đổi pin (Swap Limit)
         int limit = activeSub.getPlan().getSwapLimit();
         int used = activeSub.getUsedSwaps();
         if (limit != -1 && (used + swapsNeeded) > limit) {
             throw new IllegalStateException(String.format(
-                "Gói của bạn không đủ số lần đổi, cần %d lượt, bạn hiện còn lại %d/%d lượt. Vui lòng thử lại phương thức thanh toán khác.",
-                swapsNeeded, (limit - used), limit
+                    "Gói của bạn không đủ số lần đổi, cần %d lượt, bạn hiện còn lại %d/%d lượt. Vui lòng thử lại phương thức thanh toán khác.",
+                    swapsNeeded, (limit - used), limit
             ));
         }
 
@@ -445,7 +446,7 @@ public class SubscriptionService {
         activeSub.setUsedSwaps(activeSub.getUsedSwaps() + swapsNeeded);
         UserSubscription updatedSub = userSubscriptionRepository.save(activeSub);
         log.info("User {} đã dùng {} lượt. (Đã dùng: {}/{}).",
-            request.getUserId(), swapsNeeded, updatedSub.getUsedSwaps(), limit);
+                request.getUserId(), swapsNeeded, updatedSub.getUsedSwaps(), limit);
 
         // b. Chuyển Invoice sang PAID (Giữ nguyên)
         invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
@@ -460,55 +461,90 @@ public class SubscriptionService {
         return updatedSub; // Trả về thông tin gói cước đã cập nhật
     }
 
+    @Transactional
     public Map<String, Object> cancelSubscriptionImmediately(String userId) {
-        // 1. Lấy subscription ACTIVE
-        UserSubscription activeSub = userSubscriptionRepository.findActiveSubscription(userId)
-                .orElseThrow(() -> new IllegalStateException("Không tìm thấy gói cước đang hoạt động."));
 
-        // 2. Kiểm tra đã hết hạn chưa
+        // 1. Lấy subscription ACTIVE
+        List<UserSubscription> subs = userSubscriptionRepository.findActiveSubscriptions(userId);
+
+        if (subs.isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy gói cước đang hoạt động.");
+        }
+
+        // lấy gói mới nhất
+        UserSubscription activeSub = subs.get(0);
+
+        // 2. Không cho hủy nếu đã hết hạn
         if (activeSub.getEndDate().isBefore(LocalDateTime.now())) {
             throw new IllegalStateException("Gói cước đã hết hạn, không thể hủy.");
         }
 
-        // 3. Tính số lượt còn lại
-        Integer swapLimit = activeSub.getPlan().getSwapLimit();
-        if (swapLimit == null || swapLimit < 0) {
-            swapLimit = 0; // Xử lý trường hợp Unlimited hoặc null
+        LocalDateTime now = LocalDateTime.now();
+        long totalDays = Math.max(1, Duration.between(activeSub.getStartDate(), activeSub.getEndDate()).toDays());
+        long usedDays = Math.max(0, Duration.between(activeSub.getStartDate(), now).toDays());
+
+        Double planPrice = systemPriceService.getPriceByType(activeSub.getPlan().getPriceType());
+        if (planPrice == null || planPrice <= 0) {
+            planPrice = 0.0;
         }
 
-        int totalSwaps = swapLimit;
-        int usedSwaps = activeSub.getUsedSwaps();
-        int remainingSwaps = Math.max(0, totalSwaps - usedSwaps);
+        // ✅ Rule mới: refund theo lượt nếu huỷ trong <= 14 ngày
+        int limit = activeSub.getPlan().getSwapLimit(); // total swaps
+        int used = activeSub.getUsedSwaps();            // used swaps
+        int REFUND_WINDOW_DAYS = 14;
+        double refundAmount = 0.0;
 
-//        // 4. Tính số tiền hoàn
-//        Double planPriceObj = systemPriceService.getPriceByType(activeSub.getPlan().getPriceType());
-//        double planPrice = (planPriceObj != null) ? planPriceObj : 0.0;
-//        double refundAmount = 0.0;
-//
-//        if (totalSwaps > 0 && remainingSwaps > 0) {
-//            double pricePerSwap = planPrice / totalSwaps;
-//            refundAmount = pricePerSwap * remainingSwaps;
-//        }                                                               chỗ này cũng vậy
+        if (usedDays <= REFUND_WINDOW_DAYS) {
+            if (limit > 0) {
+                int remainingSwaps = Math.max(0, limit - used);
+                double swapFactor = remainingSwaps / (double) limit;
 
-        // 5. Cập nhật status thành CANCELLED
+                refundAmount = Math.round(planPrice * swapFactor);
+                if (refundAmount < 1000) refundAmount = 0;
+            } else {
+                refundAmount = 0;
+            }
+        } else {
+            refundAmount = 0;
+        }
+
+        // ✅ Lấy invoice thanh toán gần nhất
+        List<Invoice> invoices = invoiceRepository.findLatestPaidSubscriptionInvoices(userId);
+        if (invoices.isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy hóa đơn đã thanh toán.");
+        }
+        Invoice invoice = invoices.get(0);
+
+        // 3. Hủy gói
         activeSub.setStatus(UserSubscription.SubscriptionStatus.CANCELLED);
-        activeSub.setAutoRenew(false); // Tắt auto-renew
+        activeSub.setAutoRenew(false);
         userSubscriptionRepository.save(activeSub);
 
-//        // 6. Tạo giao dịch hoàn tiền (nếu có)
-//        if (refundAmount > 0) {
-//            createRefundTransaction(userId, activeSub, refundAmount);
-//        }                                                               tạm để đây vì tôi ko biết ví ở chỗ nào
+        // ✅ 4. Refund ví
+        if (refundAmount > 0) {
+            User user = activeSub.getUser();
+            user.setWalletBalance(user.getWalletBalance() + refundAmount);
+            userRepository.save(user);
 
-        // 7. Trả về kết quả
+            paymentRepository.save(Payment.builder()
+                    .invoice(invoice)
+                    .amount(refundAmount)
+                    .paymentMethod(Payment.PaymentMethod.WALLET)
+                    .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                    .transactionType(Payment.TransactionType.REFUND)
+                    .message("Hoàn tiền hủy gói cước sớm")
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("status", activeSub.getStatus().name());
-        result.put("remainingSwaps", remainingSwaps);
-//        result.put("refundAmount", refundAmount);
-        result.put("cancelledAt", LocalDate.now());
+        result.put("remainingDays", Math.max(0, totalDays - usedDays));
+        result.put("remainingSwaps", limit > 0 ? Math.max(0, limit - used) : null);
+        result.put("refundAmount", refundAmount);
+        result.put("cancelledAt", LocalDateTime.now());
 
         return result;
     }
-
 
 }

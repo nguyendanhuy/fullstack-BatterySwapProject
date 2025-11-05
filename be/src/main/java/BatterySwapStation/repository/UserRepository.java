@@ -1,8 +1,10 @@
 package BatterySwapStation.repository;
 
 import BatterySwapStation.dto.StaffListItemDTO;
+import BatterySwapStation.entity.UserSubscription;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import BatterySwapStation.entity.User;
@@ -49,5 +51,14 @@ public interface UserRepository extends JpaRepository<User, String> {
     ORDER BY u.userId
 """)
     List<StaffListItemDTO> findStaffByStationId(Integer stationId);
+
+    @Query("""
+    SELECT us FROM UserSubscription us 
+    WHERE us.user.userId = :userId 
+      AND us.status = 'ACTIVE'
+      AND us.endDate > CURRENT_TIMESTAMP 
+    ORDER BY us.startDate DESC
+""")
+    List<UserSubscription> findActiveSubscriptions(@Param("userId") String userId);
 
 }

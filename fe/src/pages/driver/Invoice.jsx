@@ -189,7 +189,7 @@ const Invoices = () => {
                 // 1) Lọc cứng: chỉ giữ PENDING | PAID
                 const filtered = res.invoices.filter(
                     (inv) => inv.invoiceStatus === "PENDING" || inv.invoiceStatus === "PAID"
-                );
+                ).sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate));
                 setInvoices(filtered);
 
                 // 2) Nếu có targetBookingId, tìm trong danh sách đã lọc
@@ -379,6 +379,11 @@ const Invoices = () => {
                                                             <DollarSign className="h-4 w-4" />
                                                             {formatCurrency(invoice.pricePerSwap)}/lượt
                                                         </span>
+                                                        {invoice.invoiceType && (
+                                                            <Badge variant="outline" className="text-xs">
+                                                                {invoice.invoiceType}
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -386,12 +391,50 @@ const Invoices = () => {
                                                 <Badge className={`${statusBadge.className} border text-sm px-4 py-1`}>{statusBadge.label}</Badge>
                                                 <div className="text-right">
                                                     <p className="text-2xl font-bold text-primary">{formatCurrency(invoice.totalAmount)}</p>
+                                                    {invoice.paymentMethod && (
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            {invoice.paymentMethod}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="px-6 pb-6">
                                         <div className="pt-4 border-t-2">
+                                            {/* Thông tin chi tiết hóa đơn */}
+                                            {(invoice.invoiceType || invoice.paymentMethod || invoice.planToActivate?.planName) && (
+                                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 mb-6">
+                                                    <h4 className="font-semibold text-sm mb-3 text-gray-700">Thông tin thanh toán</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        {invoice.invoiceType && (
+                                                            <div>
+                                                                <p className="text-xs text-gray-500 mb-1">Loại hóa đơn</p>
+                                                                <Badge variant="outline" className="bg-white">
+                                                                    {invoice.invoiceType}
+                                                                </Badge>
+                                                            </div>
+                                                        )}
+                                                        {invoice.paymentMethod && (
+                                                            <div>
+                                                                <p className="text-xs text-gray-500 mb-1">Phương thức thanh toán</p>
+                                                                <Badge variant="outline" className="bg-white">
+                                                                    {invoice.paymentMethod}
+                                                                </Badge>
+                                                            </div>
+                                                        )}
+                                                        {invoice.planToActivate?.planName && (
+                                                            <div>
+                                                                <p className="text-xs text-gray-500 mb-1">Gói được kích hoạt</p>
+                                                                <Badge variant="outline" className="bg-white">
+                                                                    {invoice.planToActivate.planName}
+                                                                </Badge>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
                                                 <Receipt className="h-5 w-5 text-primary" />
                                                 Chi tiết các booking ({invoice.bookings?.length ?? 0})

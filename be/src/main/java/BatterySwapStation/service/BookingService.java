@@ -479,14 +479,17 @@ public class BookingService {
             throw new IllegalStateException("Không thể hủy lượt đặt pin đã hoàn thành.");
         }
 
-        // Kiểm tra thời gian hủy
-        LocalDateTime scheduledDateTime = LocalDateTime.of(booking.getBookingDate(), booking.getTimeSlot());
-        LocalDateTime currentDateTime = LocalDateTime.now();
-        LocalDateTime minimumCancelTime = scheduledDateTime.minusHours(1);
-        if (currentDateTime.isAfter(minimumCancelTime)) {
-            throw new IllegalStateException(String.format(
-                    "Không thể hủy booking. Chỉ hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
-                    booking.getBookingDate(), booking.getTimeSlot(), minimumCancelTime));
+        // ✅ Chỉ kiểm tra thời gian hủy cho booking đã thanh toán (PENDINGSWAPPING)
+        // Booking chưa thanh toán (PENDINGPAYMENT) có thể hủy bất cứ lúc nào
+        if (Booking.BookingStatus.PENDINGSWAPPING.equals(booking.getBookingStatus())) {
+            LocalDateTime scheduledDateTime = LocalDateTime.of(booking.getBookingDate(), booking.getTimeSlot());
+            LocalDateTime currentDateTime = LocalDateTime.now();
+            LocalDateTime minimumCancelTime = scheduledDateTime.minusHours(1);
+            if (currentDateTime.isAfter(minimumCancelTime)) {
+                throw new IllegalStateException(String.format(
+                        "Không thể hủy booking đã thanh toán. Chỉ hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
+                        booking.getBookingDate(), booking.getTimeSlot(), minimumCancelTime));
+            }
         }
 
         // ✅ Hủy và lưu lý do
@@ -494,16 +497,19 @@ public class BookingService {
         booking.setCancellationReason(request.getCancelReason());
         Booking savedBooking = bookingRepository.save(booking);
 
-        // ✅ Tự động hoàn tiền về ví nếu có payment
+        // ✅ Chỉ hoàn tiền nếu booking đã thanh toán (PENDINGSWAPPING trước khi hủy)
+        // Booking PENDINGPAYMENT chưa thanh toán nên không cần hoàn tiền
         Invoice invoice = booking.getInvoice();
         if (invoice != null && invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
 
             Payment successfulPayment = invoice.getPayments().stream()
-                    .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS)
+                    .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS
+                            && p.getTransactionType() == Payment.TransactionType.PAYMENT)
                     .max(Comparator.comparing(Payment::getCreatedAt))
                     .orElse(null);
 
-            if (successfulPayment != null) {
+            // ✅ Chỉ hoàn tiền nếu có payment SUCCESS và CHARGE (đã thanh toán thật)
+            if (successfulPayment != null && booking.getAmount() != null && booking.getAmount() > 0) {
                 double refundAmount = booking.getAmount();
 
                 // ✅ Tạo bản ghi Payment REFUND

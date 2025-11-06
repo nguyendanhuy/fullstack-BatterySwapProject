@@ -11,17 +11,18 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useTicketPaymentRealtime } from "@/hooks/useTicketPaymentRealtime";
+import { Modal, QRCode } from "antd";
 import {
     Clock,
     CheckCircle,
-    XCircle,
     Eye,
     AlertTriangle,
     FileText,
     Loader2,
     Check
 } from "lucide-react";
-import { getTicketByStationId, updateTicketSolution, confirmCashPenalty } from "../../services/axios.services";
+import { getTicketByStationId, updateTicketSolution, confirmCashPenalty, createVNPayUrl } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 import dayjs from "dayjs";
 
@@ -41,16 +42,20 @@ const DisputeManagement = () => {
     // Resolution form states
     const [resolutionMethod, setResolutionMethod] = useState("");
     const [penaltyLevel, setPenaltyLevel] = useState("");
-    const [paymentMethod, setPaymentMethod] = useState("");
+    const [paymentChannel, setPaymentChannel] = useState("");
     const [resolutionDescription, setResolutionDescription] = useState("");
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isConfirmingCash, setIsConfirmingCash] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [qrCodeValue, setQrCodeValue] = useState("");
+    const [qrStatus, setQrStatus] = useState("active"); // "loading" | "active" | "scanned" | "error"
 
     // Helpers
-    const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
+    const getErrorMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
     const isErrorResponse = (res) => res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
 
-    // Fetch tickets function (extracted to reuse)
+    // Fetch tickets function
     const fetchTickets = async () => {
         if (!userData?.assignedStationId) {
             toast({
@@ -65,13 +70,14 @@ const DisputeManagement = () => {
         setIsLoading(true);
         try {
             const res = await getTicketByStationId(userData.assignedStationId);
-            console.log("✅Fetched tickets:", res);
+            console.log("✅ Fetched Tickets:", res);
             if (!isErrorResponse(res)) {
+                console.log("📝 Setting tickets state with", res.tickets.length, "tickets");
                 setTickets(res.tickets);
             } else {
                 toast({
                     title: "Lỗi",
-                    description: pickApiMessage(res) || "Không thể tải danh sách ticket",
+                    description: getErrorMessage(res) || "Không thể tải danh sách ticket",
                     variant: "destructive",
                 });
             }
@@ -90,6 +96,38 @@ const DisputeManagement = () => {
     useEffect(() => {
         fetchTickets();
     }, [userData]);
+
+    // Handle realtime payment confirmation
+    const handlePenaltyPaid = (ticketId) => {
+        console.log('🎉 handlePenaltyPaid called! TicketId:', ticketId);
+
+        setQrStatus("scanned");
+
+        toast({
+            title: "✅ Thanh toán thành công!",
+            description: `Ticket #${ticketId} đã được thanh toán phạt.`,
+            className: "bg-green-500 text-white",
+            duration: 5000,
+        });
+
+        // Auto close modal after 2 seconds
+        setTimeout(() => {
+            setIsModalOpen(false);
+            setQrStatus("active");
+            setQrCodeValue("");
+
+            // Close detail sheet too
+            setIsDetailOpen(false);
+
+            // Refresh tickets to show updated status
+            console.log('🔄 Refreshing tickets after payment...');
+            fetchTickets();
+        }, 2000);
+    };
+
+    // Subscribe to payment realtime events
+    useTicketPaymentRealtime(userData?.assignedStationId, handlePenaltyPaid);
+
 
     // Stats computed values
     const statsData = useMemo(
@@ -146,81 +184,160 @@ const DisputeManagement = () => {
         // Load existing resolution data if available
         setResolutionMethod(ticket.resolutionMethod || "");
         setPenaltyLevel(ticket.penaltyLevel || "");
-        setPaymentMethod(ticket.paymentChannel || "");
+        setPaymentChannel(ticket.paymentChannel || "");
         setResolutionDescription(ticket.resolutionDescription || "");
         setIsDetailOpen(true);
+    };
+
+    // Reset penalty fields when resolution method changes
+    const handleResolutionMethodChange = (value) => {
+        setResolutionMethod(value);
+        // Only reset for non-PENALTY methods
+        if (value !== "PENALTY") {
+            setPenaltyLevel("");
+            setPaymentChannel("");
+        }
     };
 
     const handleResolveTicket = async () => {
         if (!selectedTicket) return;
 
-        if (!resolutionMethod.trim()) {
-            toast({
-                title: "Lỗi",
-                description: "Vui lòng chọn phương án giải quyết",
-                variant: "destructive",
-            });
+        // Validate required fields
+        const method = resolutionMethod.trim();
+        const description = resolutionDescription.trim();
+
+        if (!method) {
+            toast({ title: "Lỗi", description: "Vui lòng chọn phương án giải quyết", variant: "destructive" });
             return;
         }
 
-        if (!resolutionDescription.trim()) {
-            toast({
-                title: "Lỗi",
-                description: "Vui lòng nhập mô tả giải quyết",
-                variant: "destructive",
-            });
+        if (!description) {
+            toast({ title: "Lỗi", description: "Vui lòng nhập mô tả giải quyết", variant: "destructive" });
             return;
         }
 
-        if (!penaltyLevel.trim()) {
-            toast({
-                title: "Lỗi",
-                description: "Vui lòng chọn mức phạt",
-                variant: "destructive",
-            });
-            return;
-        }
-
-        if (!paymentMethod.trim()) {
-            toast({
-                title: "Lỗi",
-                description: "Vui lòng chọn phương thức thanh toán",
-                variant: "destructive",
-            });
-            return;
+        if (method === "PENALTY") {
+            if (!penaltyLevel.trim()) {
+                toast({ title: "Lỗi", description: "Vui lòng chọn mức phạt", variant: "destructive" });
+                return;
+            }
+            if (!paymentChannel.trim()) {
+                toast({ title: "Lỗi", description: "Vui lòng chọn phương thức thanh toán", variant: "destructive" });
+                return;
+            }
         }
 
         setIsSubmitting(true);
         try {
-            const res = await updateTicketSolution(selectedTicket.id, {
-                resolutionMethod: resolutionMethod.trim(),
-                penaltyLevel: penaltyLevel.trim(),
-                paymentChannel: paymentMethod.trim(),
-                resolutionDescription: resolutionDescription.trim()
-            });
-            console.log("✅Update ticket solution response:", res);
+            // Reset QR status
+            setQrStatus("active");
+            setQrCodeValue("");
 
-            if (!isErrorResponse(res)) {
+            // Build payload
+            const payload = {
+                resolutionMethod: method,
+                resolutionDescription: description
+            };
+
+            if (method === "PENALTY") {
+                payload.penaltyLevel = penaltyLevel.trim();
+                payload.paymentChannel = paymentChannel.trim();
+            }
+
+            console.log("📤 Sending payload:", payload);
+            const res = await updateTicketSolution(selectedTicket.id, payload);
+            console.log("✅ Update Ticket Solution Response:", res);
+
+            if (isErrorResponse(res)) {
                 toast({
-                    title: "Thành công",
-                    description: res?.message || res?.resolutionDescription || "Đã giải quyết ticket thành công",
+                    title: "Thất bại",
+                    description: getErrorMessage(res) || "Không thể giải quyết ticket",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            // ✅ Xử lý theo status response
+            if (res.status === "RESOLVED") {
+                // RESOLVED ngay lập tức (WALLET, REFUND, NO_ACTION, OTHER)
+                toast({
+                    title: "✅ Thành công",
+                    description: "Đã giải quyết ticket thành công!",
                     className: "bg-green-500 text-white",
                     duration: 3000,
                 });
-
-                // Reload tickets to get fresh data from backend
                 await fetchTickets();
-
-                // Close sheet - khi mở lại sẽ có data mới
                 setIsDetailOpen(false);
-            } else {
-                toast({
-                    title: "Thất bại",
-                    description: pickApiMessage(res) || "Không thể giải quyết ticket",
-                    variant: "destructive",
-                });
+
+            } else if (res.status === "IN_PROGRESS") {
+                // IN_PROGRESS: CASH hoặc VNPAY cần thêm bước
+
+                if (res.paymentChannel === "VNPAY") {
+                    // VNPAY: gọi API tạo link thanh toán
+                    console.log("💳 VNPAY payment, invoiceId:", res.invoiceId);
+
+                    if (!res.invoiceId) {
+                        toast({
+                            title: "Lỗi",
+                            description: "Không nhận được invoiceId từ server",
+                            variant: "destructive",
+                        });
+                        return;
+                    }
+
+                    setQrStatus("loading");
+                    try {
+                        const vnpayRes = await createVNPayUrl({
+                            invoiceId: res.invoiceId,
+                            bankCode: "VNPAY",
+                            orderType: "PENALTY"
+                        });
+                        console.log("✅ VNPAY QR Code Response:", vnpayRes);
+
+                        if (!isErrorResponse(vnpayRes) && vnpayRes.paymentUrl) {
+                            setQrCodeValue(vnpayRes.paymentUrl);
+                            setQrStatus("active");
+                            setIsModalOpen(true);
+
+                            toast({
+                                title: "Đang chờ thanh toán",
+                                description: "Vui lòng quét mã QR để thanh toán",
+                                className: "bg-blue-500 text-white",
+                                duration: 3000,
+                            });
+                        } else {
+                            setQrStatus("error");
+                            toast({
+                                title: "Lỗi tạo QR VNPAY",
+                                description: getErrorMessage(vnpayRes) || "Không thể tạo QR code VNPAY",
+                                variant: "destructive",
+                            });
+                        }
+                    } catch (err) {
+                        console.error("❌ Error creating VNPAY URL:", err);
+                        setQrStatus("error");
+                        toast({
+                            title: "Lỗi",
+                            description: err?.message || "Lỗi khi tạo VNPAY QR code",
+                            variant: "destructive",
+                        });
+                    }
+
+                } else if (res.paymentChannel === "CASH") {
+                    // CASH: đóng modal, chờ staff xác nhận
+                    toast({
+                        title: "Đang chờ xác nhận",
+                        description: "Ticket đang chờ xác nhận thanh toán tiền mặt",
+                        className: "bg-amber-500 text-white",
+                        duration: 3000,
+                    });
+                    await fetchTickets();
+                    setIsDetailOpen(false);
+                }
             }
+
         } catch (err) {
+            console.error("❌ Error resolving ticket:", err);
             toast({
                 title: "Lỗi",
                 description: err?.message || "Đã xảy ra lỗi khi giải quyết ticket",
@@ -237,8 +354,7 @@ const DisputeManagement = () => {
         setIsConfirmingCash(true);
         try {
             const res = await confirmCashPenalty(selectedTicket.id, userData?.userId);
-            console.log("✅Confirm cash penalty response:", res);
-
+            console.log("✅ Confirm Cash Payment Response:", res);
             if (!isErrorResponse(res)) {
                 toast({
                     title: "Xác nhận thành công",
@@ -246,16 +362,12 @@ const DisputeManagement = () => {
                     className: "bg-green-500 text-white",
                     duration: 3000,
                 });
-
-                // Reload tickets to get fresh data
                 await fetchTickets();
-
-                // Close sheet
                 setIsDetailOpen(false);
             } else {
                 toast({
                     title: "Xác nhận thất bại",
-                    description: pickApiMessage(res) || "Không thể xác nhận thanh toán",
+                    description: getErrorMessage(res) || "Không thể xác nhận thanh toán",
                     variant: "destructive",
                 });
             }
@@ -270,35 +382,25 @@ const DisputeManagement = () => {
         }
     };
 
-    // Helper badges
+    const STATUS_CONFIG = {
+        IN_PROGRESS: { className: "bg-orange-500 text-white", label: "Đang xử lý" },
+        RESOLVED: { className: "bg-green-500 text-white", label: "Đã giải quyết" }
+    };
+
+    const REASON_CONFIG = {
+        BAD_CONDITION: { className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400", label: "Tình trạng pin xấu" },
+        SOH: { className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400", label: "Vấn đề SOH" },
+        OTHER: { className: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300", label: "Khác" }
+    };
+
     const getStatusBadge = (status) => {
-        const styles = {
-            IN_PROGRESS: "bg-orange-500 text-white",
-            RESOLVED: "bg-green-500 text-white"
-        };
-        const labels = {
-            IN_PROGRESS: "Đang xử lý",
-            RESOLVED: "Đã giải quyết"
-        };
-        return <Badge className={styles[status] || "bg-gray-500 text-white"}>{labels[status] || status}</Badge>;
+        const config = STATUS_CONFIG[status] || STATUS_CONFIG.RESOLVED;
+        return <Badge className={config.className}>{config.label}</Badge>;
     };
 
     const getReasonBadge = (reason) => {
-        const styles = {
-            BAD_CONDITION: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-            SOH: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-            OTHER: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-        };
-        const labels = {
-            BAD_CONDITION: "Tình trạng pin xấu",
-            SOH: "Vấn đề SOH",
-            OTHER: "Khác"
-        };
-        return (
-            <Badge variant="outline" className={styles[reason] || styles.OTHER}>
-                {labels[reason] || reason}
-            </Badge>
-        );
+        const config = REASON_CONFIG[reason] || REASON_CONFIG.OTHER;
+        return <Badge variant="outline" className={config.className}>{config.label}</Badge>;
     };
 
     return (
@@ -536,7 +638,7 @@ const DisputeManagement = () => {
                                             </Label>
                                             <Select
                                                 value={resolutionMethod}
-                                                onValueChange={(value) => setResolutionMethod(value)}
+                                                onValueChange={handleResolutionMethodChange}
                                                 disabled={isSubmitting}
                                             >
                                                 <SelectTrigger>
@@ -550,47 +652,52 @@ const DisputeManagement = () => {
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <div>
-                                            <Label htmlFor="penaltyLevel">
-                                                Mức phạt <span className="text-red-500">*</span>
-                                            </Label>
-                                            <Select
-                                                value={penaltyLevel}
-                                                onValueChange={(value) => setPenaltyLevel(value)}
-                                                disabled={isSubmitting}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Chọn mức phạt..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="NONE">Không phạt</SelectItem>
-                                                    <SelectItem value="MINOR">Mức phạt nhẹ</SelectItem>
-                                                    <SelectItem value="MEDIUM">Mức phạt vừa</SelectItem>
-                                                    <SelectItem value="SEVERE">Mức phạt nặng</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                                        {/* Chỉ hiển thị Mức phạt khi chọn PENALTY */}
+                                        {resolutionMethod === "PENALTY" && (
+                                            <div>
+                                                <Label htmlFor="penaltyLevel">
+                                                    Mức phạt <span className="text-red-500">*</span>
+                                                </Label>
+                                                <Select
+                                                    value={penaltyLevel}
+                                                    onValueChange={(value) => setPenaltyLevel(value)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Chọn mức phạt..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="MINOR">Mức phạt nhẹ</SelectItem>
+                                                        <SelectItem value="MEDIUM">Mức phạt vừa</SelectItem>
+                                                        <SelectItem value="SEVERE">Mức phạt nặng</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
 
-                                        <div>
-                                            <Label htmlFor="paymentMethod">
-                                                Thanh toán (nếu có) <span className="text-red-500">*</span>
-                                            </Label>
-                                            <Select
-                                                value={paymentMethod}
-                                                onValueChange={(value) => setPaymentMethod(value)}
-                                                disabled={isSubmitting}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Chọn phương pháp thanh toán..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="WALLET">Ví hệ thống của khách hàng</SelectItem>
-                                                    <SelectItem value="VNPAY">Ví điện tử VNPAY</SelectItem>
-                                                    <SelectItem value="CASH">Tiền mặt</SelectItem>
-                                                    <SelectItem value="NONE">Không thanh toán</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                                        {/* Chỉ hiển thị Thanh toán khi chọn PENALTY */}
+                                        {/* Chỉ hiển thị Thanh toán khi chọn PENALTY */}
+                                        {resolutionMethod === "PENALTY" && (
+                                            <div>
+                                                <Label htmlFor="paymentChannel">
+                                                    Thanh toán (nếu có) <span className="text-red-500">*</span>
+                                                </Label>
+                                                <Select
+                                                    value={paymentChannel}
+                                                    onValueChange={(value) => setPaymentChannel(value)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Chọn phương pháp thanh toán..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="WALLET">Ví hệ thống của khách hàng</SelectItem>
+                                                        <SelectItem value="VNPAY">Ví điện tử VNPAY</SelectItem>
+                                                        <SelectItem value="CASH">Tiền mặt</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
 
                                         <div>
                                             <Label htmlFor="resolutionDescription">
@@ -670,7 +777,51 @@ const DisputeManagement = () => {
                     )}
                 </SheetContent>
             </Sheet>
+
+            <Modal
+                title="Thanh toán phí phạt"
+                open={isModalOpen}
+                onCancel={() => {
+                    if (qrStatus !== "scanned") {
+                        setIsModalOpen(false);
+                        setQrCodeValue("");
+                        setQrStatus("active");
+                    }
+                }}
+                footer={null}
+                closable={qrStatus !== "scanned"}
+                maskClosable={false}
+            >
+                <div className="flex flex-col items-center gap-4">
+                    {qrStatus === "scanned" ? (
+                        <>
+                            <div className="text-center">
+                                <div className="text-6xl mb-4">✅</div>
+                                <p className="text-xl font-bold text-green-600 mb-2">Thanh toán thành công!</p>
+                                <p className="text-sm text-gray-500">Đang cập nhật trạng thái ticket...</p>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                                Quét mã QR để thanh toán phí phạt
+                            </p>
+                            <div className="flex justify-center p-4 bg-white rounded-lg">
+                                <QRCode
+                                    value={qrCodeValue || ""}
+                                    size={256}
+                                    status={qrStatus}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 text-center">
+                                Vui lòng không đóng màn hình này cho đến khi thanh toán hoàn tất
+                            </p>
+                        </>
+                    )}
+                </div>
+            </Modal>
         </div>
+
     );
 };
 

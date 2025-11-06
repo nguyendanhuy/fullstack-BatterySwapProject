@@ -6,6 +6,7 @@ import BatterySwapStation.dto.VnPayCreatePaymentRequest;
 import BatterySwapStation.dto.WalletTopupRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
+import org.springframework.context.ApplicationEventPublisher;
 import BatterySwapStation.entity.Invoice.InvoiceType;
 import BatterySwapStation.entity.Payment.PaymentMethod;
 import BatterySwapStation.websocket.TicketSocketController;
@@ -43,6 +44,7 @@ public class PaymentService {
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final DisputeTicketRepository disputeTicketRepository;
     private final TicketSocketController ticketSocketController;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * 1️⃣ Tạo URL thanh toán (FE gọi)
@@ -209,6 +211,7 @@ public class PaymentService {
                 if (success) {
                     invoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
                     invoiceRepository.save(invoice);
+                    applicationEventPublisher.publishEvent(new InvoicePaidEvent(this, invoice));
 
                     if (invoice.getPlanToActivate() != null) {
                         subscriptionService.activateSubscription(invoice);

@@ -3,9 +3,11 @@ package BatterySwapStation.service;
 import BatterySwapStation.dto.TicketResolveRequest;
 import BatterySwapStation.dto.TicketResponse;
 import BatterySwapStation.dto.TicketUpdateRequest;
+import BatterySwapStation.dto.VnPayCreatePaymentRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +29,6 @@ public class TicketService { // ✅ Đổi tên lớp
     private final StationRepository stationRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
-    private final PaymentService paymentService; // xử lý VNPAY redirect nếu cần
     private final UserService userService;
     private final SystemPriceService systemPriceService;
 
@@ -244,23 +245,24 @@ public class TicketService { // ✅ Đổi tên lớp
     // -------------------------------------------------------------------
 
     @Transactional
-    public TicketResponse resolveTicket(Long ticketId, TicketResolveRequest req) {
+    public TicketResponse resolveTicket(Long ticketId, TicketResolveRequest req, HttpServletRequest http) {
         DisputeTicket ticket = disputeTicketRepository.findById(ticketId)
                 .orElseThrow(() -> new EntityNotFoundException("Ticket không tồn tại: " + ticketId));
         User user = ticket.getUser();
-        // Validate request
+
         validateResolveRequest(req);
-        // Xử lý theo phương thức giải quyết
+
         if (req.getResolutionMethod() == DisputeTicket.ResolutionMethod.PENALTY) {
-            return handlePenaltyResolution(ticket, user, req);
+            return handlePenaltyResolution(ticket, user, req, http); // ✅ truyền thêm http
         }
-        // Xử lý hoàn tiền
+
         if (req.getResolutionMethod() == DisputeTicket.ResolutionMethod.REFUND) {
             return handleRefundResolution(ticket, user);
         }
-        // Xử lý OTHER
+
         return handleOtherResolution(ticket, req);
     }
+
 
     // Validate yêu cầu giải quyết ticket
     private void validateResolveRequest(TicketResolveRequest req) {
@@ -283,24 +285,22 @@ public class TicketService { // ✅ Đổi tên lớp
     }
 
     // Xử lý phương thức giải quyết PENALTY
-    private TicketResponse handlePenaltyResolution(DisputeTicket ticket, User user, TicketResolveRequest req) {
-        // Lấy mức phạt từ SystemPrice
+    private TicketResponse handlePenaltyResolution(DisputeTicket ticket, User user, TicketResolveRequest req, HttpServletRequest http) {
         SystemPrice.PriceType priceType = mapPenaltyToPriceType(req.getPenaltyLevel());
-        // Lấy giá phạt
         Double penaltyAmount = systemPriceService.getPriceByType(priceType);
-        // Tạo hóa đơn phạt
+
         Invoice invoice = createPenaltyInvoice(user, penaltyAmount);
-        // Gán hóa đơn phạt cho ticket
         ticket.setPenaltyInvoice(invoice);
         ticket.setPenaltyLevel(req.getPenaltyLevel());
-// Lưu ticket với thông tin hóa đơn phạt
+
         return switch (req.getPaymentChannel()) {
             case CASH -> handleCashPenalty(ticket, req, invoice, penaltyAmount);
             case WALLET -> handleWalletPenalty(ticket, user, invoice, penaltyAmount, req);
-            case VNPAY -> handleVnPayPenalty(ticket, req, invoice, penaltyAmount);
+            case VNPAY -> handleVnPayPenalty(ticket, req, invoice, penaltyAmount, http);
             default -> throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ");
         };
     }
+
 
     // Xử lý phạt tiền mặt
     private TicketResponse handleCashPenalty(DisputeTicket ticket, TicketResolveRequest req,
@@ -346,26 +346,28 @@ public class TicketService { // ✅ Đổi tên lớp
         return res;
     }
     // Xử lý phạt VNPAY
+    // Xử lý phạt VNPAY (KHÔNG tạo Payment nữa)
     private TicketResponse handleVnPayPenalty(DisputeTicket ticket, TicketResolveRequest req,
-                                              Invoice invoice, Double amount) {
-        log.info("💳 [TICKET:{}] Xử lý Penalty VNPAY | Level={} | Amount={}",
+                                              Invoice invoice, Double amount, HttpServletRequest http) {
+        log.info("💳 [TICKET:{}] Xử lý Penalty VNPay | Level={} | Amount={}",
                 ticket.getId(), req.getPenaltyLevel(), amount);
-        // Kiểm tra có payment pending sẵn không
-        Optional<Payment> existing = paymentRepository
-                .findTopByInvoiceAndPaymentMethodAndPaymentStatus(invoice, Payment.PaymentMethod.VNPAY, Payment.PaymentStatus.PENDING);
-        // Tạo payment mới nếu không có payment pending sẵn
-        Payment payment = existing.orElseGet(() -> createPayment(invoice, amount,
-                Payment.PaymentMethod.VNPAY, Payment.PaymentChannel.VNPAY, ticket.getId()));
 
-        log.info(existing.isPresent() ? "⚠️ Dùng lại payment pending sẵn (ID={})" : "🧾 Tạo payment mới",
-                payment.getPaymentId());
-
+        ticket.setStatus(DisputeTicket.TicketStatus.IN_PROGRESS);
+        ticket.setPenaltyLevel(req.getPenaltyLevel());
+        ticket.setResolutionMethod(DisputeTicket.ResolutionMethod.PENALTY.name());
+        ticket.setResolutionDescription("Chờ admin tạo link VNPay để thanh toán");
         disputeTicketRepository.save(ticket);
+
+        log.info("🕓 [TICKET:{}] Đang chờ tạo link VNPay | InvoiceID={} | Amount={}",
+                ticket.getId(), invoice.getInvoiceId(), amount);
 
         TicketResponse res = convertToTicketResponse(ticket);
         res.setInvoiceId(invoice.getInvoiceId());
         return res;
     }
+
+
+
     // Tạo hóa đơn phạt
     private Invoice createPenaltyInvoice(User user, Double amount) {
         Invoice invoice = new Invoice();

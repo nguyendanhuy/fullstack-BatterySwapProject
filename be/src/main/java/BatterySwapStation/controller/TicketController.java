@@ -6,6 +6,7 @@ import BatterySwapStation.service.TicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -77,15 +78,19 @@ public class TicketController {
 
     // --- PUT: RESOLVE TICKET ---
     @PutMapping("/{ticketId}/resolve")
-    @Operation(summary = "Giai quey ticket",
-            description = "Staff/Admin giải quyết ticket, chọn phương thức xử lý, mức phạt, kênh thanh toán nếu có.")
+    @Operation(
+            summary = "Giải quyết ticket",
+            description = "Staff/Admin giải quyết ticket: chọn phương thức xử lý, mức phạt, và kênh thanh toán nếu có (VNPay, Wallet, hoặc Cash)."
+    )
     public ResponseEntity<TicketResponse> resolveDisputeTicket(
             @PathVariable Long ticketId,
-            @RequestBody TicketResolveRequest request) {
-
-        TicketResponse response = ticketService.resolveTicket(ticketId, request);
+            @RequestBody TicketResolveRequest request,
+            HttpServletRequest http
+    ) {
+        TicketResponse response = ticketService.resolveTicket(ticketId, request, http);
         return ResponseEntity.ok(response);
     }
+
 
 
     // --- GET: LẤY OPEN DISPUTES ---

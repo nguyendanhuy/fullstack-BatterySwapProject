@@ -248,16 +248,31 @@ public class PaymentService {
                                 .findByPenaltyInvoice_InvoiceId(invoice.getInvoiceId())
                                 .orElse(null);
 
-
                         if (ticket != null) {
+                            // 🔄 Đồng bộ dữ liệu ngược từ Payment sang Ticket
+                            ticket.setPaymentChannel(
+                                    payment.getPaymentChannel() != null
+                                            ? payment.getPaymentChannel()
+                                            : Payment.PaymentChannel.VNPAY
+                            );
+
+                            if (payment.getPenaltyLevel() != null) {
+                                ticket.setPenaltyLevel(payment.getPenaltyLevel());
+                            }
+
+                            // ✅ Cập nhật trạng thái ticket
                             ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
                             ticket.setResolvedAt(LocalDateTime.now());
                             ticket.setResolutionDescription("Thanh toán phạt thành công (VNPAY)");
+
                             disputeTicketRepository.save(ticket);
 
-                            log.info("✅ Ticket #{} RESOLVED sau thanh toán VNPay", ticket.getId());
+                            log.info("✅ [SYNC] Ticket #{} → channel={} | level={} | RESOLVED",
+                                    ticket.getId(),
+                                    ticket.getPaymentChannel(),
+                                    ticket.getPenaltyLevel());
 
-                            // Gửi realtime đến staff tại trạm
+                            // 🔔 Gửi realtime thông báo đến staff tại trạm
                             Integer stationId = ticket.getStation().getStationId();
                             log.info("📢 [EVENT][TICKET:{}] Gửi event notifyPenaltyPaid tới Station #{}", ticket.getId(), stationId);
                             ticketSocketController.notifyPenaltyPaid(ticket.getId(), stationId);

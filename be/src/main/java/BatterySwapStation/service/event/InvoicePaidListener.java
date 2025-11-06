@@ -2,6 +2,7 @@ package BatterySwapStation.service.event;
 
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Booking;
+import BatterySwapStation.entity.SubscriptionPlan;
 import BatterySwapStation.service.EmailService;
 import BatterySwapStation.service.InvoicePaidEvent;
 import BatterySwapStation.repository.UserRepository;
@@ -49,37 +50,12 @@ public class InvoicePaidListener {
                 ? invoice.getCreatedDate().format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
                 : "—";
 
-        StringBuilder bookingTable = new StringBuilder();
-        if (invoice.getBookings() != null && !invoice.getBookings().isEmpty()) {
-            bookingTable.append("""
-                <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-                    <tr style="background:#007bff;color:white;">
-                        <th style="padding:8px;">#</th>
-                        <th style="padding:8px;">Ngày đặt</th>
-                        <th style="padding:8px;">Khung giờ</th>
-                        <th style="padding:8px;">Trạm</th>
-                        <th style="padding:8px;">Số tiền (VNĐ)</th>
-                    </tr>
-            """);
-            int idx = 1;
-            for (Booking b : invoice.getBookings()) {
-                bookingTable.append(String.format("""
-                    <tr style="border-bottom:1px solid #ddd;text-align:center;">
-                        <td style="padding:8px;">%d</td>
-                        <td style="padding:8px;">%s</td>
-                        <td style="padding:8px;">%s</td>
-                        <td style="padding:8px;">%s</td>
-                        <td style="padding:8px;">%,.0f</td>
-                    </tr>
-                """, idx++,
-                        b.getBookingDate() != null ? b.getBookingDate() : "—",
-                        b.getTimeSlot() != null ? b.getTimeSlot() : "—",
-                        (b.getStation() != null ? b.getStation().getStationName() : "—"),
-                        b.getAmount() != null ? b.getAmount() : 0.0
-                ));
-            }
-            bookingTable.append("</table>");
-        }
+        String detailSection = switch (invoice.getInvoiceType()) {
+            case BOOKING -> buildBookingTable(invoice);
+            case SUBSCRIPTION -> buildSubscriptionInfo(invoice);
+            case WALLET_TOPUP -> buildWalletTopupInfo(invoice);
+            case PENALTY -> buildPenaltyInfo(invoice);
+        };
 
         return """
             <div style="font-family:Arial, sans-serif; line-height:1.6; color:#333;">
@@ -100,7 +76,6 @@ public class InvoicePaidListener {
 
                 %s
 
-
                 <hr style="margin-top:30px;">
                 <p style="font-size:12px;color:gray;text-align:center;">
                     © 2025 Battery Swap Station Team<br>
@@ -114,8 +89,84 @@ public class InvoicePaidListener {
                 formattedDate,
                 invoice.getInvoiceType(),
                 invoice.getTotalAmount() != null ? invoice.getTotalAmount() : 0.0,
-                bookingTable.toString(),
-                invoice.getInvoiceId()
+                detailSection
         );
+    }
+
+    // 🔹 Chi tiết cho hóa đơn BOOKING
+    private String buildBookingTable(Invoice invoice) {
+        if (invoice.getBookings() == null || invoice.getBookings().isEmpty()) {
+            return "<p>Không có thông tin đặt pin trong hóa đơn này.</p>";
+        }
+        StringBuilder sb = new StringBuilder("""
+            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+                <tr style="background:#007bff;color:white;">
+                    <th style="padding:8px;">#</th>
+                    <th style="padding:8px;">Ngày đặt</th>
+                    <th style="padding:8px;">Khung giờ</th>
+                    <th style="padding:8px;">Trạm</th>
+                    <th style="padding:8px;">Số tiền (VNĐ)</th>
+                </tr>
+        """);
+        int idx = 1;
+        for (Booking b : invoice.getBookings()) {
+            sb.append(String.format("""
+                <tr style="border-bottom:1px solid #ddd;text-align:center;">
+                    <td style="padding:8px;">%d</td>
+                    <td style="padding:8px;">%s</td>
+                    <td style="padding:8px;">%s</td>
+                    <td style="padding:8px;">%s</td>
+                    <td style="padding:8px;">%,.0f</td>
+                </tr>
+            """, idx++,
+                    b.getBookingDate() != null ? b.getBookingDate() : "—",
+                    b.getTimeSlot() != null ? b.getTimeSlot() : "—",
+                    (b.getStation() != null ? b.getStation().getStationName() : "—"),
+                    b.getAmount() != null ? b.getAmount() : 0.0
+            ));
+        }
+        sb.append("</table>");
+        return sb.toString();
+    }
+
+    // 🔹 Chi tiết cho hóa đơn SUBSCRIPTION
+    private String buildSubscriptionInfo(Invoice invoice) {
+        SubscriptionPlan plan = invoice.getPlanToActivate();
+        if (plan == null) return "<p>Không có thông tin gói cước.</p>";
+        return """
+            <div style="margin-top:15px;">
+                <p><b>Thông tin gói cước:</b></p>
+                <ul>
+                    <li>Tên gói: <b>%s</b></li>
+                    <li>Thời hạn: %d ngày</li>
+                    <li>Giới hạn lượt đổi pin: %d lượt</li>
+                    <li>Mô tả: %s</li>
+                </ul>
+            </div>
+        """.formatted(
+                plan.getPlanName(),
+                plan.getDurationInDays(),
+                plan.getSwapLimit(),
+                plan.getDescription()
+        );
+    }
+
+    // 🔹 Chi tiết cho hóa đơn WALLET_TOPUP
+    private String buildWalletTopupInfo(Invoice invoice) {
+        return """
+            <p style="margin-top:10px;">
+                Bạn đã nạp thành công số tiền <b style="color:#28a745;">%,.0f VNĐ</b> vào ví điện tử của mình.
+            </p>
+        """.formatted(invoice.getTotalAmount());
+    }
+
+    // 🔹 Chi tiết cho hóa đơn PENALTY
+    private String buildPenaltyInfo(Invoice invoice) {
+        return """
+            <p style="margin-top:10px;color:#dc3545;">
+                Bạn đã thanh toán thành công khoản <b>tiền phạt</b> liên quan đến vi phạm trong quá trình đổi pin.
+            </p>
+            <p>Xin cảm ơn bạn đã hoàn tất nghĩa vụ thanh toán đúng hạn.</p>
+        """;
     }
 }

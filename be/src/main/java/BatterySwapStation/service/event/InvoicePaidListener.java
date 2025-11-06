@@ -100,11 +100,6 @@ public class InvoicePaidListener {
 
                 %s
 
-                <div style="margin-top:20px;text-align:center;">
-                    <a href="https://bss-fe.vercel.app/invoice/%d"
-                       style="background-color:#007bff;color:white;padding:10px 20px;
-                       text-decoration:none;border-radius:5px;">Xem chi tiết hóa đơn</a>
-                </div>
 
                 <hr style="margin-top:30px;">
                 <p style="font-size:12px;color:gray;text-align:center;">

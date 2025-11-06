@@ -302,38 +302,64 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<BookingResponse> getUserBookings(String userId) {
 
-        // 1. Tìm tất cả booking (Code của bạn)
-        List<Booking> bookings = bookingRepository.findByUserWithAllDetails(userId); // (Hoặc query cũ của bạn)
+        // 🔹 1. Lấy danh sách booking nhẹ
+        List<BookingSimpleDto> bookings = bookingRepository.findSimpleBookingsByUserId(userId);
 
-        // 2. Chuyển đổi (convert) TỪNG booking
-        return bookings.stream()
-                .map(booking -> {
-                    // 3. [LOGIC "THÔNG MINH"]
-                    UserSubscription subscription = null; // Mặc định là null
+        // 🔹 2. Preload toàn bộ subscription (1 query duy nhất)
+        List<UserSubscription> subscriptions = userSubscriptionRepository.findByUser_UserIdOrderByStartDateDesc(userId);
 
-                    // Kiểm tra xem có cần tìm Subscription không
-                    if (booking.getTotalPrice() != null &&
-                            booking.getTotalPrice() == 0.0 &&
-                            booking.getInvoice() != null &&
-                            booking.getInvoice().getCreatedDate() != null) {
+        // 🔹 3. Map sang BookingResponse (giữ format cũ)
+        return bookings.stream().map(b -> {
+            BookingResponse res = new BookingResponse();
+            res.setBookingId(b.getBookingId());
+            res.setBookingDate(b.getBookingDate());
+            res.setTimeSlot(b.getTimeSlot());
+            res.setBookingStatus(b.getBookingStatus().name());
+            res.setAmount(b.getAmount());
+            res.setStationId(b.getStationId());
+            res.setStationName(b.getStationName());
+            res.setStationAddress(b.getStationAddress());
+            res.setVehicleId(b.getVehicleId());
+            res.setVehicleVin(b.getVehicleVin());
+            res.setVehicleType(
+                    b.getVehicleType() != null ? b.getVehicleType().name() : null
+            );
+            res.setInvoiceId(b.getInvoiceId() != null ? String.valueOf(b.getInvoiceId()) : null);
+            res.setBookingStatus(b.getBookingStatus().name());
+            res.setAmount(b.getAmount());
+            res.setTotalSwapLimit(null); // set sau nếu có subscription
 
-                        Optional<UserSubscription> subOpt = userSubscriptionRepository.findActiveSubscriptionForUserOnDate(
-                                booking.getUser().getUserId(),
-                                UserSubscription.SubscriptionStatus.ACTIVE,
-                                booking.getInvoice().getCreatedDate()
-                        );
+            // 🔸 Logic Free Swap
+            UserSubscription matchedSub = null;
+            if (b.getTotalPrice() != null && b.getTotalPrice() == 0.0 && b.getInvoiceCreatedDate() != null) {
+                LocalDateTime createdAt = b.getInvoiceCreatedDate();
+                matchedSub = subscriptions.stream()
+                        .filter(sub ->
+                                sub.getStatus() == UserSubscription.SubscriptionStatus.ACTIVE &&
+                                        !sub.getStartDate().isAfter(createdAt) &&
+                                        !sub.getEndDate().isBefore(createdAt))
+                        .findFirst().orElse(null);
+            }
 
-                        if (subOpt.isPresent()) {
-                            subscription = subOpt.get(); // Tìm thấy gói cước
-                        }
-                    }
+            if (matchedSub != null) {
+                SubscriptionPlan plan = matchedSub.getPlan();
+                res.setIsFreeSwap(true);
+                res.setSubscriptionPlanName(plan.getPlanName());
+                res.setUsedSwaps(matchedSub.getUsedSwaps());
+                res.setTotalSwapLimit(plan.getSwapLimit());
+            } else {
+                res.setIsFreeSwap(false);
+            }
 
-                    // 4. Gọi hàm helper của BẠN (với 2 tham số)
-                    return convertToResponse(booking, subscription);
+            // 🔹 Payment info (nếu cần, để trống nếu không fetch)
+            res.setPayment(null);
 
-                })
-                .collect(Collectors.toList());
+            return res;
+        }).collect(Collectors.toList());
     }
+
+
+
 
     @Transactional(readOnly = true)
     public Map<String, Object> getBookingById(Long bookingId) {
@@ -388,40 +414,46 @@ public class BookingService {
             result.put("totalAmount", booking.getInvoice().getTotalAmount());
             result.put("invoiceStatus", booking.getInvoice().getInvoiceStatus().name());
         }
+        List<UserSubscription> subscriptionCache = null;
 
         // ========== [LOGIC "THÔNG MINH" NẰM Ở ĐÂY] ==========
-
-        // Đặt mặc định
         result.put("isFreeSwap", false);
         result.put("subscriptionPlanName", null);
         result.put("usedSwaps", null);
         result.put("totalSwapLimit", null);
 
-        // Kiểm tra và thêm thông tin gói cước
         if (booking.getInvoice() != null &&
                 booking.getInvoice().getTotalAmount() != null &&
-                booking.getInvoice().getTotalAmount() == 0.0 && // Kiểm tra miễn phí
+                booking.getInvoice().getTotalAmount() == 0.0 &&
                 booking.getUser() != null &&
                 booking.getInvoice().getCreatedDate() != null) {
 
-            Optional<UserSubscription> subOpt = userSubscriptionRepository.findActiveSubscriptionForUserOnDate(
-                    booking.getUser().getUserId(),
-                    UserSubscription.SubscriptionStatus.ACTIVE,
-                    booking.getInvoice().getCreatedDate()
-            );
+            // 🟢 Dùng cache map để tránh query lặp
+            if (subscriptionCache == null) {
+                subscriptionCache = userSubscriptionRepository.findByUser_UserIdOrderByStartDateDesc(booking.getUser().getUserId());
+            }
 
-            if (subOpt.isPresent()) {
-                UserSubscription sub = subOpt.get();
-                SubscriptionPlan plan = sub.getPlan();
+            LocalDateTime createdAt = booking.getInvoice().getCreatedDate();
 
+            UserSubscription matchedSub = subscriptionCache.stream()
+                    .filter(sub ->
+                            sub.getStatus() == UserSubscription.SubscriptionStatus.ACTIVE &&
+                                    !sub.getStartDate().isAfter(createdAt) &&
+                                    !sub.getEndDate().isBefore(createdAt))
+                    .findFirst()
+                    .orElse(null);
+
+            if (matchedSub != null) {
+                SubscriptionPlan plan = matchedSub.getPlan();
                 int limit = (plan.getSwapLimit() == null || plan.getSwapLimit() < 0) ? -1 : plan.getSwapLimit();
 
-                result.put("isFreeSwap", true); // Ghi đè (true)
+                result.put("isFreeSwap", true);
                 result.put("subscriptionPlanName", plan.getPlanName());
-                result.put("usedSwaps", sub.getUsedSwaps()); // Hiển thị số lượt đã dùng
+                result.put("usedSwaps", matchedSub.getUsedSwaps());
                 result.put("totalSwapLimit", limit);
             }
         }
+
         // ===============================================
 
         return result;

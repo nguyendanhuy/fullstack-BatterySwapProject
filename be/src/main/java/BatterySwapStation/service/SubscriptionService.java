@@ -291,32 +291,65 @@ public class SubscriptionService {
      * Lấy gói cước ĐANG HOẠT ĐỘNG (ACTIVE) của user.
      * (Giữ nguyên)
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> getActiveSubscription(String userId) {
-        UserSubscription activeSub = userSubscriptionRepository
-                .findActiveSubscriptionForUser(
-                        userId,
-                        UserSubscription.SubscriptionStatus.ACTIVE,
-                        LocalDateTime.now()
-                ).orElse(null);
+        // ✅ Tối ưu: gọi query nhẹ, không cần fetch user entity
+        List<Map<String, Object>> result = userSubscriptionRepository.findActiveSubscriptionSimple(userId);
 
-        if (activeSub == null) {
-            return null;
-        }
-        return convertSubscriptionToMap(activeSub);
+        if (result.isEmpty()) return null;
+
+        Map<String, Object> row = result.get(0); // lấy gói mới nhất
+        Map<String, Object> subscription = new HashMap<>();
+
+        subscription.put("id", row.get("id"));
+        subscription.put("startDate", row.get("startDate"));
+        subscription.put("endDate", row.get("endDate"));
+        subscription.put("usedSwaps", row.get("usedSwaps"));
+        subscription.put("autoRenew", row.get("autoRenew"));
+
+        Map<String, Object> plan = new HashMap<>();
+        plan.put("planId", row.get("planId"));
+        plan.put("planName", row.get("planName"));
+        plan.put("description", row.get("description"));
+        plan.put("swapLimit", row.get("swapLimit"));
+        plan.put("durationInDays", row.get("durationInDays"));
+        plan.put("priceType", row.get("priceType"));
+
+        subscription.put("plan", plan);
+
+        return subscription;
     }
+
 
     /**
      * Lấy TẤT CẢ lịch sử gói cước của user.
      * (Giữ nguyên)
      */
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getSubscriptionHistory(String userId) {
-        List<UserSubscription> allSubs = userSubscriptionRepository
-                .findByUser_UserIdOrderByStartDateDesc(userId);
+        List<Map<String, Object>> rows = userSubscriptionRepository.findSubscriptionHistorySimple(userId);
+        return rows.stream().map(row -> {
+            Map<String, Object> sub = new HashMap<>();
+            sub.put("userSubscriptionId", row.get("id"));
+            sub.put("status", row.get("status"));
+            sub.put("autoRenew", row.get("autoRenew"));
+            sub.put("startDate", row.get("startDate"));
+            sub.put("endDate", row.get("endDate"));
+            sub.put("usedSwaps", row.get("usedSwaps"));
 
-        return allSubs.stream()
-                .map(this::convertSubscriptionToMap)
-                .collect(Collectors.toList());
+            Map<String, Object> plan = new HashMap<>();
+            plan.put("planId", row.get("planId"));
+            plan.put("planName", row.get("planName"));
+            plan.put("description", row.get("description"));
+            plan.put("durationInDays", row.get("durationInDays"));
+            plan.put("swapLimit", row.get("swapLimit"));
+            plan.put("priceType", row.get("priceType"));
+
+            sub.put("plan", plan);
+            return sub;
+        }).collect(Collectors.toList());
     }
+
 
     /**
      * ✅ [SỬA 3] Hàm helper, đổi Map.of() sang HashMap
@@ -360,34 +393,25 @@ public class SubscriptionService {
      * Lấy tất cả các gói SubscriptionPlan có sẵn.
      * (Giữ nguyên, phiên bản này đã đúng)
      */
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getAllSubscriptionPlans() {
+        List<Map<String, Object>> rows = subscriptionPlanRepository.findAllSimplePlans();
 
-        List<SubscriptionPlan> allPlans = subscriptionPlanRepository.findAll();
+        return rows.stream().map(row -> {
+            Map<String, Object> plan = new HashMap<>(row);
+            Double price = systemPriceService.getPriceByType(
+                    SystemPrice.PriceType.valueOf(row.get("priceType").toString())
+            );
 
-        return allPlans.stream()
-                .map(plan -> {
-                    Double price = systemPriceService.getPriceByType(plan.getPriceType());
+            int limit = (row.get("swapLimit") != null) ? ((Number) row.get("swapLimit")).intValue() : -1;
+            plan.put("price", price);
+            plan.put("swapLimitInt", limit);
+            plan.put("swapLimit", limit < 0 ? "Không giới hạn" : String.valueOf(limit));
 
-                    Integer limit = plan.getSwapLimit();
-                    String limitStr = "Không giới hạn";
-                    if (limit != null && limit >= 0) {
-                        limitStr = String.valueOf(limit);
-                    }
-
-                    Map<String, Object> planMap = new HashMap<>();
-                    planMap.put("planId", plan.getId());
-                    planMap.put("planName", plan.getPlanName());
-                    planMap.put("description", plan.getDescription());
-                    planMap.put("price", price);
-                    planMap.put("priceType", plan.getPriceType().name());
-                    planMap.put("durationInDays", plan.getDurationInDays());
-                    planMap.put("swapLimit", limitStr);
-                    planMap.put("swapLimitInt", limit);
-
-                    return planMap;
-                })
-                .collect(Collectors.toList());
+            return plan;
+        }).collect(Collectors.toList());
     }
+
 
 
     /**

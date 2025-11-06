@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface UserSubscriptionRepository extends JpaRepository<UserSubscription, Integer> {
@@ -81,5 +82,51 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
     ORDER BY us.startDate DESC
 """)
     List<UserSubscription> findActiveSubscriptions(@Param("userId") String userId);
+    @Query("""
+SELECT new map(
+    us.id as id,
+    us.startDate as startDate,
+    us.endDate as endDate,
+    us.usedSwaps as usedSwaps,
+    us.autoRenew as autoRenew,
+    p.id as planId,
+    p.planName as planName,
+    p.description as description,
+    p.swapLimit as swapLimit,
+    p.durationInDays as durationInDays,
+    p.priceType as priceType
+)
+FROM UserSubscription us
+JOIN us.plan p
+WHERE us.user.userId = :userId
+  AND us.status = 'ACTIVE'
+  AND us.startDate <= CURRENT_TIMESTAMP
+  AND us.endDate >= CURRENT_TIMESTAMP
+ORDER BY us.startDate DESC
+""")
+    List<Map<String, Object>> findActiveSubscriptionSimple(@Param("userId") String userId);
+
+
+    @Query("""
+SELECT new map(
+    us.id AS id,
+    us.startDate AS startDate,
+    us.endDate AS endDate,
+    us.usedSwaps AS usedSwaps,
+    us.status AS status,
+    us.autoRenew AS autoRenew,
+    p.id AS planId,
+    p.planName AS planName,
+    p.description AS description,
+    p.durationInDays AS durationInDays,
+    p.swapLimit AS swapLimit,
+    p.priceType AS priceType
+)
+FROM UserSubscription us
+JOIN us.plan p
+WHERE us.user.userId = :userId
+ORDER BY us.startDate DESC
+""")
+    List<Map<String, Object>> findSubscriptionHistorySimple(@Param("userId") String userId);
 
 }

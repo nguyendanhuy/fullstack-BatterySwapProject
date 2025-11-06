@@ -396,4 +396,50 @@ public class InvoiceService {
         invoiceRepository.save(invoice);
         bookingRepository.saveAll(bookings);
     }
+
+    @Transactional(readOnly = true)
+    public InvoiceSimpleResponseDTO buildInvoiceSimpleFromFetched(Invoice invoice) {
+        // ✅ Dữ liệu đã được JOIN FETCH -> không cần query lại
+        List<InvoiceSimpleResponseDTO.SimpleBookingInfo> simpleBookings = invoice.getBookings().stream()
+                .map(booking -> InvoiceSimpleResponseDTO.SimpleBookingInfo.builder()
+                        .bookingId(booking.getBookingId())
+                        .bookingDate(booking.getBookingDate())
+                        .timeSlot(booking.getTimeSlot())
+                        .vehicleType(booking.getVehicleType())
+                        .amount(booking.getAmount())
+                        .bookingStatus(booking.getBookingStatus().toString())
+                        .stationId(booking.getStation() != null ? booking.getStation().getStationId() : null)
+                        .stationName(booking.getStation() != null ? booking.getStation().getStationName() : null)
+                        .stationAddress(booking.getStation() != null ? booking.getStation().getAddress() : null)
+                        .vehicleId(booking.getVehicle() != null ? booking.getVehicle().getVehicleId() : null)
+                        .licensePlate(booking.getVehicle() != null ? booking.getVehicle().getLicensePlate() : null)
+                        .vehicleBatteryType(booking.getVehicle() != null && booking.getVehicle().getBatteryType() != null
+                                ? booking.getVehicle().getBatteryType().toString()
+                                : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        InvoiceSimpleResponseDTO.SimplePlanInfo simplePlanInfo = null;
+        if (invoice.getPlanToActivate() != null) {
+            var plan = invoice.getPlanToActivate();
+            simplePlanInfo = InvoiceSimpleResponseDTO.SimplePlanInfo.builder()
+                    .planId(plan.getId())
+                    .planName(plan.getPlanName())
+                    .description(plan.getDescription())
+                    .durationInDays(plan.getDurationInDays())
+                    .priceType(plan.getPriceType() != null ? plan.getPriceType().toString() : null)
+                    .swapLimit(plan.getSwapLimit())
+                    .build();
+        }
+
+        return InvoiceSimpleResponseDTO.builder()
+                .invoiceId(invoice.getInvoiceId())
+                .invoiceStatus(invoice.getInvoiceStatus().toString())
+                .invoiceType(invoice.getInvoiceType().toString())
+                .totalAmount(invoice.getTotalAmount())
+                .createdDate(invoice.getCreatedDate())
+                .bookings(simpleBookings)             // ✅ giữ nguyên key FE đang dùng
+                .planToActivate(simplePlanInfo)       // ✅ giữ nguyên key FE đang dùng
+                .build();
+    }
 }

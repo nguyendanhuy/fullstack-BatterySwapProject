@@ -40,7 +40,9 @@ public class InvoiceController {
     public ResponseEntity<Map<String, Object>> getInvoiceSimple(
             @PathVariable @Parameter(description = "ID của invoice") Long invoiceId) {
         try {
-            Invoice invoice = invoiceService.getInvoiceById(invoiceId);
+            Invoice invoice = invoiceRepository.findByIdWithFullDetails(invoiceId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
+
 
             Map<String, Object> response = new HashMap<>();
             response.put("invoiceId", invoice.getInvoiceId());
@@ -98,20 +100,20 @@ public class InvoiceController {
             @PathVariable @Parameter(description = "ID của user") String userId) {
 
         try {
-            // Gọi hàm repository mới (findByUserId)
-            List<Invoice> userInvoices = invoiceRepository.findByUserId(userId);
+            // ⚡ DÙNG JOIN FETCH ĐỂ LẤY TOÀN BỘ DỮ LIỆU LIÊN QUAN
+            List<Invoice> userInvoices = invoiceRepository.findByUserIdWithFullDetails(userId);
 
-            // Chuyển đổi sang DTO (đã bao gồm invoiceStatus từ service)
+            // ⚡ KHÔNG GỌI SERVICE.getInvoiceSimple() (vì sẽ query lại DB từng invoice)
+            // → Gọi method mới, dùng dữ liệu đã fetch sẵn
             List<InvoiceSimpleResponseDTO> invoiceDTOs = userInvoices.stream()
-                    .map(invoice -> invoiceService.getInvoiceSimple(invoice.getInvoiceId()))
+                    .map(invoiceService::buildInvoiceSimpleFromFetched)
                     .collect(Collectors.toList());
 
-            // Trả về response
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("userId", userId);
             response.put("total", invoiceDTOs.size());
-            response.put("invoices", invoiceDTOs); // Trả về DTO
+            response.put("invoices", invoiceDTOs);
 
             return ResponseEntity.ok(response);
 
@@ -123,6 +125,9 @@ public class InvoiceController {
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }
+
+
+
 
     @DeleteMapping("/{invoiceId}")
     @Operation(summary = "Xóa invoice", description = "Xóa một invoice theo ID")

@@ -102,4 +102,29 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             "AND i.invoiceStatus = 'PAID' " +
             "ORDER BY i.createdDate DESC")
     List<Invoice> findLatestPaidSubscriptionInvoices(@Param("userId") String userId);
+
+    @Query("""
+SELECT DISTINCT i FROM Invoice i
+LEFT JOIN FETCH i.bookings b
+LEFT JOIN FETCH b.station
+LEFT JOIN FETCH b.vehicle
+LEFT JOIN FETCH i.planToActivate
+WHERE i.userId = :userId
+ORDER BY i.createdDate DESC
+""")
+    List<Invoice> findByUserIdWithFullDetails(@Param("userId") String userId);
+
+
+    @Query("""
+SELECT DISTINCT i FROM Invoice i
+LEFT JOIN FETCH i.bookings b
+LEFT JOIN FETCH b.station
+LEFT JOIN FETCH b.vehicle
+LEFT JOIN FETCH i.payments
+LEFT JOIN FETCH i.planToActivate
+WHERE i.invoiceId = :invoiceId
+""")
+    Optional<Invoice> findByIdWithFullDetails(@Param("invoiceId") Long invoiceId);
+
+
 }

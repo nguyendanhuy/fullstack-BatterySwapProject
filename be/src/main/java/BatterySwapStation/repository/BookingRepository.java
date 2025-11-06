@@ -1,5 +1,6 @@
 package BatterySwapStation.repository;
 
+import BatterySwapStation.dto.BookingSimpleDto;
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.User;
@@ -25,19 +26,35 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
      * Dùng 'JOIN FETCH' để tải tất cả dữ liệu liên quan
      * (User, Station, Vehicle, Invoice, Payments) trong 1 CÂU QUERY DUY NHẤT.
      */
-    @Query("SELECT DISTINCT b FROM Booking b " +
-            "LEFT JOIN FETCH b.user " +
-            "LEFT JOIN FETCH b.station " +
-            "LEFT JOIN FETCH b.vehicle " +
-            "LEFT JOIN FETCH b.invoice i " +
-            "LEFT JOIN FETCH i.payments " + // Lấy luôn payment của invoice
-            "WHERE b.user.userId = :userId " + // Query bằng userId
-            "ORDER BY b.bookingDate DESC, b.timeSlot DESC") // Sắp xếp luôn
-    List<Booking> findByUserWithAllDetails(@Param("userId") String userId);
+    @Query("""
+    SELECT new BatterySwapStation.dto.BookingSimpleDto(
+        b.bookingId,
+        b.bookingDate,
+        b.timeSlot,
+        b.bookingStatus,
+        b.amount,
+        b.totalPrice,
+        s.stationId,
+        s.stationName,
+        s.address,
+        v.vehicleId,
+        v.VIN,
+        v.vehicleType,
+        v.licensePlate,
+        i.invoiceId,
+        i.totalAmount,
+        i.invoiceStatus,
+        i.createdDate
+    )
+    FROM Booking b
+    JOIN b.station s
+    JOIN b.vehicle v
+    LEFT JOIN b.invoice i
+    WHERE b.user.userId = :userId
+    ORDER BY b.bookingDate DESC, b.timeSlot DESC
+""")
+    List<BookingSimpleDto> findSimpleBookingsByUserId(@Param("userId") String userId);
 
-
-    // Tìm booking của user theo status (sử dụng enum)
-    List<Booking> findByUserAndBookingStatus(User user, Booking.BookingStatus status);
 
     // Tìm booking theo ID và User (để đảm bảo user chỉ thao tác với booking của mình)
     Optional<Booking> findByBookingIdAndUser(Long bookingId, User user);

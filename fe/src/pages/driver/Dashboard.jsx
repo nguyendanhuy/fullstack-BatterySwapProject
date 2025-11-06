@@ -147,13 +147,6 @@ const DriverDashboard = () => {
                     </div>
                   </div>
                 </div>
-                {invoice?.invoiceType === "WALLET_TOPUP" && (
-                  <div className="mb-3">
-                    <Badge variant="outline" className="mb-2 bg-blue-100 text-blue-800 border-blue-300">
-                      💰 Nạp tiền vào ví hệ thống
-                    </Badge>
-                  </div>
-                )}
 
                 {/* Subscription Plan Info - if planToActivate exists */}
                 {invoice.planToActivate ? (

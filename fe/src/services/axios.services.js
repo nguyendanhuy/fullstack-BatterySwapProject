@@ -236,11 +236,24 @@ const cancelSubscriptionImmediate = (userId) => {
     return axios.post("/plans/cancel-immediately", { userId });
 }
 
-
 const confirmCashPenalty = (ticketId, staffId) => {
     return axios.put(`/staff/tickets/${ticketId}/confirm-cash?staffId=${staffId}`);
 }
+
+const getSystemPriceAdmin=() => {
+    return axios.get("/admin/system-prices");
+}
+
+const updateSystemPriceAdmin=(priceType, newPrice, description) => {
+    const data={
+        price:newPrice,
+        description:description
+    }
+    return axios.put(`/admin/system-prices/${priceType}`, data);
+}
 export {
+    getSystemPriceAdmin,
+    updateSystemPriceAdmin,
     registerAPI,
     loginAPI,
     loginByGoogleAPI,

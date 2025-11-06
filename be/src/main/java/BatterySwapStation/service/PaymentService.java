@@ -1,14 +1,11 @@
 package BatterySwapStation.service;
 
 import BatterySwapStation.config.VnPayProperties;
-import BatterySwapStation.dto.TicketRealtimeEvent;
 import BatterySwapStation.dto.VnPayCreatePaymentRequest;
 import BatterySwapStation.dto.WalletTopupRequest;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
 import org.springframework.context.ApplicationEventPublisher;
-import BatterySwapStation.entity.Invoice.InvoiceType;
-import BatterySwapStation.entity.Payment.PaymentMethod;
 import BatterySwapStation.websocket.TicketSocketController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -264,7 +261,6 @@ public class PaymentService {
                             ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
                             ticket.setResolvedAt(LocalDateTime.now());
                             ticket.setResolutionDescription("Thanh toán phạt thành công (VNPAY)");
-
                             disputeTicketRepository.save(ticket);
 
                             log.info("✅ [SYNC] Ticket #{} → channel={} | level={} | RESOLVED",
@@ -274,10 +270,15 @@ public class PaymentService {
 
                             // 🔔 Gửi realtime thông báo đến staff tại trạm
                             Integer stationId = ticket.getStation().getStationId();
-                            log.info("📢 [EVENT][TICKET:{}] Gửi event notifyPenaltyPaid tới Station #{}", ticket.getId(), stationId);
+
+                            log.info("📢 [REALTIME] Chuẩn bị gửi notifyPenaltyPaid → station={} | ticketId={}", stationId, ticket.getId());
                             ticketSocketController.notifyPenaltyPaid(ticket.getId(), stationId);
+                            log.info("✅ [REALTIME] Đã gửi notifyPenaltyPaid cho Station #{} (Ticket #{})", stationId, ticket.getId());
+                        } else {
+                            log.warn("⚠️ [PENALTY] Không tìm thấy ticket tương ứng với invoice #{}", invoice.getInvoiceId());
                         }
                     }
+
 
 
 
@@ -549,68 +550,6 @@ public class PaymentService {
         return responseData;
     }
 
-//    @Transactional
-//    public String createVnPayPaymentUrlForSubscription(VnPayCreateSubscriptionPaymentRequest req, HttpServletRequest http) {
-//        log.info("🟢 [CREATE] Bắt đầu tạo URL thanh toán gói cho user={} | planId={}", req.getUserId(), req.getPlanId());
-//
-//        User user = userRepository.findById(req.getUserId())
-//                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy user: " + req.getUserId()));
-//
-//        SubscriptionPlan plan = subscriptionPlanRepository.findById(req.getPlanId().intValue())
-//                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói cước: " + req.getPlanId()));
-//
-//        // 🔹 Lấy giá gói từ SystemPrice
-//        Double amount = systemPriceRepository.findPriceByPriceType(plan.getPriceType())
-//                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giá cho gói: " + plan.getPriceType()));
-//
-//        String ipAddr = VnPayUtils.getClientIp(http);
-//        String txnRef = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-//        long amountTimes100 = Math.round(amount) * 100L;
-//
-//        ZoneId zone = ZoneId.of("Asia/Ho_Chi_Minh");
-//        ZonedDateTime now = ZonedDateTime.now(zone);
-//        String vnpCreateDate = now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-//        String vnpExpireDate = now.plusMinutes(props.getExpireMinutes())
-//                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-//
-//        Map<String, String> params = new LinkedHashMap<>();
-//        params.put("vnp_Version", props.getApiVersion());
-//        params.put("vnp_Command", props.getCommand());
-//        params.put("vnp_TmnCode", props.getTmnCode());
-//        params.put("vnp_Amount", String.valueOf(amountTimes100));
-//        params.put("vnp_CurrCode", props.getCurrCode());
-//        params.put("vnp_TxnRef", txnRef);
-//        params.put("vnp_OrderInfo", "Thanh toán gói " + plan.getPlanName());
-//        params.put("vnp_OrderType", "subscription");
-//        params.put("vnp_Locale", (req.getLocale() == null || req.getLocale().isBlank()) ? "vn" : req.getLocale());
-//        params.put("vnp_ReturnUrl", props.getReturnUrl());
-//        params.put("vnp_IpAddr", ipAddr);
-//        params.put("vnp_CreateDate", vnpCreateDate);
-//        params.put("vnp_ExpireDate", vnpExpireDate);
-//        if (req.getBankCode() != null && !req.getBankCode().isBlank()) {
-//            params.put("vnp_BankCode", req.getBankCode());
-//        }
-//
-//        // 🔹 Lưu Payment
-//        Payment payment = Payment.builder()
-//                .user(user)
-//                .plan(plan)
-//                .amount(amount)
-//                .paymentMethod(Payment.PaymentMethod.QR_BANKING)
-//                .paymentStatus(Payment.PaymentStatus.PENDING)
-//                .gateway("VNPAY")
-//                .vnpTxnRef(txnRef)
-//                .message("Thanh toán gói: " + plan.getPlanName())
-//                .createdAt(LocalDateTime.now(zone))
-//                .build();
-//        paymentRepository.save(payment);
-//
-//        // 🔹 Build URL
-//        String payUrl = VnPayUtils.buildPaymentUrl(props.getPayUrl(), params, props.getHashSecret());
-//        log.info("✅ [CREATE DONE] plan={} | txnRef={} | amount={} | URL={}", plan.getPlanName(), txnRef, amount, payUrl);
-//
-//        return payUrl;
-//    }
 
     @Transactional
     public String createVnPayPaymentUrlForSubscriptionInvoice(VnPayCreatePaymentRequest req, HttpServletRequest http) {
@@ -724,18 +663,18 @@ public class PaymentService {
 
         if (currentBalance + req.getAmount() > maxWalletLimit) {
             throw new IllegalArgumentException(String.format(
-                "Không thể nạp tiền. Số dư ví sau nạp (%.0f VNĐ) sẽ vượt quá giới hạn tối đa (%.0f VNĐ). " +
-                "Số dư hiện tại: %.0f VNĐ, Số tiền nạp: %.0f VNĐ",
-                currentBalance + req.getAmount(), maxWalletLimit, currentBalance, req.getAmount()
+                    "Không thể nạp tiền. Số dư ví sau nạp (%.0f VNĐ) sẽ vượt quá giới hạn tối đa (%.0f VNĐ). " +
+                            "Số dư hiện tại: %.0f VNĐ, Số tiền nạp: %.0f VNĐ",
+                    currentBalance + req.getAmount(), maxWalletLimit, currentBalance, req.getAmount()
             ));
         }
 
         // Kiểm tra nếu ví đã bị lỗi overflow trước đó
         if (currentBalance > maxWalletLimit) {
             throw new IllegalStateException(String.format(
-                "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn). " +
-                "Vui lòng liên hệ hỗ trợ để khắc phục trước khi nạp tiền.",
-                currentBalance
+                    "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn). " +
+                            "Vui lòng liên hệ hỗ trợ để khắc phục trước khi nạp tiền.",
+                    currentBalance
             ));
         }
 
@@ -799,25 +738,4 @@ public class PaymentService {
 
         return payUrl;
     }
-
-    @Transactional
-    public void refundSubscription(Long invoiceId, double amount) {
-
-        Payment refundRecord = Payment.builder()
-                .invoice(invoiceRepository.findById(invoiceId).orElse(null))
-                .amount(amount)
-                .paymentMethod(Payment.PaymentMethod.VNPAY)
-                .paymentStatus(Payment.PaymentStatus.PENDING)
-                .transactionType(Payment.TransactionType.REFUND)
-                .gateway("VNPAY")
-                .message("Hoàn tiền gói cước")
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        paymentRepository.save(refundRecord);
-
-        // call refund API VNPay here
-    }
-
-
 }

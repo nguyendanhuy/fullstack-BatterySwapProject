@@ -142,8 +142,34 @@ public class PaymentService {
             }
 
             String txnRef = fields.get("vnp_TxnRef");
+
+// ⚙️ Tìm payment pending theo TxnRef hoặc invoice
             Payment payment = paymentRepository.findByVnpTxnRef(txnRef)
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giao dịch: " + txnRef));
+                    .orElse(null);
+
+            if (payment == null) {
+                // Nếu không tìm thấy → fallback: tìm payment pending VNPAY gần nhất của invoice penalty (tránh mất liên kết)
+                log.warn("⚠️ Không tìm thấy Payment theo txnRef={}, thử tìm theo invoice penalty gần nhất", txnRef);
+                String invoiceIdStr = fields.get("vnp_OrderInfo") != null
+                        ? fields.get("vnp_OrderInfo").replaceAll("[^0-9]", "") : null;
+
+                if (invoiceIdStr != null && !invoiceIdStr.isBlank()) {
+                    try {
+                        long invoiceId = Long.parseLong(invoiceIdStr);
+                        payment = paymentRepository
+                                .findTopByInvoiceAndPaymentMethodAndPaymentStatus(
+                                        invoiceRepository.findById(invoiceId)
+                                                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy invoice " + invoiceId)),
+                                        Payment.PaymentMethod.VNPAY,
+                                        Payment.PaymentStatus.PENDING)
+                                .orElse(null);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+
+            if (payment == null)
+                throw new IllegalArgumentException("Không tìm thấy giao dịch hoặc invoice tương ứng: " + txnRef);
 
             long amountFromVnp = Long.parseLong(fields.get("vnp_Amount"));
             if (amountFromVnp != (long) (payment.getAmount() * 100)) {
@@ -153,6 +179,7 @@ public class PaymentService {
             }
 
             if (payment.getPaymentStatus() != Payment.PaymentStatus.PENDING) {
+                log.info("⏩ [IPN SKIP] PaymentID={} đã xử lý trước đó (status={})", payment.getPaymentId(), payment.getPaymentStatus());
                 response.put("RspCode", "02");
                 response.put("Message", "Đã xử lý trước đó");
                 return response;
@@ -162,7 +189,7 @@ public class PaymentService {
             String transStatus = fields.get("vnp_TransactionStatus");
             boolean success = "00".equals(respCode) && "00".equals(transStatus);
 
-            // ✅ Update Payment
+// ✅ Update Payment
             payment.setChecksumOk(true);
             payment.setVnpResponseCode(respCode);
             payment.setVnpTransactionStatus(transStatus);
@@ -172,6 +199,9 @@ public class PaymentService {
             payment.setMessage(VnPayUtils.getVnPayResponseMessage(respCode));
             payment.setPaymentStatus(success ? Payment.PaymentStatus.SUCCESS : Payment.PaymentStatus.FAILED);
             paymentRepository.save(payment);
+
+            log.info("💾 [IPN UPDATE] PaymentID={} → {} | Bank={} | TxnNo={}",
+                    payment.getPaymentId(), payment.getPaymentStatus(), payment.getVnpBankCode(), payment.getVnpTransactionNo());
 
             // ✅ Update Invoice
             Invoice invoice = payment.getInvoice();
@@ -226,6 +256,7 @@ public class PaymentService {
 
                             // Gửi realtime đến staff tại trạm
                             Integer stationId = ticket.getStation().getStationId();
+                            log.info("📢 [EVENT][TICKET:{}] Gửi event notifyPenaltyPaid tới Station #{}", ticket.getId(), stationId);
                             ticketSocketController.notifyPenaltyPaid(ticket.getId(), stationId);
                         }
                     }

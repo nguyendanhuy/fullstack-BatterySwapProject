@@ -513,6 +513,7 @@ public class SubscriptionService {
         if (invoices.isEmpty()) {
             throw new IllegalStateException("Không tìm thấy hóa đơn đã thanh toán.");
         }
+
         Invoice invoice = invoices.get(0);
 
         // 3. Hủy gói
@@ -537,7 +538,7 @@ public class SubscriptionService {
                     .build());
         }
 
-        // 5. Return result
+        // 5. Return result (KHÔNG dùng Map.of — tránh null crash)
         Map<String, Object> result = new HashMap<>();
         result.put("status", activeSub.getStatus().name());
         result.put("remainingDays", Math.max(0, totalDays - usedDays));
@@ -547,6 +548,7 @@ public class SubscriptionService {
 
         return result;
     }
+
 
 
 }

@@ -121,8 +121,8 @@ public class TicketService {
     }
 
     // -------------------------------------------------------------------
-    // --- 5. CONVERT DTO ---
-    // -------------------------------------------------------------------
+// --- 5. CONVERT DTO ---
+// -------------------------------------------------------------------
     private TicketResponse convertToTicketResponse(DisputeTicket ticket) {
         TicketResponse res = new TicketResponse();
         res.setId(ticket.getId());
@@ -147,23 +147,22 @@ public class TicketService {
         if (ticket.getPenaltyLevel() != null)
             res.setPenaltyLevel(ticket.getPenaltyLevel().name());
 
-        // ✅ Ưu tiên payment thực tế, fallback sang ticket.paymentChannel
-        if (ticket.getPenaltyInvoice() != null) {
-            paymentRepository.findTopByInvoiceOrderByCreatedAtDesc(ticket.getPenaltyInvoice())
-                    .ifPresentOrElse(
-                            p -> res.setPaymentChannel(
-                                    p.getPaymentChannel() != null ? p.getPaymentChannel().name() : null
-                            ),
-                            () -> res.setPaymentChannel(
-                                    ticket.getPaymentChannel() != null ? ticket.getPaymentChannel().name() : null
-                            )
-                    );
-        } else if (ticket.getPaymentChannel() != null) {
+        // ✅ Ưu tiên lấy trực tiếp từ DisputeTicket (vì đây là cột chính thức)
+        if (ticket.getPaymentChannel() != null) {
             res.setPaymentChannel(ticket.getPaymentChannel().name());
+        }
+        // 🔍 Nếu ticket chưa có paymentChannel, thử lấy từ payment thực tế (nếu có)
+        else if (ticket.getPenaltyInvoice() != null) {
+            paymentRepository.findTopByInvoiceOrderByCreatedAtDesc(ticket.getPenaltyInvoice())
+                    .ifPresent(p -> {
+                        if (p.getPaymentChannel() != null)
+                            res.setPaymentChannel(p.getPaymentChannel().name());
+                    });
         }
 
         return res;
     }
+
 
     // -------------------------------------------------------------------
     // --- 6. CONFIRM CASH ---
@@ -317,6 +316,7 @@ public class TicketService {
         log.info("💳 [TICKET:{}] Penalty VNPAY | Level={} | Amount={}",
                 ticket.getId(), req.getPenaltyLevel(), amount);
 
+        ticket.setPenaltyInvoice(invoice);
         ticket.setStatus(DisputeTicket.TicketStatus.IN_PROGRESS);
         ticket.setPenaltyLevel(req.getPenaltyLevel());
         ticket.setResolutionMethod(DisputeTicket.ResolutionMethod.PENALTY.name());

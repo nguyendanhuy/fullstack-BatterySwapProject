@@ -663,18 +663,18 @@ public class PaymentService {
 
         if (currentBalance + req.getAmount() > maxWalletLimit) {
             throw new IllegalArgumentException(String.format(
-                    "Không thể nạp tiền. Số dư ví sau nạp (%.0f VNĐ) sẽ vượt quá giới hạn tối đa (%.0f VNĐ). " +
-                            "Số dư hiện tại: %.0f VNĐ, Số tiền nạp: %.0f VNĐ",
-                    currentBalance + req.getAmount(), maxWalletLimit, currentBalance, req.getAmount()
+                "Không thể nạp tiền. Số dư ví sau nạp (%.0f VNĐ) sẽ vượt quá giới hạn tối đa (%.0f VNĐ). " +
+                "Số dư hiện tại: %.0f VNĐ, Số tiền nạp: %.0f VNĐ",
+                currentBalance + req.getAmount(), maxWalletLimit, currentBalance, req.getAmount()
             ));
         }
 
         // Kiểm tra nếu ví đã bị lỗi overflow trước đó
         if (currentBalance > maxWalletLimit) {
             throw new IllegalStateException(String.format(
-                    "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn). " +
-                            "Vui lòng liên hệ hỗ trợ để khắc phục trước khi nạp tiền.",
-                    currentBalance
+                "Ví của bạn hiện có vấn đề (số dư: %.0f VNĐ vượt quá giới hạn). " +
+                "Vui lòng liên hệ hỗ trợ để khắc phục trước khi nạp tiền.",
+                currentBalance
             ));
         }
 

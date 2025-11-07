@@ -101,28 +101,28 @@ const DisputeManagement = () => {
     const handlePenaltyPaid = (ticketId) => {
         console.log('🎉 handlePenaltyPaid called! TicketId:', ticketId);
 
+        // Set QR status to scanned and keep it
         setQrStatus("scanned");
 
+        // Show success toast
         toast({
-            title: "✅ Thanh toán thành công!",
+            title: "Thanh toán thành công!",
             description: `Ticket #${ticketId} đã được thanh toán phạt.`,
             className: "bg-green-500 text-white",
             duration: 5000,
         });
 
-        // Auto close modal after 2 seconds
+        // Auto close modal and refresh after 3 seconds
         setTimeout(() => {
             setIsModalOpen(false);
             setQrStatus("active");
             setQrCodeValue("");
-
-            // Close detail sheet too
             setIsDetailOpen(false);
 
             // Refresh tickets to show updated status
             console.log('🔄 Refreshing tickets after payment...');
             fetchTickets();
-        }, 2000);
+        }, 3000);
     };
 
     // Subscribe to payment realtime events
@@ -793,29 +793,29 @@ const DisputeManagement = () => {
                 maskClosable={false}
             >
                 <div className="flex flex-col items-center gap-4">
-                    {qrStatus === "scanned" ? (
-                        <>
-                            <div className="text-center">
-                                <div className="text-6xl mb-4">✅</div>
-                                <p className="text-xl font-bold text-green-600 mb-2">Thanh toán thành công!</p>
-                                <p className="text-sm text-gray-500">Đang cập nhật trạng thái ticket...</p>
-                            </div>
-                        </>
+                    {qrStatus === "loading" ? (
+                        <div className="text-center py-8">
+                            <Loader2 className="h-16 w-16 animate-spin text-blue-500 mx-auto mb-4" />
+                            <p className="text-sm text-gray-600">Đang tạo mã QR...</p>
+                        </div>
                     ) : (
                         <>
                             <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                                Quét mã QR để thanh toán phí phạt
+                                {qrStatus === "scanned" ? "Đã thanh toán thành công!" : "Quét mã QR để thanh toán phí phạt"}
                             </p>
-                            <div className="flex justify-center p-4 bg-white rounded-lg">
+                            <div className="flex justify-center p-4 bg-white rounded-lg shadow-sm">
                                 <QRCode
                                     value={qrCodeValue || ""}
                                     size={256}
                                     status={qrStatus}
+                                    icon="https://vinadesign.vn/uploads/images/2023/05/vnpay-logo-vinadesign-25-12-57-55.jpg"
                                 />
                             </div>
-                            <p className="text-xs text-gray-500 text-center">
-                                Vui lòng không đóng màn hình này cho đến khi thanh toán hoàn tất
-                            </p>
+                            {qrStatus !== "scanned" && (
+                                <p className="text-xs text-gray-500 text-center max-w-xs">
+                                    Vui lòng không đóng màn hình này cho đến khi thanh toán hoàn tất
+                                </p>
+                            )}
                         </>
                     )}
                 </div>

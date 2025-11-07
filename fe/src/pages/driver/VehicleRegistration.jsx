@@ -52,8 +52,6 @@ export default function VehicleRegistration() {
   const [registeredVehicles, setRegisteredVehicles] = useState([]);
 
   useEffect(() => {
-    // userVehicles được fetch tự động bởi AuthProvider khi có token
-    // Chỉ cần đồng bộ vào state local
     if (userVehicles && Array.isArray(userVehicles)) {
       setRegisteredVehicles(userVehicles);
     } else {
@@ -80,7 +78,6 @@ export default function VehicleRegistration() {
     try {
       setCheckingVin(true);
       const res = await getVehicleInfoByVin(vin);
-
       console.log("Vin Information :", vin, res);
 
       if (isErrorResponse(res)) {
@@ -103,7 +100,6 @@ export default function VehicleRegistration() {
         return;
       }
 
-      // Thành công
       const activeFlag = (res?.active !== false) || (res?.userId != null);
 
 

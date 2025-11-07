@@ -15,14 +15,24 @@ public interface StaffAssignRepository extends JpaRepository<StaffAssign, Intege
     StaffAssign findFirstByUser_UserIdAndIsActiveTrue(String userId);
 
     @Query("""
-    SELECT new BatterySwapStation.dto.StaffListItemDTO(
-        u.userId, u.fullName, u.email,
-        sa.stationId, s.stationName, u.isActive
+SELECT new BatterySwapStation.dto.StaffListItemDTO(
+    u.userId,
+    u.fullName,
+    u.email,
+    sa.stationId,
+    s.stationName,
+    COALESCE(sa.isActive, false)
+)
+FROM User u
+LEFT JOIN StaffAssign sa ON sa.user.userId = u.userId
+    AND sa.assignDate = (
+        SELECT MAX(sa2.assignDate)
+        FROM StaffAssign sa2
+        WHERE sa2.user.userId = u.userId
     )
-    FROM User u
-    LEFT JOIN StaffAssign sa ON sa.user.userId = u.userId AND sa.isActive = true
-    LEFT JOIN Station s ON s.stationId = sa.stationId
-    WHERE u.role.roleId = 2
+LEFT JOIN Station s ON s.stationId = sa.stationId
+WHERE u.role.roleId = 2
+ORDER BY u.userId
 """)
     List<StaffListItemDTO> findAllStaffWithStation();
 

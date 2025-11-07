@@ -47,7 +47,8 @@ public class Invoice {
         BOOKING,
         SUBSCRIPTION,
         WALLET_TOPUP,
-        PENALTY // Loại hóa đơn phạt vi phạm
+        PENALTY, // Loại hóa đơn phạt vi phạm
+        REFUND // Loại hóa đơn hoàn tiền
     }
 
     // 🆕 Thêm sau phần enum InvoiceType

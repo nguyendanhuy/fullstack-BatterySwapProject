@@ -24,6 +24,7 @@ export const useStompBattery = () => {
       connectHeaders: headers,
       onConnect: () => {
         console.log("✅ STOMP Connected");
+        console.log("HTTP_BASE:", HTTP_BASE);
         setConnected(true)}
         ,
       onDisconnect: () => {

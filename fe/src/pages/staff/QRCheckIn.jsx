@@ -122,15 +122,15 @@ const QRCheckIn = () => {
     setIsService(true)
     try {
       const res = await commitSwap(data);
+      console.log("Commit swap response:", res);
       if (res.success) {
         toast({
           title: "Hoàn thành đổi pin",
           description: res.message,
           duration: 5000,
         });
-        const slotNumber = res.data.map(item => item.dockOutSlot);
+        const slotNumber = (Array.isArray(res.data) ? res.data : [res.data]).map(item => item.dockOutSlot);
         setBatterySlotNumber(slotNumber);
-        console.log("Swap committed:", res);
         setVerificationError("");
         setIsDialogOpen(true);
         toast({
@@ -143,7 +143,7 @@ const QRCheckIn = () => {
     } catch (err) {
       toast({
         title: "Không thể bắt đầu dịch vụ",
-        description: "Lỗi mạng",
+        description: err?.message || "Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {

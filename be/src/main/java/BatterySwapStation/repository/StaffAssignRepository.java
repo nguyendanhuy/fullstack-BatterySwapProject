@@ -4,6 +4,7 @@ import BatterySwapStation.dto.StaffListItemDTO;
 import BatterySwapStation.entity.StaffAssign;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -24,6 +25,22 @@ public interface StaffAssignRepository extends JpaRepository<StaffAssign, Intege
     WHERE u.role.roleId = 2
 """)
     List<StaffListItemDTO> findAllStaffWithStation();
+
+
+    @Query("""
+    SELECT CASE WHEN COUNT(sa) > 0 THEN true ELSE false END
+    FROM StaffAssign sa
+    WHERE sa.stationId = :stationId
+      AND sa.user.userId = :userId
+      AND sa.isActive = true
+      AND sa.assignDate = (
+          SELECT MAX(sa2.assignDate)
+          FROM StaffAssign sa2
+          WHERE sa2.user.userId = :userId
+      )
+""")
+    boolean existsActiveAssign(@Param("stationId") Integer stationId,
+                               @Param("userId") String userId);
 
 }
 

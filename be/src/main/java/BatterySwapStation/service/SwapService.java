@@ -165,7 +165,7 @@ public class SwapService {
             throw new IllegalStateException("Không đủ pin đầy khả dụng để swap.");
 
         String currentStaffUserId = resolveStaffUserId(request);
-        boolean staffInStation = staffAssignRepository.existsByStationIdAndUser_UserId(
+        boolean staffInStation = staffAssignRepository.existsActiveAssign(
                 booking.getStation().getStationId(), currentStaffUserId);
         if (!staffInStation)
             throw new IllegalStateException("Nhân viên không thuộc trạm này, không thể thực hiện swap.");
@@ -183,9 +183,9 @@ public class SwapService {
         booking.setBookingStatus(Booking.BookingStatus.COMPLETED);
         booking.setCompletedTime(LocalDate.now());
         bookingRepository.save(booking);
-
-        return results.size() == 1 ? results.get(0) : results;
+        return results;
     }
+
 
     // ====================== HANDLE SINGLE SWAP ======================
     @Transactional(propagation = Propagation.REQUIRES_NEW)

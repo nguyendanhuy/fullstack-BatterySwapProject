@@ -23,16 +23,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-    private final UserRepository userRepository; // ✅ thêm
+    private final UserRepository userRepository;
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
             UserDetailsService userDetailsService,
-            UserRepository userRepository // ✅ thêm
+            UserRepository userRepository
     ) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
-        this.userRepository = userRepository; // ✅ thêm
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -42,6 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // Bỏ qua các yêu cầu đến /ws-battery
         String path = request.getRequestURI();
         if (path.startsWith("/ws-battery")) {
             filterChain.doFilter(request, response);
@@ -66,13 +67,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // ✅ lấy User từ DB
             User userEntity = userRepository.findById(userId).orElse(null);
 
             if (userEntity != null) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
-                                userEntity, // ✅ principal là User entity
+                                userEntity,
                                 null,
                                 null // bạn đang ko dùng Authorities -> để null OK
                         );

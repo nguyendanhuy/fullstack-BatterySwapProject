@@ -17,10 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -32,31 +29,40 @@ public class BatteryService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SwapRepository swapRepository;
     // ==================== TỰ ĐỘNG SẠC ====================
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 6000) // mỗi 6 giây
     @Transactional
     public void autoChargeBatteries() {
         List<Battery> chargingBatteries = batteryRepository.findByBatteryStatus(Battery.BatteryStatus.CHARGING);
+        if (chargingBatteries.isEmpty()) return;
+
+        List<Battery> updated = new ArrayList<>();
 
         for (Battery battery : chargingBatteries) {
-            double current = battery.getCurrentCapacity() == null ? 0.0 : battery.getCurrentCapacity();
+            double current = Optional.ofNullable(battery.getCurrentCapacity()).orElse(0.0);
             current += 10.0;
+            if (current > 100.0) current = 100.0;
 
             boolean fullyCharged = current >= 100.0;
+            battery.setCurrentCapacity(current);
+
             if (fullyCharged) {
-                current = 100.0;
                 battery.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
             }
 
-            battery.setCurrentCapacity(current);
-            batteryRepository.save(battery);
+            updated.add(battery);
 
+            // ✅ Luôn gửi realtime mỗi lần tăng (dù nhiều pin)
             if (battery.getDockSlot() != null) {
                 DockSlot slot = battery.getDockSlot();
                 String action = fullyCharged ? "CHARGING_COMPLETE" : "CHARGING_PROGRESS";
                 sendRealtimeUpdate(slot, action, battery.getBatteryStatus().name(), battery);
             }
         }
+
+        // ✅ Batch update tất cả pin sau cùng
+        batteryRepository.saveAll(updated);
     }
+
 
     // ==================== RÚT PIN ====================
     @Transactional

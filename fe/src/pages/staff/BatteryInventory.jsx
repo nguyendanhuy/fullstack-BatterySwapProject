@@ -326,6 +326,8 @@ const BatteryInventory = () => {
   // ============
   // Handlers CRUD
   // ============
+
+
   const handleAddBattery = async () => {
     const batteryId = (newBattery.batteryId || "").trim();
     const slotIdNum = Number(newBattery.slotId);
@@ -961,15 +963,6 @@ const BatteryInventory = () => {
                       {selectedBattery?.charge}%
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Biểu đồ sạc</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[200px] flex items-center justify-center bg-gray-50 rounded">
-                  <p className="text-gray-400">Biểu đồ sạc theo thời gian</p>
                 </CardContent>
               </Card>
 

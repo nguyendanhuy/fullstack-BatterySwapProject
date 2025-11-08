@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/pages/admin/Reports.jsx</title>
+    <title>Code coverage report for BatteryInspection.jsx</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../../prettify.css" />
-    <link rel="stylesheet" href="../../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
+    <link rel="stylesheet" href="prettify.css" />
+    <link rel="stylesheet" href="base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../../sort-arrow-sprite.png);
+            background-image: url(sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/pages/admin</a> Reports.jsx</h1>
+        <h1><a href="index.html">All files</a> BatteryInspection.jsx</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">82.75% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>24/29</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">75.86% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>22/29</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">75% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>9/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">82.75% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>24/29</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -566,7 +566,533 @@
 <a name='L501'></a><a href='#L501'>501</a>
 <a name='L502'></a><a href='#L502'>502</a>
 <a name='L503'></a><a href='#L503'>503</a>
-<a name='L504'></a><a href='#L504'>504</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L504'></a><a href='#L504'>504</a>
+<a name='L505'></a><a href='#L505'>505</a>
+<a name='L506'></a><a href='#L506'>506</a>
+<a name='L507'></a><a href='#L507'>507</a>
+<a name='L508'></a><a href='#L508'>508</a>
+<a name='L509'></a><a href='#L509'>509</a>
+<a name='L510'></a><a href='#L510'>510</a>
+<a name='L511'></a><a href='#L511'>511</a>
+<a name='L512'></a><a href='#L512'>512</a>
+<a name='L513'></a><a href='#L513'>513</a>
+<a name='L514'></a><a href='#L514'>514</a>
+<a name='L515'></a><a href='#L515'>515</a>
+<a name='L516'></a><a href='#L516'>516</a>
+<a name='L517'></a><a href='#L517'>517</a>
+<a name='L518'></a><a href='#L518'>518</a>
+<a name='L519'></a><a href='#L519'>519</a>
+<a name='L520'></a><a href='#L520'>520</a>
+<a name='L521'></a><a href='#L521'>521</a>
+<a name='L522'></a><a href='#L522'>522</a>
+<a name='L523'></a><a href='#L523'>523</a>
+<a name='L524'></a><a href='#L524'>524</a>
+<a name='L525'></a><a href='#L525'>525</a>
+<a name='L526'></a><a href='#L526'>526</a>
+<a name='L527'></a><a href='#L527'>527</a>
+<a name='L528'></a><a href='#L528'>528</a>
+<a name='L529'></a><a href='#L529'>529</a>
+<a name='L530'></a><a href='#L530'>530</a>
+<a name='L531'></a><a href='#L531'>531</a>
+<a name='L532'></a><a href='#L532'>532</a>
+<a name='L533'></a><a href='#L533'>533</a>
+<a name='L534'></a><a href='#L534'>534</a>
+<a name='L535'></a><a href='#L535'>535</a>
+<a name='L536'></a><a href='#L536'>536</a>
+<a name='L537'></a><a href='#L537'>537</a>
+<a name='L538'></a><a href='#L538'>538</a>
+<a name='L539'></a><a href='#L539'>539</a>
+<a name='L540'></a><a href='#L540'>540</a>
+<a name='L541'></a><a href='#L541'>541</a>
+<a name='L542'></a><a href='#L542'>542</a>
+<a name='L543'></a><a href='#L543'>543</a>
+<a name='L544'></a><a href='#L544'>544</a>
+<a name='L545'></a><a href='#L545'>545</a>
+<a name='L546'></a><a href='#L546'>546</a>
+<a name='L547'></a><a href='#L547'>547</a>
+<a name='L548'></a><a href='#L548'>548</a>
+<a name='L549'></a><a href='#L549'>549</a>
+<a name='L550'></a><a href='#L550'>550</a>
+<a name='L551'></a><a href='#L551'>551</a>
+<a name='L552'></a><a href='#L552'>552</a>
+<a name='L553'></a><a href='#L553'>553</a>
+<a name='L554'></a><a href='#L554'>554</a>
+<a name='L555'></a><a href='#L555'>555</a>
+<a name='L556'></a><a href='#L556'>556</a>
+<a name='L557'></a><a href='#L557'>557</a>
+<a name='L558'></a><a href='#L558'>558</a>
+<a name='L559'></a><a href='#L559'>559</a>
+<a name='L560'></a><a href='#L560'>560</a>
+<a name='L561'></a><a href='#L561'>561</a>
+<a name='L562'></a><a href='#L562'>562</a>
+<a name='L563'></a><a href='#L563'>563</a>
+<a name='L564'></a><a href='#L564'>564</a>
+<a name='L565'></a><a href='#L565'>565</a>
+<a name='L566'></a><a href='#L566'>566</a>
+<a name='L567'></a><a href='#L567'>567</a>
+<a name='L568'></a><a href='#L568'>568</a>
+<a name='L569'></a><a href='#L569'>569</a>
+<a name='L570'></a><a href='#L570'>570</a>
+<a name='L571'></a><a href='#L571'>571</a>
+<a name='L572'></a><a href='#L572'>572</a>
+<a name='L573'></a><a href='#L573'>573</a>
+<a name='L574'></a><a href='#L574'>574</a>
+<a name='L575'></a><a href='#L575'>575</a>
+<a name='L576'></a><a href='#L576'>576</a>
+<a name='L577'></a><a href='#L577'>577</a>
+<a name='L578'></a><a href='#L578'>578</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-yes">149x</span>
+<span class="cline-any cline-yes">149x</span>
+<span class="cline-any cline-yes">149x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">149x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">149x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">149x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">90x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">298x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">93x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">279x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -579,15 +1105,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -615,9 +1135,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -627,6 +1146,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">307x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -659,378 +1179,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1072,506 +1220,580 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, ArrowLeft, Search, CalendarIcon, TrendingUp, DollarSign, Battery, Users, Clock, MapPin, CreditCard, Eye, Download, Filter, ChevronRight, Zap, Activity } from "lucide-react";
-import { Link } from "react-router-dom";
-const Reports = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >()</span> =&gt; {</span>
-    const [searchTerm, setSearchTerm] = <span class="cstat-no" title="statement not covered" >useState("");</span>
-    const [selectedStation, setSelectedStation] = <span class="cstat-no" title="statement not covered" >useState("");</span>
-    const [dateRange, setDateRange] = <span class="cstat-no" title="statement not covered" >useState({</span>
-        from: new Date(),
-        to: new Date()
-    });
-    const [selectedStationDetails, setSelectedStationDetails] = <span class="cstat-no" title="statement not covered" >useState(null);</span>
-    const [detailsDialogOpen, setDetailsDialogOpen] = <span class="cstat-no" title="statement not covered" >useState(false);</span>
-    const stations = <span class="cstat-no" title="statement not covered" >[{</span>
-            id: "1",
-            name: "Trạm Quận 1",
-            address: "123 Nguyễn Huệ, Quận 1",
-            revenue: "850,000",
-            transactions: 89,
-            batteries: 45,
-            efficiency: "96%",
-            popularityScore: 9.2
-        }, {
-            id: "2",
-            name: "Trạm Bình Thạnh",
-            address: "789 Xô Viết Nghệ Tĩnh, Bình Thạnh",
-            revenue: "720,000",
-            transactions: 76,
-            batteries: 38,
-            efficiency: "94%",
-            popularityScore: 8.8
-        }, {
-            id: "3",
-            name: "Trạm Quận 3",
-            address: "456 Lê Văn Sỹ, Quận 3",
-            revenue: "680,000",
-            transactions: 64,
-            batteries: 42,
-            efficiency: "92%",
-            popularityScore: 8.1
-        }];
-    const getWeeklyTransactions = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >st</span>ationId =&gt; {</span>
-        const transactions = <span class="cstat-no" title="statement not covered" >[{</span>
-                id: "TXN001",
-                customerName: "Nguyễn Văn A",
-                vehicleType: "VinFast VF8",
-                batteryType: "Lithium-ion",
-                swapTime: "15/01/2024 14:30",
-                duration: "3 phút 45 giây",
-                amount: "120,000",
-                status: "Hoàn thành",
-                paymentMethod: "Thẻ tín dụng"
-            }, {
-                id: "TXN002",
-                customerName: "Trần Thị B",
-                vehicleType: "VinFast VF9",
-                batteryType: "LFP",
-                swapTime: "15/01/2024 16:15",
-                duration: "4 phút 12 giây",
-                amount: "110,000",
-                status: "Hoàn thành",
-                paymentMethod: "Ví điện tử"
-            }, {
-                id: "TXN003",
-                customerName: "Lê Văn C",
-                vehicleType: "VinFast VF6",
-                batteryType: "Lithium-ion",
-                swapTime: "16/01/2024 09:20",
-                duration: "3 phút 28 giây",
-                amount: "115,000",
-                status: "Hoàn thành",
-                paymentMethod: "Chuyển khoản"
-            }, {
-                id: "TXN004",
-                customerName: "Phạm Thị D",
-                vehicleType: "VinFast VF8",
-                batteryType: "Lithium-ion",
-                swapTime: "16/01/2024 11:45",
-                duration: "2 phút 56 giây",
-                amount: "120,000",
-                status: "Hoàn thành",
-                paymentMethod: "Thẻ tín dụng"
-            }, {
-                id: "TXN005",
-                customerName: "Hoàng Văn E",
-                vehicleType: "VinFast VF9",
-                batteryType: "LFP",
-                swapTime: "17/01/2024 08:30",
-                duration: "4 phút 05 giây",
-                amount: "110,000",
-                status: "Đang xử lý",
-                paymentMethod: "Ví điện tử"
-            }];
-<span class="cstat-no" title="statement not covered" >        return transactions;</span>
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Search, AlertTriangle, CheckCircle, Wrench, Clock, User, Battery, Zap, Activity, TrendingUp, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+&nbsp;
+const BatteryInspection = () =&gt; {
+  const { toast } = useToast();
+  const [selectedBattery, setSelectedBattery] = useState(null);
+  const [showFullHistory, setShowFullHistory] = useState(false);
+&nbsp;
+  const emptyBatteries = [
+    {
+      id: "BAT005",
+      type: "Lithium-ion",
+      lastUsed: "14/12/2024 16:30",
+      location: "Slot A3",
+      soh: "78%",
+      cycles: 345
+    },
+    {
+      id: "BAT009",
+      type: "Pin LFP",
+      lastUsed: "14/12/2024 15:20",
+      location: "Slot B3",
+      soh: "75%",
+      cycles: 389
+    },
+    {
+      id: "BAT014",
+      type: "Lithium-ion",
+      lastUsed: "14/12/2024 14:10",
+      location: "Slot C2",
+      soh: "72%",
+      cycles: 467
+    }
+  ];
+&nbsp;
+  const inspectionHistory = [
+    {
+      id: "BAT001",
+      type: "Lithium-ion",
+      inspectionDate: "14/12/2024 10:30",
+      inspector: "Nguyễn Văn A",
+      physicalCondition: "Tốt",
+      notes: "Pin trong tình trạng bình thường",
+      status: "Đạt chuẩn"
+    },
+    {
+      id: "BAT003",
+      type: "Pin LFP",
+      inspectionDate: "14/12/2024 09:15",
+      inspector: "Trần Thị B",
+      physicalCondition: "Có dấu hiệu ăn mòn nhẹ",
+      notes: "Cần theo dõi thêm",
+      status: "Bảo trì"
+    },
+    {
+      id: "BAT007",
+      type: "Lithium-ion",
+      inspectionDate: "13/12/2024 16:45",
+      inspector: "Nguyễn Văn A",
+      physicalCondition: "Tốt",
+      notes: "Pin hoạt động ổn định",
+      status: "Đạt chuẩn"
+    }
+  ];
+&nbsp;
+  const fullInspectionHistory = [
+    ...inspectionHistory,
+    {
+      id: "BAT010",
+      type: "Pin LFP",
+      inspectionDate: "13/12/2024 14:20",
+      inspector: "Trần Thị B",
+      physicalCondition: "Tốt",
+      notes: "Pin trong tình trạng tốt",
+      status: "Đạt chuẩn"
+    },
+    {
+      id: "BAT012",
+      type: "Lithium-ion",
+      inspectionDate: "13/12/2024 11:30",
+      inspector: "Nguyễn Văn A",
+      physicalCondition: "Có vết xước nhẹ",
+      notes: "Vết xước không ảnh hưởng đến hoạt động",
+      status: "Đạt chuẩn"
+    },
+    {
+      id: "BAT008",
+      type: "Pin LFP",
+      inspectionDate: "12/12/2024 15:45",
+      inspector: "Trần Thị B",
+      physicalCondition: "Hư hại nặng",
+      notes: "Pin bị phồng, cần thay thế",
+      status: "Bảo trì"
+    },
+    {
+      id: "BAT015",
+      type: "Lithium-ion",
+      inspectionDate: "12/12/2024 13:10",
+      inspector: "Nguyễn Văn A",
+      physicalCondition: "Tốt",
+      notes: "Pin hoạt động bình thường",
+      status: "Đạt chuẩn"
+    },
+    {
+      id: "BAT002",
+      type: "Pin LFP",
+      inspectionDate: "12/12/2024 09:30",
+      inspector: "Trần Thị B",
+      physicalCondition: "Tốt",
+      notes: "Pin trong tình trạng tốt",
+      status: "Đạt chuẩn"
+    },
+    {
+      id: "BAT006",
+      type: "Lithium-ion",
+      inspectionDate: "11/12/2024 16:20",
+      inspector: "Nguyễn Văn A",
+      physicalCondition: "Có dấu hiệu ăn mòn",
+      notes: "Cần theo dõi và bảo trì định kỳ",
+      status: "Bảo trì"
+    },
+    {
+      id: "BAT011",
+      type: "Pin LFP",
+      inspectionDate: "11/12/2024 14:15",
+      inspector: "Trần Thị B",
+      physicalCondition: "Tốt",
+      notes: "Pin hoạt động ổn định",
+      status: "Đạt chuẩn"
+    }
+  ];
+&nbsp;
+  const displayedHistory = showFullHistory ? fullInspectionHistory : inspectionHistory;
+&nbsp;
+  const staffList = ["Nguyễn Văn A", "Trần Thị B"];
+&nbsp;
+  const InspectionForm = ({ battery, onClose }) =&gt; {
+    const [physicalCondition, setPhysicalCondition] = useState("");
+    const [notes, setNotes] = useState("");
+    const [inspector, setInspector] = useState("");
+&nbsp;
+    const handleSubmit = <span class="fstat-no" title="function not covered" >()</span> =&gt; {
+<span class="cstat-no" title="statement not covered" >      toast({</span>
+        title: "Kiểm tra pin thành công",
+        description: `Pin ${battery.id} đã được kiểm tra bởi ${inspector}`,
+      });
+<span class="cstat-no" title="statement not covered" >      onClose();</span>
     };
-    const kpiData = <span class="cstat-no" title="statement not covered" >{</span>
-        totalRevenue: "2,850,000",
-        totalTransactions: 245,
-        avgTransaction: "11,633",
-        customerSatisfaction: "94%",
-        systemUptime: "99.2%",
-        batteryUtilization: "87%"
+&nbsp;
+    const handleSendMaintenance = <span class="fstat-no" title="function not covered" >()</span> =&gt; {
+<span class="cstat-no" title="statement not covered" >      toast({</span>
+        title: "Gửi pin bảo trì thành công",
+        description: `Pin ${battery.id} đã được chuyển sang trạng thái bảo trì`,
+      });
+<span class="cstat-no" title="statement not covered" >      onClose();</span>
     };
-<span class="cstat-no" title="statement not covered" >    return &lt;div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20"&gt;</span>
-      {/* Modern Header */}
-      &lt;div className="bg-white border-b border-slate-200/60 sticky top-0 z-10 backdrop-blur-lg bg-white/95"&gt;
-        &lt;div className="container mx-auto px-6 py-4"&gt;
-          &lt;div className="flex items-center justify-between"&gt;
-            &lt;div className="flex items-center space-x-4"&gt;
-              &lt;div className="bg-gradient-to-br from-blue-500 to-purple-600 p-3 rounded-xl shadow-lg"&gt;
-                &lt;BarChart3 className="h-6 w-6 text-white"/&gt;
-              &lt;/div&gt;
-              &lt;div&gt;
-                &lt;h1 className="text-2xl font-bold text-slate-900"&gt;Bảng Điều Khiển Phân Tích&lt;/h1&gt;
-                &lt;p className="text-slate-500 text-sm"&gt;Thông tin chi tiết và báo cáo toàn diện&lt;/p&gt;
-              &lt;/div&gt;
+&nbsp;
+    return (
+      &lt;div className="space-y-4"&gt;
+        &lt;div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 border-2 border-blue-200 dark:border-blue-800 p-5 rounded-xl shadow-lg"&gt;
+          &lt;div className="flex items-center mb-4"&gt;
+            &lt;div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg mr-3"&gt;
+              &lt;Battery className="h-5 w-5 text-white" /&gt;
             &lt;/div&gt;
-            &lt;div className="flex items-center space-x-3"&gt;
-              &lt;Button variant="outline" size="sm" className="gap-2 bg-white/80 backdrop-blur-sm"&gt;
-                &lt;Download className="h-4 w-4"/&gt;
-                Xuất Dữ Liệu
-              &lt;/Button&gt;
-              &lt;Link to="/admin"&gt;
-                &lt;Button variant="ghost" size="sm" className="gap-2"&gt;
-                  &lt;ArrowLeft className="h-4 w-4"/&gt;
-                  Quay Lại
-                &lt;/Button&gt;
-              &lt;/Link&gt;
+            &lt;h3 className="font-bold text-lg text-foreground"&gt;Thông tin pin: {battery.id}&lt;/h3&gt;
+          &lt;/div&gt;
+          &lt;div className="grid grid-cols-2 gap-3 text-sm"&gt;
+            &lt;div className="p-3 bg-white/60 dark:bg-slate-700/50 rounded-lg backdrop-blur-sm"&gt;
+              &lt;span className="text-muted-foreground text-xs block mb-1"&gt;Loại pin&lt;/span&gt;
+              &lt;p className="font-semibold text-foreground"&gt;{battery.type}&lt;/p&gt;
             &lt;/div&gt;
+            &lt;div className="p-3 bg-white/60 dark:bg-slate-700/50 rounded-lg backdrop-blur-sm"&gt;
+              &lt;span className="text-muted-foreground text-xs block mb-1"&gt;State of Health&lt;/span&gt;
+              &lt;p
+                className={`font-bold text-lg ${parseInt(battery.soh) &gt; 90 ? <span class="branch-0 cbranch-no" title="branch not covered" >"text-green-600" </span>:
+                  parseInt(battery.soh) &gt; 80 ? <span class="branch-0 cbranch-no" title="branch not covered" >"text-orange-500" </span>: "text-red-500"
+                  }`}
+              &gt;
+                {battery.soh}
+              &lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div className="p-3 bg-white/60 dark:bg-slate-700/50 rounded-lg backdrop-blur-sm"&gt;
+              &lt;span className="text-muted-foreground text-xs block mb-1"&gt;Chu kỳ sử dụng&lt;/span&gt;
+              &lt;p className="font-semibold text-foreground"&gt;{battery.cycles} lần&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div className="p-3 bg-white/60 dark:bg-slate-700/50 rounded-lg backdrop-blur-sm"&gt;
+              &lt;span className="text-muted-foreground text-xs block mb-1"&gt;Vị trí&lt;/span&gt;
+              &lt;p className="font-semibold text-foreground"&gt;{battery.location}&lt;/p&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+&nbsp;
+        &lt;div className="space-y-4"&gt;
+          &lt;div className="space-y-2"&gt;
+            &lt;Label htmlFor="physical" className="text-sm font-semibold flex items-center"&gt;
+              &lt;Activity className="h-4 w-4 mr-2 text-blue-600" /&gt;
+              Tình trạng vật lý
+            &lt;/Label&gt;
+            &lt;Textarea
+              id="physical"
+              placeholder="Mô tả chi tiết tình trạng vật lý của pin (vết xước, ăn mòn, biến dạng...)..."
+              value={physicalCondition}
+              onChange={(e) =&gt; setPhysicalCondition(e.target.value)}
+              className="min-h-[100px] border-2 focus:border-blue-400 transition-colors"
+            /&gt;
+          &lt;/div&gt;
+&nbsp;
+          &lt;div className="space-y-2"&gt;
+            &lt;Label htmlFor="notes" className="text-sm font-semibold flex items-center"&gt;
+              &lt;Sparkles className="h-4 w-4 mr-2 text-purple-600" /&gt;
+              Ghi chú đánh giá
+            &lt;/Label&gt;
+            &lt;Textarea
+              id="notes"
+              placeholder="Ghi chú bổ sung về hiệu suất, khuyến nghị bảo trì..."
+              value={notes}
+              onChange={(e) =&gt; setNotes(e.target.value)}
+              className="min-h-[100px] border-2 focus:border-purple-400 transition-colors"
+            /&gt;
+          &lt;/div&gt;
+&nbsp;
+          &lt;div className="space-y-2"&gt;
+            &lt;Label className="text-sm font-semibold flex items-center"&gt;
+              &lt;User className="h-4 w-4 mr-2 text-indigo-600" /&gt;
+              Người thực hiện kiểm tra
+            &lt;/Label&gt;
+            &lt;Select value={inspector} onValueChange={setInspector}&gt;
+              &lt;SelectTrigger className="border-2 focus:border-indigo-400"&gt;
+                &lt;SelectValue placeholder="Chọn nhân viên kiểm tra" /&gt;
+              &lt;/SelectTrigger&gt;
+              &lt;SelectContent&gt;
+                {staffList.map((staff) =&gt; (
+                  &lt;SelectItem key={staff} value={staff}&gt;
+                    {staff}
+                  &lt;/SelectItem&gt;
+                ))}
+              &lt;/SelectContent&gt;
+            &lt;/Select&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+&nbsp;
+        &lt;div className="flex gap-3 pt-4"&gt;
+          &lt;Button
+            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            onClick={handleSubmit}
+            disabled={!physicalCondition || !notes || <span class="branch-2 cbranch-no" title="branch not covered" >!inspector}</span>
+          &gt;
+            &lt;CheckCircle className="h-4 w-4 mr-2" /&gt;
+            Hoàn thành kiểm tra
+          &lt;/Button&gt;
+          &lt;Button
+            className="flex-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            onClick={handleSendMaintenance}
+            disabled={!inspector}
+          &gt;
+            &lt;Wrench className="h-4 w-4 mr-2" /&gt;
+            Gửi bảo trì
+          &lt;/Button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    );
+  };
+&nbsp;
+  return (
+    &lt;div className="container mx-auto px-6 py-8 max-w-7xl"&gt;
+      {/* Animated Header */}
+      &lt;div className="mb-8 animate-fade-in"&gt;
+        &lt;div className="flex items-center mb-3"&gt;
+          &lt;div className="p-3 bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 rounded-2xl mr-4 shadow-lg animate-pulse"&gt;
+            &lt;Search className="h-8 w-8 text-white" /&gt;
+          &lt;/div&gt;
+          &lt;div&gt;
+            &lt;h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent"&gt;
+              Kiểm tra &amp; Giám định pin
+            &lt;/h1&gt;
+            &lt;p className="text-gray-600 dark:text-gray-400 mt-1"&gt;Đánh giá chất lượng và hiệu suất pin điện&lt;/p&gt;
           &lt;/div&gt;
         &lt;/div&gt;
       &lt;/div&gt;
 &nbsp;
-      &lt;div className="container mx-auto px-6 py-8"&gt;
-        {/* Enhanced Filters Section */}
-        &lt;div className="mb-8"&gt;
-          &lt;Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl"&gt;
-            &lt;div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-lg"&gt;&lt;/div&gt;
-            &lt;CardHeader className="pb-4"&gt;
-              &lt;div className="flex items-center justify-between"&gt;
-                &lt;div className="flex items-center space-x-3"&gt;
-                  &lt;div className="bg-gradient-to-br from-slate-600 to-slate-700 p-2.5 rounded-lg"&gt;
-                    &lt;Filter className="h-5 w-5 text-white"/&gt;
-                  &lt;/div&gt;
-                  &lt;div&gt;
-                    &lt;CardTitle className="text-lg text-slate-900"&gt;Bộ Lọc Nâng Cao&lt;/CardTitle&gt;
-                    &lt;CardDescription className="text-slate-600"&gt;Tùy chỉnh chế độ xem phân tích của bạn&lt;/CardDescription&gt;
-                  &lt;/div&gt;
-                &lt;/div&gt;
-                &lt;Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200"&gt;
-                  Thời Gian Thực
-                &lt;/Badge&gt;
+      {/* Enhanced Stats Cards with Glassmorphism */}
+      &lt;div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"&gt;
+        &lt;Card className="border-0 bg-gradient-to-br from-orange-50 via-yellow-50 to-amber-50 dark:from-orange-900/20 dark:via-yellow-900/20 dark:to-amber-900/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in group overflow-hidden relative"&gt;
+          &lt;div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"&gt;&lt;/div&gt;
+          &lt;CardContent className="p-6 relative z-10"&gt;
+            &lt;div className="flex items-center justify-between mb-4"&gt;
+              &lt;div className="p-4 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500"&gt;
+                &lt;AlertTriangle className="h-8 w-8 text-white" /&gt;
               &lt;/div&gt;
-            &lt;/CardHeader&gt;
-            &lt;CardContent&gt;
-              &lt;div className="grid lg:grid-cols-3 gap-6"&gt;
-                &lt;div className="space-y-2"&gt;
-                  &lt;label className="text-sm font-medium text-slate-700"&gt;Tìm Kiếm Trạm&lt;/label&gt;
-                  &lt;div className="relative"&gt;
-                    &lt;Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4"/&gt;
-                    &lt;Input placeholder="Tên trạm hoặc địa điểm..." value={searchTerm} onChange={<span class="fstat-no" title="function not covered" >e </span>=&gt; <span class="cstat-no" title="statement not covered" >setSearchTerm(e.target.value)}</span> className="pl-10 bg-white/80 backdrop-blur-sm border-slate-200"/&gt;
-                  &lt;/div&gt;
-                &lt;/div&gt;
-                &lt;div className="space-y-2"&gt;
-                  &lt;label className="text-sm font-medium text-slate-700"&gt;Lọc Trạm&lt;/label&gt;
-                  &lt;Select onValueChange={setSelectedStation}&gt;
-                    &lt;SelectTrigger className="bg-white/80 backdrop-blur-sm border-slate-200"&gt;
-                      &lt;SelectValue placeholder="Tất cả trạm"/&gt;
-                    &lt;/SelectTrigger&gt;
-                    &lt;SelectContent&gt;
-                      &lt;SelectItem value="all"&gt;Tất cả trạm&lt;/SelectItem&gt;
-                      {stations.map(<span class="fstat-no" title="function not covered" >st</span>ation =&gt; <span class="cstat-no" title="statement not covered" >&lt;SelectItem key={station.id} value={station.id}&gt;</span>
-                          {station.name}
-                        &lt;/SelectItem&gt;)}
-                    &lt;/SelectContent&gt;
-                  &lt;/Select&gt;
-                &lt;/div&gt;
-                &lt;div className="space-y-2"&gt;
-                  &lt;label className="text-sm font-medium text-slate-700"&gt;Khoảng Thời Gian&lt;/label&gt;
-                  &lt;Popover&gt;
-                    &lt;PopoverTrigger asChild&gt;
-                      &lt;Button variant="outline" className="w-full justify-start bg-white/80 backdrop-blur-sm border-slate-200"&gt;
-                        &lt;CalendarIcon className="mr-2 h-4 w-4"/&gt;
-                        7 ngày qua
-                      &lt;/Button&gt;
-                    &lt;/PopoverTrigger&gt;
-                    &lt;PopoverContent className="w-auto p-0" align="start"&gt;
-                      &lt;Calendar mode="single"/&gt;
-                    &lt;/PopoverContent&gt;
-                  &lt;/Popover&gt;
-                &lt;/div&gt;
+              &lt;div className="text-right"&gt;
+                &lt;h3 className="text-5xl font-black bg-gradient-to-br from-orange-600 to-yellow-600 bg-clip-text text-transparent"&gt;3&lt;/h3&gt;
               &lt;/div&gt;
-            &lt;/CardContent&gt;
-          &lt;/Card&gt;
-        &lt;/div&gt;
-&nbsp;
-        {/* Enhanced KPI Overview */}
-        &lt;div className="mb-8"&gt;
-          &lt;div className="flex flex-wrap justify-center gap-20"&gt;
-            &lt;div className="w-48 flex-shrink-0"&gt;
-              &lt;Card className="group bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full"&gt;
-                &lt;div className="h-1 bg-gradient-to-r from-emerald-500 to-green-500 rounded-t-lg"&gt;&lt;/div&gt;
-                &lt;CardContent className="p-5 text-center"&gt;
-                  &lt;div className="bg-gradient-to-br from-emerald-500 to-green-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-emerald-500/25 transition-all duration-300"&gt;
-                    &lt;DollarSign className="h-6 w-6 text-white"/&gt;
-                  &lt;/div&gt;
-                  &lt;div className="space-y-1"&gt;
-                    &lt;h3 className="text-xl font-bold text-slate-900"&gt;{kpiData.totalRevenue}&lt;/h3&gt;
-                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Tổng Doanh Thu (VNĐ)&lt;/p&gt;
-                    &lt;div className="flex items-center justify-center text-emerald-600 text-xs"&gt;
-                      &lt;TrendingUp className="h-3 w-3 mr-1"/&gt;
-                      +12.5%
-                    &lt;/div&gt;
-                  &lt;/div&gt;
-                &lt;/CardContent&gt;
-              &lt;/Card&gt;
             &lt;/div&gt;
-&nbsp;
-            &lt;div className="w-48 flex-shrink-0"&gt;
-              &lt;Card className="group bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full"&gt;
-                &lt;div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-lg"&gt;&lt;/div&gt;
-                &lt;CardContent className="p-5 text-center"&gt;
-                  &lt;div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-blue-500/25 transition-all duration-300"&gt;
-                    &lt;Activity className="h-6 w-6 text-white"/&gt;
-                  &lt;/div&gt;
-                  &lt;div className="space-y-1"&gt;
-                    &lt;h3 className="text-xl font-bold text-slate-900"&gt;{kpiData.totalTransactions}&lt;/h3&gt;
-                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Tổng Giao Dịch&lt;/p&gt;
-                    &lt;div className="flex items-center justify-center text-blue-600 text-xs"&gt;
-                      &lt;TrendingUp className="h-3 w-3 mr-1"/&gt;
-                      +8.3%
-                    &lt;/div&gt;
-                  &lt;/div&gt;
-                &lt;/CardContent&gt;
-              &lt;/Card&gt;
+            &lt;div className="space-y-1"&gt;
+              &lt;p className="text-lg font-bold text-gray-800 dark:text-white"&gt;Cần kiểm tra&lt;/p&gt;
+              &lt;p className="text-sm text-gray-600 dark:text-gray-400"&gt;Pin chờ đánh giá&lt;/p&gt;
             &lt;/div&gt;
-&nbsp;
-            &lt;div className="w-48 flex-shrink-0"&gt;
-              &lt;Card className="group bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full"&gt;
-                &lt;div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-t-lg"&gt;&lt;/div&gt;
-                &lt;CardContent className="p-5 text-center"&gt;
-                  &lt;div className="bg-gradient-to-br from-purple-500 to-pink-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-purple-500/25 transition-all duration-300"&gt;
-                    &lt;Users className="h-6 w-6 text-white"/&gt;
-                  &lt;/div&gt;
-                  &lt;div className="space-y-1"&gt;
-                    &lt;h3 className="text-xl font-bold text-slate-900"&gt;{kpiData.customerSatisfaction}&lt;/h3&gt;
-                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Hài Lòng Khách Hàng&lt;/p&gt;
-                    &lt;div className="flex items-center justify-center text-purple-600 text-xs"&gt;
-                      &lt;TrendingUp className="h-3 w-3 mr-1"/&gt;
-                      +1.2%
-                    &lt;/div&gt;
-                  &lt;/div&gt;
-                &lt;/CardContent&gt;
-              &lt;/Card&gt;
+            &lt;div className="mt-3 flex items-center text-xs text-orange-600 dark:text-orange-400 font-semibold"&gt;
+              &lt;TrendingUp className="h-3 w-3 mr-1" /&gt;
+              Ưu tiên cao
             &lt;/div&gt;
+          &lt;/CardContent&gt;
+        &lt;/Card&gt;
 &nbsp;
-            &lt;div className="w-48 flex-shrink-0"&gt;
-              &lt;Card className="group bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full"&gt;
-                &lt;div className="h-1 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-t-lg"&gt;&lt;/div&gt;
-                &lt;CardContent className="p-5 text-center"&gt;
-                  &lt;div className="bg-gradient-to-br from-teal-500 to-cyan-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-teal-500/25 transition-all duration-300"&gt;
-                    &lt;Zap className="h-6 w-6 text-white"/&gt;
-                  &lt;/div&gt;
-                  &lt;div className="space-y-1"&gt;
-                    &lt;h3 className="text-xl font-bold text-slate-900"&gt;{kpiData.systemUptime}&lt;/h3&gt;
-                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Thời Gian Hoạt Động&lt;/p&gt;
-                    &lt;div className="flex items-center justify-center text-teal-600 text-xs"&gt;
-                      &lt;TrendingUp className="h-3 w-3 mr-1"/&gt;
-                      +0.1%
-                    &lt;/div&gt;
-                  &lt;/div&gt;
-                &lt;/CardContent&gt;
-              &lt;/Card&gt;
-            &lt;/div&gt;
-&nbsp;
-            &lt;div className="w-48 flex-shrink-0"&gt;
-              &lt;Card className="group bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full"&gt;
-                &lt;div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-t-lg"&gt;&lt;/div&gt;
-                &lt;CardContent className="p-5 text-center"&gt;
-                  &lt;div className="bg-gradient-to-br from-indigo-500 to-purple-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-indigo-500/25 transition-all duration-300"&gt;
-                    &lt;Battery className="h-6 w-6 text-white"/&gt;
-                  &lt;/div&gt;
-                  &lt;div className="space-y-1"&gt;
-                    &lt;h3 className="text-xl font-bold text-slate-900"&gt;{kpiData.batteryUtilization}&lt;/h3&gt;
-                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Sử Dụng Pin&lt;/p&gt;
-                    &lt;div className="flex items-center justify-center text-indigo-600 text-xs"&gt;
-                      &lt;TrendingUp className="h-3 w-3 mr-1"/&gt;
-                      +5.7%
-                    &lt;/div&gt;
-                  &lt;/div&gt;
-                &lt;/CardContent&gt;
-              &lt;/Card&gt;
-            &lt;/div&gt;
-          &lt;/div&gt;
-        &lt;/div&gt;
-&nbsp;
-        {/* Enhanced Station Details */}
-        &lt;Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl"&gt;
-          &lt;div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-t-lg"&gt;&lt;/div&gt;
-          &lt;CardHeader&gt;
-            &lt;div className="flex items-center justify-between"&gt;
-              &lt;div className="flex items-center space-x-3"&gt;
-                &lt;div className="bg-gradient-to-br from-slate-600 to-slate-700 p-2.5 rounded-lg"&gt;
-                  &lt;MapPin className="h-5 w-5 text-white"/&gt;
-                &lt;/div&gt;
-                &lt;div&gt;
-                  &lt;CardTitle className="text-xl text-slate-900"&gt;Tổng Quan Hiệu Suất Trạm&lt;/CardTitle&gt;
-                  &lt;CardDescription className="text-slate-600"&gt;
-                    Thông tin chi tiết về doanh thu, giao dịch và chỉ số hiệu quả
-                  &lt;/CardDescription&gt;
-                &lt;/div&gt;
+        &lt;Card className="border-0 bg-gradient-to-br from-red-50 via-rose-50 to-pink-50 dark:from-red-900/20 dark:via-rose-900/20 dark:to-pink-900/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in group overflow-hidden relative" style={{ animationDelay: "0.1s" }}&gt;
+          &lt;div className="absolute inset-0 bg-gradient-to-br from-red-400/10 to-pink-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"&gt;&lt;/div&gt;
+          &lt;CardContent className="p-6 relative z-10"&gt;
+            &lt;div className="flex items-center justify-between mb-4"&gt;
+              &lt;div className="p-4 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500"&gt;
+                &lt;Wrench className="h-8 w-8 text-white" /&gt;
               &lt;/div&gt;
-              &lt;Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"&gt;
-                {stations.length} Trạm Hoạt Động
-              &lt;/Badge&gt;
+              &lt;div className="text-right"&gt;
+                &lt;h3 className="text-5xl font-black bg-gradient-to-br from-red-600 to-pink-600 bg-clip-text text-transparent"&gt;2&lt;/h3&gt;
+              &lt;/div&gt;
             &lt;/div&gt;
-          &lt;/CardHeader&gt;
-          &lt;CardContent&gt;
-            &lt;div className="space-y-6"&gt;
-              {stations.map(<span class="fstat-no" title="function not covered" >(s</span>tation, index) =&gt; <span class="cstat-no" title="statement not covered" >&lt;div key={station.id} className="group relative bg-white/50 backdrop-blur-sm border border-slate-200/60 rounded-xl p-6 hover:shadow-lg transition-all duration-300"&gt;</span>
-                  &lt;div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"&gt;&lt;/div&gt;
-                  
-                  &lt;div className="grid lg:grid-cols-6 gap-6"&gt;
-                    &lt;div className="lg:col-span-2 space-y-3"&gt;
-                      &lt;div className="flex items-start space-x-3"&gt;
-                        &lt;div className="bg-gradient-to-br from-blue-500 to-purple-600 w-10 h-10 rounded-lg flex items-center justify-center shadow-lg"&gt;
-                          &lt;span className="text-white font-bold text-sm"&gt;{index + 1}&lt;/span&gt;
-                        &lt;/div&gt;
-                        &lt;div&gt;
-                          &lt;h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-600 transition-colors"&gt;
-                            {station.name}
-                          &lt;/h3&gt;
-                          &lt;p className="text-sm text-slate-500 mb-2"&gt;{station.address}&lt;/p&gt;
-                          &lt;div className="flex items-center space-x-2"&gt;
-                            &lt;span className="text-xs text-slate-500"&gt;Điểm Phổ Biến:&lt;/span&gt;
-                            &lt;Badge variant="secondary" className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border-amber-200"&gt;
-                              ⭐ {station.popularityScore}/10
-                            &lt;/Badge&gt;
-                          &lt;/div&gt;
-                        &lt;/div&gt;
-                      &lt;/div&gt;
-                    &lt;/div&gt;
-                    
-                    &lt;div className="text-center p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg border border-emerald-200/60"&gt;
-                      &lt;div className="text-2xl font-bold text-emerald-700"&gt;{station.revenue}&lt;/div&gt;
-                      &lt;p className="text-xs text-emerald-600 font-medium"&gt;Doanh Thu (VNĐ)&lt;/p&gt;
-                    &lt;/div&gt;
-                    
-                    &lt;div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/60"&gt;
-                      &lt;div className="text-2xl font-bold text-blue-700"&gt;{station.transactions}&lt;/div&gt;
-                      &lt;p className="text-xs text-blue-600 font-medium"&gt;Giao Dịch&lt;/p&gt;
-                    &lt;/div&gt;
-                    
-                    &lt;div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/60"&gt;
-                      &lt;div className="text-2xl font-bold text-orange-700"&gt;{station.batteries}&lt;/div&gt;
-                      &lt;p className="text-xs text-orange-600 font-medium"&gt;Pin Quản Lý&lt;/p&gt;
-                    &lt;/div&gt;
-                    
-                    &lt;div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200/60"&gt;
-                      &lt;div className="text-2xl font-bold text-purple-700"&gt;{station.efficiency}&lt;/div&gt;
-                      &lt;p className="text-xs text-purple-600 font-medium"&gt;Hiệu Suất&lt;/p&gt;
-                    &lt;/div&gt;
-                  &lt;/div&gt;
-                  
-                  &lt;div className="mt-6 pt-4 border-t border-slate-200/60"&gt;
-                    &lt;div className="flex justify-between items-center"&gt;
-                      &lt;div className="flex items-center space-x-2 text-slate-600"&gt;
-                        &lt;Clock className="h-4 w-4"/&gt;
-                        &lt;span className="text-sm font-medium"&gt;Lịch sử giao dịch hàng tuần&lt;/span&gt;
-                      &lt;/div&gt;
-                      &lt;Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}&gt;
-                        &lt;DialogTrigger asChild&gt;
-                          &lt;Button variant="outline" size="sm" onClick={<span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >setSelectedStationDetails(station)}</span> className="bg-white/80 backdrop-blur-sm hover:bg-white border-slate-200 gap-2 group/btn"&gt;
-                            &lt;Eye className="h-4 w-4 group-hover/btn:text-blue-600 transition-colors"/&gt;
-                            Xem Chi Tiết
-                            &lt;ChevronRight className="h-3 w-3 group-hover/btn:translate-x-0.5 transition-transform"/&gt;
-                          &lt;/Button&gt;
-                        &lt;/DialogTrigger&gt;
-                        &lt;DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-sm"&gt;
-                          &lt;DialogHeader&gt;
-                            &lt;DialogTitle className="flex items-center text-xl"&gt;
-                              &lt;div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg mr-3"&gt;
-                                &lt;MapPin className="h-5 w-5 text-white"/&gt;
-                              &lt;/div&gt;
-                              Chi Tiết Giao Dịch - {selectedStationDetails?.name}
-                            &lt;/DialogTitle&gt;
-                            &lt;DialogDescription className="text-slate-600"&gt;
-                              Lịch sử giao dịch toàn diện cho {selectedStationDetails?.address}
-                            &lt;/DialogDescription&gt;
-                          &lt;/DialogHeader&gt;
-                          
-                          {selectedStationDetails &amp;&amp; &lt;div className="space-y-6"&gt;
-                              {/* Summary Stats */}
-                              &lt;div className="grid md:grid-cols-4 gap-4"&gt;
-                                &lt;Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg"&gt;
-                                  &lt;CardContent className="p-4 text-center"&gt;
-                                    &lt;div className="bg-gradient-to-br from-emerald-500 to-green-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg"&gt;
-                                      &lt;CreditCard className="h-6 w-6 text-white"/&gt;
-                                    &lt;/div&gt;
-                                    &lt;h3 className="text-lg font-bold text-slate-900"&gt;{selectedStationDetails.revenue}&lt;/h3&gt;
-                                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Doanh Thu (VNĐ)&lt;/p&gt;
-                                  &lt;/CardContent&gt;
-                                &lt;/Card&gt;
-                                &lt;Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg"&gt;
-                                  &lt;CardContent className="p-4 text-center"&gt;
-                                    &lt;div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg"&gt;
-                                      &lt;TrendingUp className="h-6 w-6 text-white"/&gt;
-                                    &lt;/div&gt;
-                                    &lt;h3 className="text-lg font-bold text-slate-900"&gt;{selectedStationDetails.transactions}&lt;/h3&gt;
-                                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Giao Dịch&lt;/p&gt;
-                                  &lt;/CardContent&gt;
-                                &lt;/Card&gt;
-                                &lt;Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg"&gt;
-                                  &lt;CardContent className="p-4 text-center"&gt;
-                                    &lt;div className="bg-gradient-to-br from-orange-500 to-red-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg"&gt;
-                                      &lt;Clock className="h-6 w-6 text-white"/&gt;
-                                    &lt;/div&gt;
-                                    &lt;h3 className="text-lg font-bold text-slate-900"&gt;3.5 phút&lt;/h3&gt;
-                                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Thời Gian TB&lt;/p&gt;
-                                  &lt;/CardContent&gt;
-                                &lt;/Card&gt;
-                                &lt;Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg"&gt;
-                                  &lt;CardContent className="p-4 text-center"&gt;
-                                    &lt;div className="bg-gradient-to-br from-purple-500 to-pink-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg"&gt;
-                                      &lt;Users className="h-6 w-6 text-white"/&gt;
-                                    &lt;/div&gt;
-                                    &lt;h3 className="text-lg font-bold text-slate-900"&gt;{selectedStationDetails.efficiency}&lt;/h3&gt;
-                                    &lt;p className="text-xs text-slate-500 font-medium"&gt;Hiệu Suất&lt;/p&gt;
-                                  &lt;/CardContent&gt;
-                                &lt;/Card&gt;
-                              &lt;/div&gt;
+            &lt;div className="space-y-1"&gt;
+              &lt;p className="text-lg font-bold text-gray-800 dark:text-white"&gt;Gửi bảo trì&lt;/p&gt;
+              &lt;p className="text-sm text-gray-600 dark:text-gray-400"&gt;Cần sửa chữa&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div className="mt-3 flex items-center text-xs text-red-600 dark:text-red-400 font-semibold"&gt;
+              &lt;Activity className="h-3 w-3 mr-1" /&gt;
+              Khẩn cấp
+            &lt;/div&gt;
+          &lt;/CardContent&gt;
+        &lt;/Card&gt;
 &nbsp;
-                              {/* Transaction Table */}
-                              &lt;Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg"&gt;
-                                &lt;CardHeader&gt;
-                                  &lt;CardTitle className="text-lg"&gt;Lịch Sử Giao Dịch&lt;/CardTitle&gt;
-                                  &lt;CardDescription&gt;
-                                    Phân tích chi tiết các giao dịch thay pin trong tuần này
-                                  &lt;/CardDescription&gt;
-                                &lt;/CardHeader&gt;
-                                &lt;CardContent&gt;
-                                  &lt;div className="rounded-lg border border-slate-200/60 overflow-hidden"&gt;
-                                    &lt;Table&gt;
-                                      &lt;TableHeader&gt;
-                                        &lt;TableRow className="bg-slate-50/50"&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Mã Giao Dịch&lt;/TableHead&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Khách Hàng&lt;/TableHead&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Xe &amp; Pin&lt;/TableHead&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Thời Gian&lt;/TableHead&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Thời Lượng&lt;/TableHead&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Số Tiền&lt;/TableHead&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Thanh Toán&lt;/TableHead&gt;
-                                          &lt;TableHead className="font-semibold"&gt;Trạng Thái&lt;/TableHead&gt;
-                                        &lt;/TableRow&gt;
-                                      &lt;/TableHeader&gt;
-                                      &lt;TableBody&gt;
-                                        {getWeeklyTransactions(selectedStationDetails.id).map(<span class="fstat-no" title="function not covered" >tr</span>ansaction =&gt; <span class="cstat-no" title="statement not covered" >&lt;TableRow key={transaction.id} className="hover:bg-slate-50/50 transition-colors"&gt;</span>
-                                            &lt;TableCell className="font-medium text-blue-600"&gt;{transaction.id}&lt;/TableCell&gt;
-                                            &lt;TableCell className="font-medium"&gt;{transaction.customerName}&lt;/TableCell&gt;
-                                            &lt;TableCell&gt;
-                                              &lt;div&gt;
-                                                &lt;div className="font-medium text-slate-900"&gt;{transaction.vehicleType}&lt;/div&gt;
-                                                &lt;div className="text-xs text-slate-500"&gt;{transaction.batteryType}&lt;/div&gt;
-                                              &lt;/div&gt;
-                                            &lt;/TableCell&gt;
-                                            &lt;TableCell className="text-sm"&gt;{transaction.swapTime}&lt;/TableCell&gt;
-                                            &lt;TableCell className="text-sm"&gt;{transaction.duration}&lt;/TableCell&gt;
-                                            &lt;TableCell className="font-bold text-emerald-700"&gt;
-                                              {parseInt(transaction.amount).toLocaleString()} VNĐ
-                                            &lt;/TableCell&gt;
-                                            &lt;TableCell className="text-sm"&gt;{transaction.paymentMethod}&lt;/TableCell&gt;
-                                            &lt;TableCell&gt;
-                                              &lt;Badge variant={transaction.status === "Hoàn thành" ? "default" : "secondary"} className={transaction.status === "Hoàn thành" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : ""}&gt;
-                                                {transaction.status}
-                                              &lt;/Badge&gt;
-                                            &lt;/TableCell&gt;
-                                          &lt;/TableRow&gt;)}
-                                      &lt;/TableBody&gt;
-                                    &lt;/Table&gt;
-                                  &lt;/div&gt;
-                                &lt;/CardContent&gt;
-                              &lt;/Card&gt;
-                            &lt;/div&gt;}
-                        &lt;/DialogContent&gt;
-                      &lt;/Dialog&gt;
-                    &lt;/div&gt;
-                  &lt;/div&gt;
-                &lt;/div&gt;)}
+        &lt;Card className="border-0 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-teal-900/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in group overflow-hidden relative" style={{ animationDelay: "0.2s" }}&gt;
+          &lt;div className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"&gt;&lt;/div&gt;
+          &lt;CardContent className="p-6 relative z-10"&gt;
+            &lt;div className="flex items-center justify-between mb-4"&gt;
+              &lt;div className="p-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl shadow-lg group-hover:scale-110 transition-transform duration-500"&gt;
+                &lt;CheckCircle className="h-8 w-8 text-white" /&gt;
+              &lt;/div&gt;
+              &lt;div className="text-right"&gt;
+                &lt;h3 className="text-5xl font-black bg-gradient-to-br from-green-600 to-emerald-600 bg-clip-text text-transparent"&gt;8&lt;/h3&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;div className="space-y-1"&gt;
+              &lt;p className="text-lg font-bold text-gray-800 dark:text-white"&gt;Đạt chuẩn&lt;/p&gt;
+              &lt;p className="text-sm text-gray-600 dark:text-gray-400"&gt;Hoạt động tốt&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div className="mt-3 flex items-center text-xs text-green-600 dark:text-green-400 font-semibold"&gt;
+              &lt;Zap className="h-3 w-3 mr-1" /&gt;
+              Xuất sắc
             &lt;/div&gt;
           &lt;/CardContent&gt;
         &lt;/Card&gt;
       &lt;/div&gt;
-    &lt;/div&gt;;
+&nbsp;
+      {/* Enhanced Batteries Requiring Inspection */}
+      &lt;Card className="mb-8 border-0 shadow-2xl bg-gradient-to-br from-white via-orange-50/30 to-yellow-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 animate-fade-in hover:shadow-3xl transition-all duration-500 overflow-hidden"&gt;
+        &lt;div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-orange-400/10 to-yellow-400/10 rounded-full blur-3xl"&gt;&lt;/div&gt;
+        &lt;CardHeader className="relative z-10 bg-gradient-to-r from-orange-500 via-yellow-500 to-amber-500 text-white pb-6"&gt;
+          &lt;div className="flex items-center justify-between"&gt;
+            &lt;div className="flex items-center"&gt;
+              &lt;div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl mr-4 shadow-lg"&gt;
+                &lt;AlertTriangle className="h-7 w-7 text-white" /&gt;
+              &lt;/div&gt;
+              &lt;div&gt;
+                &lt;CardTitle className="text-2xl font-bold"&gt;Pin cần kiểm tra ngay&lt;/CardTitle&gt;
+                &lt;CardDescription className="text-orange-100 mt-1"&gt;
+                  Danh sách pin yêu cầu giám định chất lượng
+                &lt;/CardDescription&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;Badge className="bg-white/20 text-white border-white/30 px-4 py-2 text-sm backdrop-blur-sm"&gt;
+              {emptyBatteries.length} pin
+            &lt;/Badge&gt;
+          &lt;/div&gt;
+        &lt;/CardHeader&gt;
+        &lt;CardContent className="p-6 relative z-10"&gt;
+          &lt;div className="space-y-4"&gt;
+            {emptyBatteries.map((battery, index) =&gt; (
+              &lt;Card
+                key={battery.id}
+                className="border-2 border-orange-200 dark:border-orange-800 shadow-lg bg-white dark:bg-slate-800 hover:shadow-2xl hover:border-orange-400 dark:hover:border-orange-600 transition-all duration-300 hover:scale-[1.02] animate-fade-in group overflow-hidden relative"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              &gt;
+                &lt;div className="absolute inset-0 bg-gradient-to-r from-orange-50/50 to-yellow-50/50 dark:from-orange-900/10 dark:to-yellow-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"&gt;&lt;/div&gt;
+                &lt;CardContent className="p-5 relative z-10"&gt;
+                  &lt;div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center"&gt;
+                    &lt;div className="flex items-center space-x-3"&gt;
+                      &lt;div className="p-3 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300"&gt;
+                        &lt;Battery className="h-6 w-6 text-white" /&gt;
+                      &lt;/div&gt;
+                      &lt;div&gt;
+                        &lt;h3 className="font-bold text-lg text-gray-800 dark:text-white"&gt;{battery.id}&lt;/h3&gt;
+                        &lt;p className="text-sm text-gray-600 dark:text-gray-400"&gt;{battery.type}&lt;/p&gt;
+                      &lt;/div&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg"&gt;
+                      &lt;p className="text-xs text-gray-500 dark:text-gray-400 mb-1"&gt;Vị trí&lt;/p&gt;
+                      &lt;p className="text-sm font-bold text-blue-600 dark:text-blue-400"&gt;{battery.location}&lt;/p&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg"&gt;
+                      &lt;p className="text-xs text-gray-500 dark:text-gray-400 mb-1"&gt;State of Health&lt;/p&gt;
+                      &lt;div className="flex items-center space-x-2"&gt;
+                        &lt;Activity
+                          className={`h-4 w-4 ${parseInt(battery.soh) &gt; 90
+                            ? <span class="branch-0 cbranch-no" title="branch not covered" >"text-green-600"</span>
+                            : parseInt(battery.soh) &gt; 80
+                              ? <span class="branch-0 cbranch-no" title="branch not covered" >"text-orange-500"</span>
+                              : "text-red-500"
+                            }`}
+                        /&gt;
+                        &lt;p
+                          className={`font-black text-lg ${parseInt(battery.soh) &gt; 90
+                            ? <span class="branch-0 cbranch-no" title="branch not covered" >"text-green-600"</span>
+                            : parseInt(battery.soh) &gt; 80
+                              ? <span class="branch-0 cbranch-no" title="branch not covered" >"text-orange-500"</span>
+                              : "text-red-500"
+                            }`}
+                        &gt;
+                          {battery.soh}
+                        &lt;/p&gt;
+                      &lt;/div&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg"&gt;
+                      &lt;p className="text-xs text-gray-500 dark:text-gray-400 mb-1"&gt;Chu kỳ&lt;/p&gt;
+                      &lt;p className="text-sm font-bold text-green-600 dark:text-green-400"&gt;{battery.cycles} lần&lt;/p&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="p-3 bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 rounded-lg"&gt;
+                      &lt;p className="text-xs text-gray-500 dark:text-gray-400 mb-1"&gt;Lần cuối dùng&lt;/p&gt;
+                      &lt;div className="flex items-center"&gt;
+                        &lt;Clock className="h-3 w-3 mr-1 text-gray-600 dark:text-gray-400" /&gt;
+                        &lt;p className="text-xs font-medium text-gray-700 dark:text-gray-300"&gt;{battery.lastUsed}&lt;/p&gt;
+                      &lt;/div&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="flex justify-end"&gt;
+                      &lt;Dialog&gt;
+                        &lt;DialogTrigger asChild&gt;
+                          &lt;Button
+                            onClick={() =&gt; setSelectedBattery(battery)}
+                            className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white rounded-xl px-6 py-3 transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-2xl font-bold"
+                          &gt;
+                            &lt;Search className="h-5 w-5 mr-2" /&gt;
+                            Kiểm tra ngay
+                          &lt;/Button&gt;
+                        &lt;/DialogTrigger&gt;
+                        &lt;DialogContent className="max-w-2xl border-2 border-blue-200 dark:border-blue-800 shadow-2xl"&gt;
+                          &lt;DialogHeader className="border-b pb-4"&gt;
+                            &lt;DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"&gt;
+                              Kiểm tra pin {battery.id}
+                            &lt;/DialogTitle&gt;
+                            &lt;DialogDescription className="text-gray-600"&gt;
+                              Thực hiện giám định và đánh giá chất lượng pin
+                            &lt;/DialogDescription&gt;
+                          &lt;/DialogHeader&gt;
+                          {selectedBattery &amp;&amp; (
+                            &lt;InspectionForm
+                              battery={selectedBattery}
+                              onClose={<span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >setSelectedBattery(null)}</span>
+                            /&gt;
+                          )}
+                        &lt;/DialogContent&gt;
+                      &lt;/Dialog&gt;
+                    &lt;/div&gt;
+                  &lt;/div&gt;
+                &lt;/CardContent&gt;
+              &lt;/Card&gt;
+            ))}
+          &lt;/div&gt;
+        &lt;/CardContent&gt;
+      &lt;/Card&gt;
+&nbsp;
+      {/* Enhanced Inspection History */}
+      &lt;Card className="border-0 shadow-2xl bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 animate-fade-in hover:shadow-3xl transition-all duration-500 overflow-hidden" style={{ animationDelay: "0.3s" }}&gt;
+        &lt;div className="absolute top-0 left-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl"&gt;&lt;/div&gt;
+        &lt;CardHeader className="relative z-10 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white pb-6"&gt;
+          &lt;div className="flex items-center justify-between flex-wrap gap-4"&gt;
+            &lt;div className="flex items-center"&gt;
+              &lt;div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl mr-4 shadow-lg"&gt;
+                &lt;Clock className="h-7 w-7 text-white" /&gt;
+              &lt;/div&gt;
+              &lt;div&gt;
+                &lt;CardTitle className="text-2xl font-bold"&gt;Lịch sử kiểm tra pin&lt;/CardTitle&gt;
+                &lt;CardDescription className="text-blue-100 mt-1"&gt;
+                  {showFullHistory ? "Tổng hợp tất cả pin đã kiểm tra" : "Pin đã được kiểm tra gần đây"}
+                &lt;/CardDescription&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;Button
+              variant="outline"
+              onClick={() =&gt; setShowFullHistory(!showFullHistory)}
+              className="bg-white/20 hover:bg-white/30 border-white/30 text-white backdrop-blur-sm transition-all duration-300 hover:scale-105 shadow-lg font-semibold"
+            &gt;
+              {showFullHistory ? "Thu gọn" : "Xem tất cả"}
+            &lt;/Button&gt;
+          &lt;/div&gt;
+        &lt;/CardHeader&gt;
+        &lt;CardContent className="p-6 relative z-10"&gt;
+          &lt;div className="space-y-4"&gt;
+            {displayedHistory.map((record, index) =&gt; (
+              &lt;Card
+                key={record.id}
+                className="border-2 border-blue-200 dark:border-blue-800 shadow-lg bg-white dark:bg-slate-800 hover:shadow-2xl hover:border-blue-400 dark:hover:border-blue-600 transition-all duration-300 hover:scale-[1.01] animate-fade-in group overflow-hidden relative"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              &gt;
+                &lt;div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"&gt;&lt;/div&gt;
+                &lt;CardContent className="p-5 relative z-10"&gt;
+                  &lt;div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center"&gt;
+                    &lt;div className="flex items-center space-x-3"&gt;
+                      &lt;div
+                        className={`p-3 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300 ${record.status === "Đạt chuẩn"
+                          ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                          : "bg-gradient-to-br from-red-500 to-orange-500"
+                          }`}
+                      &gt;
+                        {record.status === "Đạt chuẩn" ? (
+                          &lt;CheckCircle className="h-6 w-6 text-white" /&gt;
+                        ) : (
+                          &lt;Wrench className="h-6 w-6 text-white" /&gt;
+                        )}
+                      &lt;/div&gt;
+                      &lt;div&gt;
+                        &lt;h3 className="font-bold text-lg text-gray-800 dark:text-white"&gt;{record.id}&lt;/h3&gt;
+                        &lt;p className="text-sm text-gray-600 dark:text-gray-400"&gt;{record.type}&lt;/p&gt;
+                      &lt;/div&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg"&gt;
+                      &lt;div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1"&gt;
+                        &lt;Clock className="h-3 w-3 mr-1" /&gt;
+                        Thời gian
+                      &lt;/div&gt;
+                      &lt;p className="text-sm font-semibold text-purple-600 dark:text-purple-400"&gt;{record.inspectionDate}&lt;/p&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="p-3 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg"&gt;
+                      &lt;div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1"&gt;
+                        &lt;User className="h-3 w-3 mr-1" /&gt;
+                        Người kiểm tra
+                      &lt;/div&gt;
+                      &lt;p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400"&gt;{record.inspector}&lt;/p&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="p-3 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-lg col-span-1 md:col-span-2"&gt;
+                      &lt;p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"&gt;Tình trạng vật lý&lt;/p&gt;
+                      &lt;p className="text-sm font-semibold text-gray-800 dark:text-gray-200"&gt;{record.physicalCondition}&lt;/p&gt;
+                      &lt;p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-1"&gt;{record.notes}&lt;/p&gt;
+                    &lt;/div&gt;
+&nbsp;
+                    &lt;div className="flex justify-end"&gt;
+                      &lt;Badge
+                        className={`${record.status === "Đạt chuẩn"
+                          ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                          : "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600"
+                          } text-white border-0 px-4 py-2 text-sm font-bold shadow-lg hover:scale-110 transition-all duration-300`}
+                      &gt;
+                        {record.status}
+                      &lt;/Badge&gt;
+                    &lt;/div&gt;
+                  &lt;/div&gt;
+                &lt;/CardContent&gt;
+              &lt;/Card&gt;
+            ))}
+          &lt;/div&gt;
+        &lt;/CardContent&gt;
+      &lt;/Card&gt;
+    &lt;/div&gt;
+  );
 };
-export default Reports;
+&nbsp;
+export default BatteryInspection;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -1579,16 +1801,16 @@ export default Reports;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-11-07T15:55:00.637Z
+                at 2025-11-07T15:55:20.209Z
             </div>
-        <script src="../../../prettify.js"></script>
+        <script src="prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../../sorter.js"></script>
-        <script src="../../../block-navigation.js"></script>
+        <script src="sorter.js"></script>
+        <script src="block-navigation.js"></script>
     </body>
 </html>
     

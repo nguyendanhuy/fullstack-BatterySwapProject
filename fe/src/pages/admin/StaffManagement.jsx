@@ -267,13 +267,13 @@ const StaffManagement = () => {
               ) : (
                 stationsData
                   .filter((st) => st.stationId !== null)
-                  .map((st) => {
+                  .map((st, index) => {
                     const count = st.staffList?.length || 0;
                     const isEmpty = count === 0;
 
                     return (
                       //bấm vào card hiện dialog
-                      <Dialog key={st.stationId} open={viewStaffStationId === st.stationId} onOpenChange={(open) => setViewStaffStationId(open ? st.stationId : null)}>
+                      <Dialog key={`station-${st.stationId}-${index}`} open={viewStaffStationId === st.stationId} onOpenChange={(open) => setViewStaffStationId(open ? st.stationId : null)}>
                         <DialogTrigger asChild>
                           <Card
                             className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isEmpty
@@ -472,11 +472,11 @@ const StaffManagement = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredStaffList.map((s) => {
+                  filteredStaffList.map((s, index) => {
                     const isBusy = !!loading[s.staffId];
                     const stationName = s.stationName || (s.stationId ? String(s.stationId) : null);
                     return (
-                      <TableRow key={s.staffId}>
+                      <TableRow key={`staff-${s.staffId}-${index}`}>
                         <TableCell>{s.staffId}</TableCell>
                         <TableCell className="font-medium">{s.fullName}</TableCell>
                         <TableCell>{s.email}</TableCell>
@@ -490,7 +490,7 @@ const StaffManagement = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={s.active ? "default" : "secondary"}>{s.active ? "Hoạt động" : "Không hoạt động"}</Badge>
+                          <Badge variant={s.stationId ? "default" : "secondary"}>{s.stationId ? "Hoạt động" : "Không hoạt động"}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">

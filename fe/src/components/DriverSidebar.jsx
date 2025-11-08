@@ -4,7 +4,7 @@ import {
     FileText, Wallet
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import {
     Sidebar,
     SidebarContent,
@@ -20,7 +20,9 @@ import {
 } from "@/components/ui/sidebar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import AccountSettings from "@/components/AccountSettings";
+import { SystemContext } from "@/contexts/system.context";
 
 const mainItems = [
     { title: "Dashboard", url: "/driver", icon: Home },
@@ -34,12 +36,20 @@ const mainItems = [
 
 export function DriverSidebar() {
     const { open, toggleSidebar } = useSidebar();
+    const { userData } = useContext(SystemContext);
     const navigate = useNavigate();
     const [settingsOpen, setSettingsOpen] = useState(false);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
         navigate("/login")
+    };
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND'
+        }).format(amount || 0);
     };
 
     return (
@@ -75,21 +85,77 @@ export function DriverSidebar() {
                                 <SidebarMenu>
                                     {mainItems.map((item) => (
                                         <SidebarMenuItem key={item.title}>
-                                            <NavLink
-                                                to={item.url}
-                                                end={item.url === "/driver"}
-                                                className={({ isActive }) =>
-                                                    `
-                          flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-base font-medium
-                          ${isActive
-                                                        ? "bg-white/25 text-white font-semibold shadow-inner"
-                                                        : "text-white/85 hover:text-white hover:bg-white/10"}
-                          `
-                                                }
-                                            >
-                                                <item.icon className="h-5 w-5" />
-                                                {open && <span>{item.title}</span>}
-                                            </NavLink>
+                                            {item.title === "Ví điện tử" ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <NavLink
+                                                            to={item.url}
+                                                            className={({ isActive }) =>
+                                                                `
+                                                                    flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-base font-medium
+                                                                    ${isActive
+                                                                    ? "bg-white/25 text-white font-semibold shadow-inner"
+                                                                    : "text-white/85 hover:text-white hover:bg-white/10"}
+                                                                    `
+                                                            }
+                                                        >
+                                                            <item.icon className="h-5 w-5" />
+                                                            {open && <span>{item.title}</span>}
+                                                        </NavLink>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="right" className="bg-white text-gray-900 border border-gray-200 shadow-lg">
+                                                        <div className="flex flex-col gap-1">
+                                                            <p className="text-xs text-gray-500">Số dư ví</p>
+                                                            <p className="text-sm font-bold text-green-600">
+                                                                {formatCurrency(userData?.walletBalance)}
+                                                            </p>
+                                                        </div>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : item.title === "Gói thuê pin" ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <NavLink
+                                                            to={item.url}
+                                                            className={({ isActive }) =>
+                                                                `
+                                                                    flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-base font-medium
+                                                                    ${isActive
+                                                                    ? "bg-white/25 text-white font-semibold shadow-inner"
+                                                                    : "text-white/85 hover:text-white hover:bg-white/10"}
+                                                                    `
+                                                            }
+                                                        >
+                                                            <item.icon className="h-5 w-5" />
+                                                            {open && <span>{item.title}</span>}
+                                                        </NavLink>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="right" className="bg-white text-gray-900 border border-gray-200 shadow-lg">
+                                                        <div className="flex flex-col gap-1">
+                                                            <p className="text-xs text-gray-500">Gói đăng ký của bạn</p>
+                                                            <p className="text-sm font-bold text-green-600">
+                                                                {userData?.planName ? `Gói ${userData.planName} : Còn ${userData.maxSwaps - userData.usedSwaps} lượt` : "Chưa có gói"}
+                                                            </p>
+                                                        </div>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : (
+                                                <NavLink
+                                                    to={item.url}
+                                                    end={item.url === "/driver"}
+                                                    className={({ isActive }) =>
+                                                        `
+                                                        flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-base font-medium
+                                                        ${isActive
+                                                            ? "bg-white/25 text-white font-semibold shadow-inner"
+                                                            : "text-white/85 hover:text-white hover:bg-white/10"}
+                                                        `
+                                                    }
+                                                >
+                                                    <item.icon className="h-5 w-5" />
+                                                    {open && <span>{item.title}</span>}
+                                                </NavLink>
+                                            )}
                                         </SidebarMenuItem>
                                     ))}
                                 </SidebarMenu>

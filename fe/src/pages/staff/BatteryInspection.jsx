@@ -9,6 +9,28 @@ import { Label } from "@/components/ui/label";
 import { Search, AlertTriangle, CheckCircle, Wrench, Clock, User, Battery, Zap, Activity, TrendingUp, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Helper function to determine SOH color based on value
+const getSohColor = (soh) => {
+  const sohValue = parseInt(soh);
+  if (sohValue > 90) return "text-green-600";
+  if (sohValue > 80) return "text-orange-500";
+  return "text-red-500";
+};
+
+// Helper function to get status-based styles
+const getStatusStyles = (status) => {
+  const isQualified = status === "Đạt chuẩn";
+  return {
+    bgGradient: isQualified
+      ? "bg-gradient-to-br from-green-500 to-emerald-500"
+      : "bg-gradient-to-br from-red-500 to-orange-500",
+    badgeGradient: isQualified
+      ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+      : "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600",
+    icon: isQualified ? CheckCircle : Wrench
+  };
+};
+
 const BatteryInspection = () => {
   const { toast } = useToast();
   const [selectedBattery, setSelectedBattery] = useState(null);
@@ -163,6 +185,9 @@ const BatteryInspection = () => {
       onClose();
     };
 
+    const isSubmitDisabled = !physicalCondition || !notes || !inspector;
+    const isMaintenanceDisabled = !inspector;
+
     return (
       <div className="space-y-4">
         <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 border-2 border-blue-200 dark:border-blue-800 p-5 rounded-xl shadow-lg">
@@ -179,11 +204,7 @@ const BatteryInspection = () => {
             </div>
             <div className="p-3 bg-white/60 dark:bg-slate-700/50 rounded-lg backdrop-blur-sm">
               <span className="text-muted-foreground text-xs block mb-1">State of Health</span>
-              <p
-                className={`font-bold text-lg ${parseInt(battery.soh) > 90 ? "text-green-600" :
-                  parseInt(battery.soh) > 80 ? "text-orange-500" : "text-red-500"
-                  }`}
-              >
+              <p className={`font-bold text-lg ${getSohColor(battery.soh)}`}>
                 {battery.soh}
               </p>
             </div>
@@ -251,7 +272,7 @@ const BatteryInspection = () => {
           <Button
             className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
             onClick={handleSubmit}
-            disabled={!physicalCondition || !notes || !inspector}
+            disabled={isSubmitDisabled}
           >
             <CheckCircle className="h-4 w-4 mr-2" />
             Hoàn thành kiểm tra
@@ -259,7 +280,7 @@ const BatteryInspection = () => {
           <Button
             className="flex-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
             onClick={handleSendMaintenance}
-            disabled={!inspector}
+            disabled={isMaintenanceDisabled}
           >
             <Wrench className="h-4 w-4 mr-2" />
             Gửi bảo trì
@@ -405,22 +426,8 @@ const BatteryInspection = () => {
                     <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg">
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">State of Health</p>
                       <div className="flex items-center space-x-2">
-                        <Activity
-                          className={`h-4 w-4 ${parseInt(battery.soh) > 90
-                            ? "text-green-600"
-                            : parseInt(battery.soh) > 80
-                              ? "text-orange-500"
-                              : "text-red-500"
-                            }`}
-                        />
-                        <p
-                          className={`font-black text-lg ${parseInt(battery.soh) > 90
-                            ? "text-green-600"
-                            : parseInt(battery.soh) > 80
-                              ? "text-orange-500"
-                              : "text-red-500"
-                            }`}
-                        >
+                        <Activity className={`h-4 w-4 ${getSohColor(battery.soh)}`} />
+                        <p className={`font-black text-lg ${getSohColor(battery.soh)}`}>
                           {battery.soh}
                         </p>
                       </div>
@@ -513,17 +520,11 @@ const BatteryInspection = () => {
                 <CardContent className="p-5 relative z-10">
                   <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
                     <div className="flex items-center space-x-3">
-                      <div
-                        className={`p-3 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300 ${record.status === "Đạt chuẩn"
-                          ? "bg-gradient-to-br from-green-500 to-emerald-500"
-                          : "bg-gradient-to-br from-red-500 to-orange-500"
-                          }`}
-                      >
-                        {record.status === "Đạt chuẩn" ? (
-                          <CheckCircle className="h-6 w-6 text-white" />
-                        ) : (
-                          <Wrench className="h-6 w-6 text-white" />
-                        )}
+                      <div className={`p-3 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-300 ${getStatusStyles(record.status).bgGradient}`}>
+                        {(() => {
+                          const Icon = getStatusStyles(record.status).icon;
+                          return <Icon className="h-6 w-6 text-white" />;
+                        })()}
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-gray-800 dark:text-white">{record.id}</h3>
@@ -554,12 +555,7 @@ const BatteryInspection = () => {
                     </div>
 
                     <div className="flex justify-end">
-                      <Badge
-                        className={`${record.status === "Đạt chuẩn"
-                          ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                          : "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600"
-                          } text-white border-0 px-4 py-2 text-sm font-bold shadow-lg hover:scale-110 transition-all duration-300`}
-                      >
+                      <Badge className={`${getStatusStyles(record.status).badgeGradient} text-white border-0 px-4 py-2 text-sm font-bold shadow-lg hover:scale-110 transition-all duration-300`}>
                         {record.status}
                       </Badge>
                     </div>

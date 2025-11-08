@@ -75,8 +75,9 @@ const QRCheckIn = () => {
 
   //hàm xác thực pin
   const handleBatteryVerify = async () => {
-    if (!enteredBatteryId.trim()) {
-      setVerificationError("Vui lòng nhập ID pin");
+    const trimmedId = enteredBatteryId.trim();
+    if (!trimmedId) {
+      setVerificationError("Vui lòng nhập ít nhất 1 ID pin");
       return;
     }
     const ids = formatBatteryIdInput(enteredBatteryId);
@@ -114,8 +115,9 @@ const QRCheckIn = () => {
   }
   //hàm bắt đầu dịch vụ
   const startService = async () => {
-    if (!enteredBatteryId.trim()) {
-      setVerificationError("Vui lòng nhập ID pin");
+    const trimmedId = enteredBatteryId.trim();
+    if (!trimmedId) {
+      setVerificationError("Vui lòng nhập ít nhất 1 ID pin");
       return;
     }
     const ids = formatBatteryIdInput(enteredBatteryId);
@@ -297,17 +299,17 @@ const QRCheckIn = () => {
     try {
       const res = await verifyQrBooking(qrData);
       console.log("QR scan response:", res);
-      if (res) {
+      if (res?.success && res?.data) {
         setScannedCustomer(res.data);
         toast({
           title: "Đọc QR thành công",
           description: res.message,
           duration: 5000,
         });
-      } else if (res?.error) {
+      } else {
         toast({
           title: "Lỗi đọc QR Code",
-          description: JSON.stringify(res.message),
+          description: res?.message || "QR không hợp lệ",
           variant: "destructive",
           duration: 5000,
         });
@@ -602,7 +604,7 @@ const QRCheckIn = () => {
                         <Button
                           onClick={handleBatteryVerify}
                           variant="outline"
-                          disabled={isVerifying || !enteredBatteryId.trim()}
+                          disabled={isVerifying}
                           className="relative rounded-xl px-6 font-semibold text-blue-700 border-blue-500 hover:bg-blue-50 disabled:opacity-60"
                         >
                           <span className={isVerifying ? "opacity-0" : "opacity-100 flex items-center"}>

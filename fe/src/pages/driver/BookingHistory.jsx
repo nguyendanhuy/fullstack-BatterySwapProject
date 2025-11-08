@@ -43,18 +43,9 @@ const BookingHistory = () => {
     setIsLoading(true);
     try {
       const res = await getBookingHistoryByUserId(userData.userId);
-      if (res) {
-        if (Array.isArray(res.data)) {
-          const filterRes = res.data.filter(b => (b.bookingStatus !== "PENDINGPAYMENT" && b.bookingStatus !== "FAILED"));
-          setAllBookings(filterRes);
-        }
-      } else if (res?.error) {
-        toast({
-          title: "Lỗi gọi hiển thị lịch sử",
-          description: JSON.stringify(res.error),
-          variant: "destructive",
-          duration: 5000,
-        });
+      if (Array.isArray(res?.data)) {
+        const filterRes = res.data.filter(b => (b.bookingStatus !== "PENDINGPAYMENT" && b.bookingStatus !== "FAILED"));
+        setAllBookings(filterRes);
       }
     } catch (err) {
       toast({
@@ -71,15 +62,8 @@ const BookingHistory = () => {
     setQr(null);
     try {
       const res = await (generateQRBooking(bookingId));
-      if (res) {
+      if (res?.data?.token) {
         setQr(res.data.token);
-      } else if (res?.error) {
-        toast({
-          title: "Lỗi gọi hiển thị QR Code",
-          description: JSON.stringify(res.message),
-          variant: "destructive",
-          duration: 5000,
-        });
       }
     } catch (err) {
       toast({
@@ -106,13 +90,11 @@ const BookingHistory = () => {
     const matchesStatus = statusFilter === "all" || booking.bookingStatus === statusFilter;
 
     // Date filter
-    let matchesDate = true;
     const [start, end] = dateRange || [];
-    if (start && end) {
+    const matchesDate = !start || !end || (() => {
       const bookingDate = dayjs(booking.bookingDate, DATE_TIME_FMT);
-      if (start && bookingDate.isBefore(start.startOf("day"))) matchesDate = false;
-      if (end && bookingDate.isAfter(end.endOf("day"))) matchesDate = false;
-    }
+      return !bookingDate.isBefore(start.startOf("day")) && !bookingDate.isAfter(end.endOf("day"));
+    })();
 
     return matchesSearch && matchesStatus && matchesDate;
   });
@@ -120,12 +102,11 @@ const BookingHistory = () => {
   const bookings = filteredBookings;
 
   const handleCancelBooking = async () => {
-    if (!selectedBooking.bookingId) return;
+    if (!selectedBooking?.bookingId) return;
     setIsCanceling(true);
-    // Gọi API hủy đặt chỗ ở đây, sử dụng selectedBooking.bookingId
     try {
       const res = await cancelBookingById(selectedBooking.bookingId, userData.userId, cancelReason);
-      if (res) {
+      if (res && !res.error) {
         toast({
           title: "Yêu cầu hủy đặt chỗ đã được gửi",
           description: "Chúng tôi sẽ xử lý và hoàn tiền trong vòng 24h",
@@ -133,21 +114,14 @@ const BookingHistory = () => {
         setCancelDialogOpen(false);
         setCancelReason("");
         loadUserHistory();
-      } else if (res?.error) {
-        toast({
-          title: "Lỗi hủy đăt chỗ",
-          description: JSON.stringify(res.error?.message ?? res.error) || "Lỗi mạng",
-          variant: "destructive",
-        });
       }
     } catch (err) {
       toast({
-        title: "Lỗi mạng khi tải lịch sử",
-        description: String(err?.message ?? err) || "Lỗi mạng",
+        title: "Lỗi mạng khi hủy đặt chỗ",
+        description: "Lỗi mạng",
         variant: "destructive",
       });
-    }
-    finally {
+    } finally {
       setIsCanceling(false);
     }
   };
@@ -183,18 +157,17 @@ const BookingHistory = () => {
   };
 
   const downloadCanvasQRCode = () => {
-    // Tìm canvas trong container có ID
     const canvas = document.getElementById('qr-container')?.querySelector('canvas');
-    if (canvas) {
-      const url = canvas.toDataURL('image/png');
-      doDownload(url, `QRCode-BK.png`);
-    } else {
+    if (!canvas) {
       toast({
         title: "Lỗi tải QR Code",
         description: "Không tìm thấy QR Code để tải xuống",
         variant: "destructive"
       });
+      return;
     }
+    const url = canvas.toDataURL('image/png');
+    doDownload(url, `QRCode-BK.png`);
   };
 
   return (
@@ -354,7 +327,7 @@ const BookingHistory = () => {
                 </h2>
               </div>
               <Spin spinning={isLoading} indicator={<LoadingOutlined spin />} tip="Đang tải dữ liệu...">
-                {bookings.length === 0 && isLoading === false ? (
+                {bookings.length === 0 && !isLoading ? (
                   <Card className="border-0 shadow-lg bg-white">
                     <CardContent className="p-12 text-center">
                       <div className="p-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
@@ -392,10 +365,8 @@ const BookingHistory = () => {
                                   open={cancelDialogOpen}
                                   onOpenChange={(v) => {
                                     setCancelDialogOpen(v);
-                                    if (!v) {
-                                      setIsCanceling(false);
-                                      setCancelReason("");
-                                    }
+                                    setIsCanceling(!v ? false : isCanceling);
+                                    setCancelReason(!v ? "" : cancelReason);
                                   }}
                                 >
                                   <DialogTrigger asChild>
@@ -455,42 +426,33 @@ const BookingHistory = () => {
                                         className="flex-1"
                                         disabled={!cancelReason?.trim() || isCanceling}
                                       >
-                                        {
-                                          isCanceling ?
-                                            (
-                                              <span className="inline-flex items-center">
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Đang hủy...
-                                              </span>
-                                            ) : (
-                                              "Xác nhận hủy"
-                                            )
-                                        }
+                                        {isCanceling ? (
+                                          <span className="inline-flex items-center">
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Đang hủy...
+                                          </span>
+                                        ) : "Xác nhận hủy"}
                                       </Button>
                                     </DialogFooter>
                                   </DialogContent>
                                 </Dialog>
                               )}
                               {/* Nút xem hóa đơn */}
-                              {
-                                booking.bookingStatus === "COMPLETED" || booking.bookingStatus === "PENDINGSWAPPING" && (
-                                  <>
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      onClick={() => {
-                                        navigate('/driver/invoices', {
-                                          state: { bookingId: booking.bookingId }
-                                        });
-                                      }}
-                                      className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
-                                    >
-                                      <FileText className="h-4 w-4 mr-1" />
-                                      Xem hóa đơn
-                                    </Button>
-                                  </>
-                                )
-                              }
+                              {(booking.bookingStatus === "COMPLETED" || booking.bookingStatus === "PENDINGSWAPPING") && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => {
+                                    navigate('/driver/invoices', {
+                                      state: { bookingId: booking.bookingId }
+                                    });
+                                  }}
+                                  className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  Xem hóa đơn
+                                </Button>
+                              )}
                               {/* nút xem QR */}
                               {booking.bookingStatus === "PENDINGSWAPPING" && (
                                 <Dialog>
@@ -690,11 +652,11 @@ const BookingHistory = () => {
                                 </span>
                               </div>
 
-                              {selectedBooking.bookingStatus === "CANCELLED" && (
+                              {selectedBooking?.bookingStatus === "CANCELLED" && (
                                 <div className="py-2 flex items-start justify-between">
                                   <span className="text-xs uppercase tracking-wide text-muted-foreground">Lý do hủy</span>
                                   <span className="font-medium text-right max-w-[65%]">
-                                    {selectedBooking.cancellationReason || "—"}
+                                    {selectedBooking?.cancellationReason || "—"}
                                   </span>
                                 </div>
                               )}
@@ -713,11 +675,11 @@ const BookingHistory = () => {
                             <div className="divide-y">
                               <div className="py-2 flex items-start justify-between">
                                 <span className="text-xs uppercase tracking-wide text-muted-foreground">Tên trạm</span>
-                                <span className="font-medium text-right max-w-[65%]">{selectedBooking.stationName}</span>
+                                <span className="font-medium text-right max-w-[65%]">{selectedBooking?.stationName || "—"}</span>
                               </div>
                               <div className="py-2 flex items-start justify-between">
                                 <span className="text-xs uppercase tracking-wide text-muted-foreground">Địa chỉ</span>
-                                <span className="font-medium text-right max-w-[65%]">{selectedBooking.stationAddress}</span>
+                                <span className="font-medium text-right max-w-[65%]">{selectedBooking?.stationAddress || "—"}</span>
                               </div>
                             </div>
                           </section>
@@ -736,24 +698,24 @@ const BookingHistory = () => {
                                 <div className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Car className="h-3 w-3" /> Loại xe
                                 </div>
-                                <div className="font-medium mt-1">{selectedBooking.vehicleType}</div>
+                                <div className="font-medium mt-1">{selectedBooking?.vehicleType || "—"}</div>
                               </div>
 
                               <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
                                 <div className="text-xs text-muted-foreground">VIN</div>
-                                <div className="font-medium mt-1">{selectedBooking.vehicleVin}</div>
+                                <div className="font-medium mt-1">{selectedBooking?.vehicleVin || "—"}</div>
                               </div>
 
                               <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
                                 <div className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Battery className="h-3 w-3" /> Số lượng pin
                                 </div>
-                                <div className="font-medium mt-1">{selectedBooking.batteryCount}</div>
+                                <div className="font-medium mt-1">{selectedBooking?.batteryCount || 0}</div>
                               </div>
 
                               <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
                                 <div className="text-xs text-muted-foreground">Loại pin</div>
-                                <div className="font-medium mt-1">{selectedBooking.batteryType}</div>
+                                <div className="font-medium mt-1">{selectedBooking?.batteryType || "—"}</div>
                               </div>
                             </div>
                           </section>
@@ -771,22 +733,22 @@ const BookingHistory = () => {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
                                   <div className="text-xs text-muted-foreground">Mã giao dịch</div>
-                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentId}</div>
+                                  <div className="font-medium mt-1">{selectedBooking?.payment?.paymentId || "—"}</div>
                                 </div>
 
                                 <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
                                   <div className="text-xs text-muted-foreground">Phương thức</div>
-                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentMethod}</div>
+                                  <div className="font-medium mt-1">{selectedBooking?.payment?.paymentMethod || "—"}</div>
                                 </div>
 
                                 <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
                                   <div className="text-xs text-muted-foreground">Trạng thái</div>
-                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentStatus}</div>
+                                  <div className="font-medium mt-1">{selectedBooking?.payment?.paymentStatus || "—"}</div>
                                 </div>
 
                                 <div className="rounded-lg border bg-white/60 dark:bg-slate-950/40 p-3">
                                   <div className="text-xs text-muted-foreground">Thời gian</div>
-                                  <div className="font-medium mt-1">{selectedBooking.payment.paymentDate}</div>
+                                  <div className="font-medium mt-1">{selectedBooking?.payment?.paymentDate || "—"}</div>
                                 </div>
                               </div>
                             </section>

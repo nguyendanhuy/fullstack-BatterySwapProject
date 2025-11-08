@@ -43,16 +43,9 @@ const matchByFilterAddress = (stationAddress = "", fa = {}) => {
   const districtPart = parts.at(-2) || "";
   const wardPart = parts.at(-3) || "";
 
-  if (fa?.provinceName) {
-    const wantedProvince = stripPrefixes(fa.provinceName);
-    if (provincePart !== wantedProvince) return false; // strict theo tail
-  }
-  if (fa?.districtName) {
-    if (!containsWholePhrase(districtPart, fa.districtName)) return false;
-  }
-  if (fa?.wardName) {
-    if (!containsWholePhrase(wardPart, fa.wardName)) return false;
-  }
+  if (fa?.provinceName && provincePart !== stripPrefixes(fa.provinceName)) return false;
+  if (fa?.districtName && !containsWholePhrase(districtPart, fa.districtName)) return false;
+  if (fa?.wardName && !containsWholePhrase(wardPart, fa.wardName)) return false;
   return true;
 };
 
@@ -141,77 +134,54 @@ export default function StationFinder() {
   // Tăng/giảm qty cho xe cụ thể tại trạm/type
   const updateVehicleSelection = (vehicleId, station, batteryType, delta) => {
     const line = selectBattery[vehicleId];
-    if (!line) return;
-
-    // ràng buộc loại pin theo xe
-    if (line.vehicleInfo.batteryType !== batteryType) {
-      toast.error("Loại pin không khớp xe", { description: "Hãy chọn đúng loại pin của xe." });
+    if (!line || line.vehicleInfo.batteryType !== batteryType) {
+      if (line) toast.error("Loại pin không khớp xe", { description: "Hãy chọn đúng loại pin của xe." });
       return;
     }
 
     const bInfo = station?.batteries?.find(b => b.batteryType === batteryType);
     const available = Number(bInfo?.available || 0);
-
     const alreadyAssigned = assignedAtStationType(station.stationId, batteryType);
-
-    // sameLine chỉ coi là "đang giữ thật" khi qty>0 để đỡ rối
     const meOldQty = Number(line.qty || 0);
-    const sameLine =
-      meOldQty > 0 &&
-      line.stationInfo?.stationId === station.stationId &&
-      line.batteryType === batteryType;
-
+    const sameLine = meOldQty > 0 && line.stationInfo?.stationId === station.stationId && line.batteryType === batteryType;
     const remainAtStationType = Math.max(0, available - alreadyAssigned + (sameLine ? meOldQty : 0));
-
-    const allowedForThisLine = Math.max(0, totalQuota - (totalBooked - meOldQty)); // trần theo quota tổng, riêng cho dòng đang chỉnh
-
+    const allowedForThisLine = Math.max(0, totalQuota - (totalBooked - meOldQty));
     const next = Math.max(0, meOldQty + delta);
-    if (delta > 0) {
-      if (next > line.vehicleInfo.batteryCount) {
-        toast.error("Vượt hạn mức tổng", { description: `Tối đa ${line.vehicleInfo.batteryCount} pin cho xe.` });
-        return;
-      }
-      if (allowedForThisLine <= 0) {
-        toast.error("Vượt hạn mức tổng", { description: `Tối đa ${totalQuota} pin cho tất cả xe.` });
-        return;
-      }
-      if (next > allowedForThisLine) {
-        toast.error("Vượt hạn mức tổng", { description: `Bạn chỉ có thể tăng tối đa đến ${allowedForThisLine} pin cho xe này.` });
-        return;
-      }
-      if (next > remainAtStationType) {
-        toast.error("Không đủ pin tại trạm", { description: `Còn ${remainAtStationType} pin ${batteryType} ở trạm này.` });
-        return;
-      }
-    }
 
-    // Nếu muốn: về 0 thì xoá stationInfo cho trực quan hơn
-    if (next === 0) {
-      setSelectBattery((s) => ({
-        ...s,
-        [vehicleId]: { ...s[vehicleId], stationInfo: null, qty: 0 }
-      }));
-      return;
+    // Validation khi tăng
+    if (delta > 0) {
+      const errors = [
+        next > line.vehicleInfo.batteryCount && { msg: "Vượt hạn mức xe", desc: `Tối đa ${line.vehicleInfo.batteryCount} pin cho xe.` },
+        (allowedForThisLine <= 0 || next > allowedForThisLine) && { msg: "Vượt hạn mức tổng", desc: `Bạn chỉ có thể tăng tối đa đến ${allowedForThisLine} pin.` },
+        next > remainAtStationType && { msg: "Không đủ pin tại trạm", desc: `Còn ${remainAtStationType} pin ${batteryType}.` }
+      ].find(e => e);
+
+      if (errors) {
+        toast.error(errors.msg, { description: errors.desc });
+        return;
+      }
     }
 
     setSelectBattery((s) => ({
       ...s,
-      [vehicleId]: {
-        ...s[vehicleId],
-        stationInfo: {
-          stationId: station.stationId,
-          stationName: station.stationName,
-          address: station.address,
-          latitude: station.latitude,
-          longitude: station.longitude,
-          rating: station.rating,
-          distance: station.distance,
-          estimatedTime: station.estimatedTime,
-          active: station.active,
-        },
-        batteryType,
-        qty: next,
-      }
+      [vehicleId]: next === 0
+        ? { ...s[vehicleId], stationInfo: null, qty: 0 }
+        : {
+          ...s[vehicleId],
+          stationInfo: {
+            stationId: station.stationId,
+            stationName: station.stationName,
+            address: station.address,
+            latitude: station.latitude,
+            longitude: station.longitude,
+            rating: station.rating,
+            distance: station.distance,
+            estimatedTime: station.estimatedTime,
+            active: station.active,
+          },
+          batteryType,
+          qty: next,
+        }
     }));
   };
 
@@ -255,8 +225,7 @@ export default function StationFinder() {
           setSelectedLocation({ lat, lng, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
         }
       },
-      (err) => {
-        console.warn("[GPS] error:", err.message);
+      () => {
         setGpsAvailable(false);
         getAllStation(true);
       },
@@ -285,14 +254,11 @@ export default function StationFinder() {
       }
       const data = await res.json();
       const elems = data?.rows?.[0]?.elements ?? [];
-      return stationsList.map((station, index) => {
-        const el = elems[index] ?? {};
-        return {
-          ...station,
-          distance: el?.distance?.text ?? "—",
-          estimatedTime: el?.duration?.text ?? "—",
-        };
-      });
+      return stationsList.map((station, index) => ({
+        ...station,
+        distance: elems[index]?.distance?.text ?? "—",
+        estimatedTime: elems[index]?.duration?.text ?? "—",
+      }));
     } catch (err) {
       if (err?.name !== "AbortError") {
         toast.error("Lỗi kết nối bản đồ", { description: String(err.message ?? err) });
@@ -306,18 +272,10 @@ export default function StationFinder() {
   const getStationNearby = async (lat, lng, radius) => {
     try {
       const res = await getStationNearbyLocation(lat, lng, radius);
-      if (!res) {
-        toast.error("Lỗi", { description: "Không nhận được dữ liệu trạm" });
-        setStations([]);
-        return;
-      }
-      if (res.error) {
-        toast.error("Lỗi gọi thông tin trạm gần nhất", { description: JSON.stringify(res.error) });
-        setStations([]);
-        return;
-      }
-      if (!Array.isArray(res)) {
-        toast.error("Dữ liệu trạm không hợp lệ", { description: JSON.stringify(res) });
+      const isInvalid = !res || res.error || !Array.isArray(res);
+
+      if (isInvalid) {
+        toast.error("Lỗi", { description: res?.error ? JSON.stringify(res.error) : "Dữ liệu trạm không hợp lệ" });
         setStations([]);
         return;
       }
@@ -328,7 +286,6 @@ export default function StationFinder() {
       nearbyAbortRef.current = controller;
 
       const stationsWithDistance = await distanceMatrixWithStations(selectedLocation, res, controller.signal);
-
       const sortedStations = stationsWithDistance.sort((a, b) => getKm(a.distance) - getKm(b.distance));
       setStations(sortedStations);
       setPrimaryStation(sortedStations.length ? sortedStations[0] : null);
@@ -345,7 +302,9 @@ export default function StationFinder() {
     const res = await getAllStations();
     if (res?.error) {
       toast.error("Lỗi gọi thông tin trạm", { description: JSON.stringify(res.error) });
-    } else if (res) {
+      return;
+    }
+    if (res) {
       setAllStations(res);
       if (loadToList) setStations(res);
     }
@@ -368,17 +327,12 @@ export default function StationFinder() {
   // --- Lọc trạm theo filter địa chỉ, pin, distance ---
   const filteredStations = useMemo(() => {
     return stations.filter(station => {
-      if (filterAddress && (filterAddress.provinceName || filterAddress.districtName || filterAddress.wardName)) {
-        if (!matchByFilterAddress(station.address, filterAddress)) return false;
-      }
-      if (filters.batteryType) {
-        const match = station.batteries?.some(b => b.batteryType === filters.batteryType);
-        if (!match) return false;
-      }
+      const hasAddressFilter = filterAddress?.provinceName || filterAddress?.districtName || filterAddress?.wardName;
+      if (hasAddressFilter && !matchByFilterAddress(station.address, filterAddress)) return false;
+      if (filters.batteryType && !station.batteries?.some(b => b.batteryType === filters.batteryType)) return false;
       if (filters.distance && station.distance && station.distance !== "—") {
-        const maxKm = parseInt(filters.distance, 10);
         const distKm = getKm(station.distance);
-        if (distKm > maxKm) return false;
+        if (distKm > parseInt(filters.distance, 10)) return false;
       }
       return true;
     });
@@ -502,15 +456,14 @@ export default function StationFinder() {
                   <Select
                     value={vehicleSelectValue}
                     onValueChange={(value) => {
-                      if (value === "ALL") {
-                        setVehicleSelectValue("ALL");
-                        setFilters({ ...filters, batteryType: "" });
-                        return;
-                      }
-                      const parts = value.split("_");
-                      const bt = parts.slice(1).join("_");
+                      const isAll = value === "ALL";
                       setVehicleSelectValue(value);
-                      setFilters({ ...filters, batteryType: bt });
+                      if (isAll) {
+                        setFilters({ ...filters, batteryType: "" });
+                      } else {
+                        const bt = value.split("_").slice(1).join("_");
+                        setFilters({ ...filters, batteryType: bt });
+                      }
                     }}
                   >
                     <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-purple-500 rounded-xl">
@@ -602,9 +555,6 @@ export default function StationFinder() {
                 ⚠️ GPS đang tắt/không được cấp quyền. Đang hiển thị <b>tất cả</b> trạm (không có khoảng cách & thời gian ước tính).
               </div>
             )}
-
-
-            {/* Province/District/Ward */}
             <div className="mb-2">
               <ProvinceDistrictWardSelect setFilterAddress={setFilterAddress} />
             </div>
@@ -689,16 +639,16 @@ export default function StationFinder() {
                         </div>
 
                         <div className="space-y-2.5">
-                          {station.batteries && station.batteries.length > 0 ? (
+                          {(station.batteries && station.batteries.length > 0) ? (
                             station.batteries
                               .filter(b => (b.available > 0 || b.charging > 0))
                               .map((battery) => {
                                 const type = battery.batteryType;
                                 const alrBased = assignedAtStationType(station.stationId, type);
                                 const line = currentVehicleId ? selectBattery[currentVehicleId] : null;
-                                const sameStation = !!(line?.stationInfo?.stationId === station.stationId);
-                                const sameType = !!(line?.batteryType === type);
-                                const meQty = sameStation && sameType ? (line?.qty || 0) : 0;
+                                const sameStation = line?.stationInfo?.stationId === station.stationId;
+                                const sameType = line?.batteryType === type;
+                                const meQty = (sameStation && sameType) ? (line?.qty || 0) : 0;
 
                                 return (
                                   <div
@@ -748,9 +698,7 @@ export default function StationFinder() {
                                           disabled={!currentVehicleId}
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if (currentVehicleId) {
-                                              updateVehicleSelection(currentVehicleId, station, type, -1);
-                                            }
+                                            currentVehicleId && updateVehicleSelection(currentVehicleId, station, type, -1);
                                           }}
                                           className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
@@ -765,9 +713,7 @@ export default function StationFinder() {
                                           disabled={!currentVehicleId || !station.active}
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if (currentVehicleId && station.active) {
-                                              updateVehicleSelection(currentVehicleId, station, type, +1);
-                                            }
+                                            (currentVehicleId && station.active) && updateVehicleSelection(currentVehicleId, station, type, +1);
                                           }}
                                           className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-emerald-500"
                                         >

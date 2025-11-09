@@ -6,7 +6,9 @@ import BatterySwapStation.dto.RegisterRequest;
 import BatterySwapStation.entity.Role;
 import BatterySwapStation.entity.User;
 import BatterySwapStation.repository.RoleRepository;
+import BatterySwapStation.repository.StaffAssignRepository;
 import BatterySwapStation.repository.UserRepository;
+import BatterySwapStation.repository.UserSubscriptionRepository;
 import BatterySwapStation.utils.UserIdGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -27,7 +29,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-
+    private final StaffAssignRepository staffAssignRepository;
+    private final UserSubscriptionRepository userSubscriptionRepository;
     private final UserIdGenerator userIdGenerator;
 
 
@@ -133,5 +136,24 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User: " + userId));
     }
 
+    @Transactional
+    public void deleteUserPermanently(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user: " + userId));
+
+        // Xóa phân công staff nếu có
+        staffAssignRepository.findAllByUser_UserId(userId)
+                .forEach(assign -> staffAssignRepository.delete(assign));
+
+        // Xoá các subscription nếu có
+        userSubscriptionRepository.findAllByUser_UserId(userId)
+                .forEach(sub -> userSubscriptionRepository.delete(sub));
+
+        // Nếu dùng Token table thì revoke token ở đây (tuỳ dự án bạn)
+        // tokenRepository.deleteAllByUser(user);
+
+        // Xoá user — orphanRemoval = true sẽ tự xoá vehicle + booking
+        userRepository.delete(user);
+    }
 
 }

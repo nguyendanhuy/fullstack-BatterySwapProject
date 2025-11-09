@@ -1,6 +1,6 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.AuditIssueDTO;
+import BatterySwapStation.dto.AuditIssue;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.DockSlot;
 import BatterySwapStation.repository.BatteryRepository;
@@ -35,7 +35,7 @@ public class AuditService {
                 ? dockSlotRepository.findAll()
                 : dockSlotRepository.findAllByDock_Station_StationId(stationId);
 
-        List<AuditIssueDTO> issues = new ArrayList<>();
+        List<AuditIssue> issues = new ArrayList<>();
         String now = LocalDateTime.now().toString();
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -45,7 +45,7 @@ public class AuditService {
         response.put("totalSlots", allSlots.size());
         response.put("totalIssues", issues.size());
         response.put("summary", issues.stream()
-                .collect(Collectors.groupingBy(AuditIssueDTO::getIssueType, Collectors.counting())));
+                .collect(Collectors.groupingBy(AuditIssue::getIssueType, Collectors.counting())));
         response.put("issues", issues);
 
         if (pushRealtime && !issues.isEmpty() && stationId != null) {

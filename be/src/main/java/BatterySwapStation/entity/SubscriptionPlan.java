@@ -2,6 +2,7 @@ package BatterySwapStation.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.Builder;
 
 @Entity
 @Table(name = "SubscriptionPlan")

@@ -22,7 +22,6 @@ public class SubscriptionSchedulerService {
 
     // Số ngày báo trước để tạo invoice gia hạn
     private static final int RENEWAL_NOTICE_DAYS = 3;
-
     /**
      * Chạy vào 1:05 AM mỗi ngày
      * (Tìm các gói sắp hết hạn và tạo invoice gia hạn)

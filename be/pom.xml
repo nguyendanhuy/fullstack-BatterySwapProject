@@ -60,6 +60,13 @@
             <version>5.2.5</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.ojalgo</groupId>
+            <artifactId>ojalgo</artifactId>
+            <version>55.0.0</version>
+        </dependency>
+
+
         <!-- 🔑 Environment .env -->
         <dependency>
             <groupId>me.paulschwarz</groupId>

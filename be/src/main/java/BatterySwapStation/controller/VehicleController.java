@@ -1,6 +1,6 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.dto.ApiResponseDto;
+import BatterySwapStation.dto.ApiResponse;
 import BatterySwapStation.dto.AssignVehicleRequest;
 import BatterySwapStation.dto.VehicleRegistrationRequest;
 import BatterySwapStation.dto.VehicleInfoResponse;
@@ -38,20 +38,20 @@ public class VehicleController {
 
     @PostMapping("/assign")
     @Operation(summary = "Gán phương tiện cho người dùng hiện tại")
-    public ResponseEntity<ApiResponseDto> assignVehicle(
+    public ResponseEntity<ApiResponse> assignVehicle(
             @Valid @RequestBody AssignVehicleRequest request,
             @AuthenticationPrincipal User user) {
         vehicleService.assignVehicleToUser(user.getUserId(), request.getVin());
-        return ResponseEntity.ok(new ApiResponseDto(true, "Gán phương tiện thành công!"));
+        return ResponseEntity.ok(new ApiResponse(true, "Gán phương tiện thành công!"));
     }
 
     @PostMapping("/register")
     @Operation(summary = "Đăng ký phương tiện mới và gán cho người dùng hiện tại")
-    public ResponseEntity<ApiResponseDto> registerNewVehicle(
+    public ResponseEntity<ApiResponse> registerNewVehicle(
             @Valid @RequestBody VehicleRegistrationRequest request,
             @AuthenticationPrincipal User user) {
         vehicleService.registerNewVehicle(user.getUserId(), request);
-        return ResponseEntity.ok(new ApiResponseDto(true, "Đăng ký phương tiện thành công!"));
+        return ResponseEntity.ok(new ApiResponse(true, "Đăng ký phương tiện thành công!"));
     }
 
     @GetMapping("/my-vehicles")
@@ -63,10 +63,18 @@ public class VehicleController {
 
     @PostMapping("/{vehicleId}/deactivate")
     @Operation(summary = "Hủy kích hoạt phương tiện")
-    public ResponseEntity<ApiResponseDto> deactivateVehicle(
+    public ResponseEntity<ApiResponse> deactivateVehicle(
             @PathVariable int vehicleId,
             @AuthenticationPrincipal User user) {
         vehicleService.deactivateVehicle(vehicleId, user.getUserId());
-        return ResponseEntity.ok(new ApiResponseDto(true, "Hủy kích hoạt phương tiện thành công!"));
+        return ResponseEntity.ok(new ApiResponse(true, "Hủy kích hoạt phương tiện thành công!"));
     }
+
+    @GetMapping("/unassigned")
+    @Operation(summary = "Lấy danh sách phương tiện chưa có chủ")
+    public ResponseEntity<List<Vehicle>> getUnassignedVehicles() {
+        List<Vehicle> vehicles = vehicleService.getUnassignedVehicles();
+        return ResponseEntity.ok(vehicles);
+    }
+
 }

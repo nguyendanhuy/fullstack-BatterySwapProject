@@ -59,12 +59,27 @@ public class PaymentController {
     }
 
     /** 🔹 API: IPN callback từ VNPAY (VNPAY → BE) */
-    @GetMapping("/ipn")
+    @GetMapping(value = "/ipn", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> handleVnPayIpn(
             @RequestParam Map<String, String> queryParams) {
-        Map<String, String> response = paymentService.handleVnPayIpn(queryParams);
-        return ResponseEntity.ok(response);
+
+        Map<String, String> response;
+        try {
+            response = paymentService.handleVnPayIpn(queryParams);
+        } catch (Exception e) {
+            response = Map.of(
+                    "RspCode", "99",
+                    "Message", "Lỗi xử lý IPN: " + e.getMessage()
+            );
+        }
+
+        // ✅ Ép kiểu trả về JSON để tránh lỗi 406
+        return ResponseEntity
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(response);
     }
+
 
     /** 🔹 API: FE kiểm tra trạng thái thanh toán thật từ DB */
     @GetMapping("/status/{txnRef}")

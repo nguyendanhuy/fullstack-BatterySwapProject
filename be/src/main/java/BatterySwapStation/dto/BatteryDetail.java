@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class BatteryDetailDTO {
+public class BatteryDetail {
     // Vị trí
     private Integer stationId;
     private String stationName;

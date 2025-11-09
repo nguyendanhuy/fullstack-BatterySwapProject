@@ -1,6 +1,6 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.BatteryDetailDTO;
+import BatterySwapStation.dto.BatteryDetail;
 import BatterySwapStation.dto.BatteryRealtimeEvent;
 import BatterySwapStation.dto.BatteryStatusUpdateRequest;
 import BatterySwapStation.entity.Battery;
@@ -229,7 +229,7 @@ public class BatteryService {
 
 
 
-    public BatteryDetailDTO getBatteryDetail(String batteryId) {
+    public BatteryDetail getBatteryDetail(String batteryId) {
         Battery battery = batteryRepository.findById(batteryId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy pin: " + batteryId));
 
@@ -237,7 +237,7 @@ public class BatteryService {
 
         DockSlot slot = battery.getDockSlot();
 
-        return BatteryDetailDTO.builder()
+        return BatteryDetail.builder()
                 .stationId(battery.getStationId())
                 .stationName(slot != null ? slot.getDock().getStation().getStationName() : null)
                 .dockId(slot != null ? slot.getDock().getDockId() : null)

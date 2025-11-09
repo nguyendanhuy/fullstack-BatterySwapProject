@@ -31,4 +31,12 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
 
     @Query("SELECT v FROM Vehicle v WHERE v.VIN IN :vins")
     List<Vehicle> findAllByVINs(@Param("vins") List<String> vins);
+
+    List<Vehicle> findByUserIsNullAndIsActiveTrue();
+
+
+
+    @Query("SELECT v FROM Vehicle v WHERE v.user IS NULL AND v.isActive = false")
+    List<Vehicle> findUnassignedVehicles();
+
 }

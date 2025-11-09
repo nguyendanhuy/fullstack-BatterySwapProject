@@ -136,8 +136,13 @@ const DriverDashboard = () => {
                         Mã HĐ: #{invoice.invoiceId}
                       </span>
                     </div>
+                    {invoice.invoiceType && (
+                      <div className="text-sm text-gray-700">
+                        Loại hóa đơn: {invoice.invoiceType === "WALLET_TOPUP" ? "Nạp tiền ví hệ thống" : invoice.invoiceType}
+                      </div>
+                    )}
                     <div className="text-sm text-gray-700">
-                      📅 Ngày tạo: {invoice.createdDate ? format(new Date(invoice.createdDate), "dd/MM/yyyy", { locale: vi }) : "N/A"}
+                      Ngày tạo: {invoice.createdDate ? format(new Date(invoice.createdDate), "dd/MM/yyyy", { locale: vi }) : "N/A"}
                     </div>
                   </div>
                   <div className="text-right">
@@ -147,55 +152,6 @@ const DriverDashboard = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Subscription Plan Info - if planToActivate exists */}
-                {invoice.planToActivate ? (
-                  <div className="mb-3">
-                    <Badge variant="outline" className="mb-2 bg-green-100 text-green-800 border-green-300">
-                      📦 Gói thuê pin
-                    </Badge>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between items-center bg-white/60 rounded-lg p-2">
-                        <span className="text-gray-700 font-medium">Loại gói:</span>
-                        <span className="font-semibold text-gray-900">
-                          {invoice.planToActivate.planName}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center bg-white/60 rounded-lg p-2">
-                        <span className="text-gray-700 font-medium">Thời hạn:</span>
-                        <span className="font-semibold text-gray-900">{invoice.planToActivate.durationInDays} ngày</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-white/60 rounded-lg p-2">
-                        <span className="text-gray-700 font-medium">Giới hạn swap:</span>
-                        <span className="font-semibold text-gray-900">
-                          {invoice.planToActivate.swapLimit === "Không giới hạn" ? "∞" : `${invoice.planToActivate.swapLimit} lần`}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Bookings Summary - for regular bookings */
-                  invoice.bookings && invoice.bookings.length > 0 && (
-                    <div className="mb-3">
-                      <Badge variant="outline" className="mb-2">
-                        {invoice.bookings.length} lượt đặt lịch
-                      </Badge>
-                      <div className="space-y-1 text-xs text-gray-600">
-                        {invoice.bookings.slice(0, 2).map((booking, bookingIdx) => (
-                          <div key={bookingIdx} className="flex justify-between">
-                            <span>{format(new Date(booking.bookingDate), "dd/MM", { locale: vi })} - {booking.timeSlot} | {booking.vehicleType} {String(booking.vehicleId).padStart(2, "0")} </span>
-                            <span className="font-semibold">{booking.amount?.toLocaleString("vi-VN")} VNĐ</span>
-                          </div>
-                        ))}
-                        {invoice.bookings.length > 2 && (
-                          <div className="text-gray-500 italic">
-                            ...và {invoice.bookings.length - 2} lượt nữa
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                )}
               </div>
             ))}
 
@@ -204,30 +160,11 @@ const DriverDashboard = () => {
                 onClick={() => {
                   setShowPendingModal(false);
                   const firstInvoice = pendingInvoices[0];
-
-                  // Check if invoice is for subscription (has planToActivate)
-                  if (firstInvoice.planToActivate) {
-                    navigate("/driver/subscriptions/checkout", {
-                      state: {
-                        pendingInvoice: firstInvoice,
-                        plan: {
-                          id: firstInvoice.planToActivate.planId,
-                          name: firstInvoice.planToActivate.planName === "BASIC" ? "Gói Cơ bản"
-                            : firstInvoice.planToActivate.planName === "PREMIUM" ? "Gói Premium"
-                              : "Gói Không giới hạn",
-                          price: firstInvoice.totalAmount,
-                          planName: firstInvoice.planToActivate.planName,
-                        }
-                      }
-                    });
-                  } else {
-                    // Regular booking payment
-                    navigate("/driver/payment", {
-                      state: {
-                        pendingInvoice: firstInvoice
-                      }
-                    });
-                  }
+                  navigate("/driver/payment", {
+                    state: {
+                      pendingInvoice: firstInvoice
+                    }
+                  });
                 }}
                 className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl py-3 text-lg font-semibold"
               >

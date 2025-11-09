@@ -2,6 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Battery, Check, Crown, Star, Zap, Shield, TrendingUp } from "lucide-react";
+import { QuestionCircleOutlined } from '@ant-design/icons';
+import { Popconfirm, Progress } from 'antd';
 import { Link, useNavigate } from "react-router-dom";
 import {
   getAllPlans, getDriverSubscription, getBookingHistoryByUserId, cancelAutoRenewSubscription, cancelSubscriptionImmediate
@@ -14,7 +16,7 @@ import { SystemContext } from "../../contexts/system.context";
 import dayjs from "dayjs";
 
 const Subscriptions = () => {
-  const { userData } = useContext(SystemContext);
+  const { userData, setUserData } = useContext(SystemContext);
   const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [currentSubscription, setCurrentSubscription] = useState(null);
@@ -114,6 +116,7 @@ const Subscriptions = () => {
           className: 'bg-green-500 text-white',
         });
         setCurrentSubscription(null);
+        setUserData(prev => ({ ...prev, activeSubscriptionId: null, planName: null, usedSwaps: 0, maxSwaps: 0 }));
       } else {
         toast({
           title: 'Hủy gói thất bại',
@@ -149,9 +152,7 @@ const Subscriptions = () => {
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="text-center p-6 bg-white/60 rounded-3xl">
                   <h3 className="text-3xl font-bold text-green-600 mb-2">
-                    {currentSubscription.plan.planName === "BASIC" ? "Cơ bản"
-                      : currentSubscription.plan.planName === "PREMIUM" ? "Premium"
-                        : "Không giới hạn"}
+                    Gói {currentSubscription.plan.planName}
                   </h3>
                   <p className="text-gray-600">{currentSubscription.autoRenew ? "Đang bật gia hạn tự động" : "Đã tắt tự động gia hạn"}</p>
                   {currentSubscription.plan.planName === "PREMIUM" && (
@@ -159,21 +160,15 @@ const Subscriptions = () => {
                   )}
                 </div>
                 <div className="text-center p-6 bg-white/60 rounded-3xl">
-                  <h3 className="text-3xl font-bold text-blue-600 mb-2">
-                    {parseInt(currentSubscription.plan.swapLimit) - currentSubscription.usedSwaps}/{currentSubscription.plan.swapLimit}
-                  </h3>
-                  <p className="text-gray-600">Lần đổi còn lại</p>
-                  {currentSubscription.plan.swapLimit !== "Không giới hạn" && (
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-                      <div
-                        className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full"
-                        style={{
-                          width: `${((parseInt(currentSubscription.plan.swapLimit) - currentSubscription.usedSwaps) /
-                            parseInt(currentSubscription.plan.swapLimit)) * 100}%`
-                        }}
-                      ></div>
-                    </div>
-                  )}
+
+                  <p className="text-gray-600">Bạn đã dùng</p>
+                  <Progress
+                    type="circle"
+                    percent={parseInt(currentSubscription.usedSwaps / currentSubscription.plan.swapLimit) * 100}
+                    format={() => `${currentSubscription.usedSwaps}/${currentSubscription.plan.swapLimit}`}
+                  />
+
+
                 </div>
                 <div className="text-center p-6 bg-white/60 rounded-3xl">
                   <h3 className="text-3xl font-bold text-purple-600 mb-2">
@@ -181,10 +176,27 @@ const Subscriptions = () => {
                   </h3>
                   <p className="text-gray-600">Ngày hết hạn</p>
                   {currentSubscription.autoRenew && (
-                    <Button variant="outline" className="mt-2 text-sm" onClick={handleCancelAutoRenew}>Hủy gia hạn</Button>
+                    <Popconfirm
+                      title="Hủy gia hạn"
+                      description="Bạn có chắc chắn muốn hủy gia hạn tự động?"
+                      icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
+                      cancelText="Không"
+                      okText="Hủy"
+                      onConfirm={() => { handleCancelAutoRenew() }}
+                    >
+                      <Button variant="outline" className="mt-2 text-sm" >Hủy gia hạn</Button>
+                    </Popconfirm>
                   )}
-                  <Button variant="outline" className="mt-2 text-sm" onClick={handleCancelSubscriptionImmediate}>Hủy gói</Button>
-
+                  <Popconfirm
+                    title="Hủy gói tháng"
+                    description="Hành động này sẽ hủy gói thuê pin của bạn ngay lập tức."
+                    icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
+                    cancelText="Không"
+                    okText="Hủy"
+                    onConfirm={() => { handleCancelSubscriptionImmediate() }}
+                  >
+                    <Button variant="outline" className="mt-2 text-sm">Hủy gói</Button>
+                  </Popconfirm>
                 </div>
               </div>
             </CardContent>

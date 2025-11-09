@@ -39,11 +39,11 @@ import {
 } from "../../services/axios.services";
 
 const StaffManagement = () => {
-  // data
+  // Dữ liệu danh sách và các trạm
   const [staffList, setStaffList] = useState([]);
-  const [stationsData, setStationsData] = useState([]); // from getStationsAndStaff
+  const [stationsData, setStationsData] = useState([]);
 
-  // Filters for staff list (independent from station overview)
+  // Filter tìm kiếm
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all"); // all | active | inactive
 
@@ -273,31 +273,39 @@ const StaffManagement = () => {
 
                     return (
                       //bấm vào card hiện dialog
-                      <Dialog key={`station-${st.stationId}-${index}`} open={viewStaffStationId === st.stationId} onOpenChange={(open) => setViewStaffStationId(open ? st.stationId : null)}>
+                      <Dialog key={`station-${st.stationId}-${index}`}
+                        open={viewStaffStationId === st.stationId}
+                        onOpenChange={
+                          (open) => setViewStaffStationId(open ? st.stationId : null)
+                        }>
                         <DialogTrigger asChild>
                           <Card
-                            className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isEmpty
-                              ? "border-red-200 bg-gradient-to-br from-red-50 to-orange-50"
-                              : st.active
-                                ? "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
-                                : "border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50"
+                            className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 h-full flex flex-col
+                              ${isEmpty ? "border-red-200 bg-gradient-to-br from-red-50 to-orange-50"
+                                : st.active ? "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
+                                  : "border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50"
                               }`}>
                             {/* Top colored bar */}
-                            <div className={`absolute top-0 left-0 right-0 h-1.5 ${st.active ? "bg-gradient-to-r from-green-400 to-emerald-400" : "bg-gradient-to-r from-gray-400 to-slate-400"}`} />
+                            <div className={`absolute top-0 left-0 right-0 h-1.5 
+                              ${isEmpty ? "bg-gradient-to-r from-red-400 to-orange-400"
+                                : st.active ? "bg-gradient-to-r from-green-400 to-emerald-400"
+                                  : "bg-gradient-to-r from-gray-400 to-slate-400"}`}
+                            />
 
-                            <CardContent className="p-5 pt-6">
-                              <div className="space-y-3">
-                                {/* Header */}
-                                <div className="flex items-start justify-between gap-2">
+                            <CardContent className="p-5 pt-6 flex flex-col h-full">
+                              <div className="flex flex-col h-full">
+                                {/* Header - Fixed height */}
+                                <div className="flex items-start justify-between gap-2 h-[72px]">
                                   <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-gray-900 text-base leading-tight mb-1 line-clamp-2">
+                                    <h3 className="font-bold text-gray-900 text-base leading-tight mb-1 line-clamp-2 h-[40px]">
                                       Trạm {st.stationId} : {st.stationName}
                                     </h3>
-                                    <div className="flex items-center gap-2 mt-2">
+                                    <div className="flex items-center gap-2">
 
                                       <Badge
                                         variant={isEmpty ? "destructive" : st.active ? "default" : "secondary"}
-                                        className="text-xs font-semibold cursor-pointer hover:opacity-80">
+                                        className={`text-xs font-semibold cursor-pointer hover:opacity-80 ${!isEmpty && st.active ? "bg-green-500 hover:bg-green-600" : ""
+                                          }`}>
                                         {count} nhân viên đang hoạt động
                                       </Badge>
 
@@ -305,19 +313,22 @@ const StaffManagement = () => {
                                   </div>
                                 </div>
 
-                                {/* Address */}
-                                <div className="flex items-start gap-2">
+                                {/* Address - Fixed height */}
+                                <div className="flex items-start gap-2 h-[44px] mt-3">
                                   <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                                   <p className="text-sm text-gray-600 line-clamp-2 leading-snug">
                                     {st.address || "Chưa có địa chỉ"}
                                   </p>
                                 </div>
 
-                                {/* Progress bar */}
-                                <div className="space-y-1.5">
+                                {/* Progress bar - Fixed position at bottom */}
+                                <div className="mt-3">
                                   <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
                                     <div
-                                      className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r from-green-400 to-emerald-500`}
+                                      className={`h-full rounded-full transition-all duration-500 ${isEmpty
+                                        ? "bg-gradient-to-r from-red-400 to-orange-500"
+                                        : "bg-gradient-to-r from-green-400 to-emerald-500"
+                                        }`}
                                     />
                                   </div>
                                 </div>
@@ -329,6 +340,69 @@ const StaffManagement = () => {
                           <DialogHeader>
                             <DialogTitle>Nhân viên trong {st.stationName}</DialogTitle>
                           </DialogHeader>
+
+                          {/* Assign staff section - Only show if no staff */}
+                          {(!st.staffList || st.staffList.length === 0) && (
+                            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                                Phân công nhân viên vào trạm này:
+                              </Label>
+                              <div className="flex gap-2">
+                                <select
+                                  value={assignStationId}
+                                  onChange={(e) => setAssignStationId(e.target.value)}
+                                  className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-2.5 bg-white text-sm font-medium
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                  hover:border-gray-300 transition-all duration-200 cursor-pointer
+                                  shadow-sm hover:shadow-md"
+                                >
+                                  <option value="">-- Chọn nhân viên --</option>
+                                  {staffList
+                                    .filter(staff => staff.stationId === null || staff.stationId === undefined)
+                                    .map((staff, idx) => (
+                                      <option key={`unassigned-${staff.staffId}-${idx}`} value={staff.staffId}>
+                                        {staff.staffId} - {staff.fullName} ({staff.email})
+                                      </option>
+                                    ))
+                                  }
+                                </select>
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    if (!assignStationId) {
+                                      toast.error("Vui lòng chọn nhân viên");
+                                      return;
+                                    }
+                                    setLoading({ [assignStationId]: true });
+                                    try {
+                                      const data = await assignStaff(assignStationId, st.stationId);
+                                      if (isErrorResponse(data)) {
+                                        toast.error(pickApiMessage(data));
+                                        return;
+                                      }
+                                      toast.success("Phân công thành công");
+                                      setAssignStationId("");
+                                      setViewStaffStationId(null);
+                                      await fetchStaff();
+                                      await fetchStations();
+                                    } catch (err) {
+                                      toast.error("Không thể phân công");
+                                    } finally {
+                                      setLoading({});
+                                    }
+                                  }}
+                                  disabled={!assignStationId || !!loading[assignStationId]}
+                                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                                >
+                                  {loading[assignStationId] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assign"}
+                                </Button>
+                              </div>
+                              {staffList.filter(s => !s.stationId).length === 0 && (
+                                <p className="text-xs text-gray-500 mt-2">Không có nhân viên chưa được phân công</p>
+                              )}
+                            </div>
+                          )}
+
                           {/* Staff list */}
                           <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                             {st.staffList && st.staffList.length > 0 ? (
@@ -404,8 +478,26 @@ const StaffManagement = () => {
                         <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Mật khẩu tạm thời" />
                       </div>
                       <div>
-                        <Label htmlFor="stationId">Station ID (tùy chọn)</Label>
-                        <Input id="stationId" value={formData.stationId} onChange={(e) => setFormData({ ...formData, stationId: e.target.value })} placeholder="VD: 1" />
+                        <Label htmlFor="stationId" className="text-sm font-medium text-gray-700 mb-2 block">Trạm làm việc (tùy chọn)</Label>
+                        <select
+                          id="stationId"
+                          value={formData.stationId}
+                          onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
+                          className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 bg-white text-sm font-medium
+                          focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+                          hover:border-gray-300 transition-all duration-200 cursor-pointer
+                          shadow-sm hover:shadow-md"
+                        >
+                          <option value="">-- Không phân công trạm --</option>
+                          {stationsData
+                            .filter(st => st.stationId !== null)
+                            .map((station, index) => (
+                              <option key={`add-station-${station.stationId}-${index}`} value={station.stationId}>
+                                Trạm {station.stationId} - {station.stationName}
+                              </option>
+                            ))
+                          }
+                        </select>
                       </div>
                     </div>
                     <DialogFooter>
@@ -427,11 +519,14 @@ const StaffManagement = () => {
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium whitespace-nowrap">Trạng thái:</Label>
+                  <Label className="text-sm font-medium whitespace-nowrap text-gray-700">Trạng thái:</Label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="border rounded-md px-3 py-2 bg-white text-sm font-medium min-w-[150px] focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="border-2 border-gray-200 rounded-lg px-4 py-2.5 bg-white text-sm font-medium min-w-[160px] 
+                    focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+                    hover:border-gray-300 transition-all duration-200 cursor-pointer
+                    shadow-sm hover:shadow-md"
                   >
                     <option value="all">Tất cả</option>
                     <option value="active">Hoạt động</option>
@@ -547,12 +642,26 @@ const StaffManagement = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Phân công nhân viên vào trạm</DialogTitle>
-              <DialogDescription>Nhập Station ID để phân công</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="assign-station">Station ID *</Label>
-                <Input id="assign-station" value={assignStationId} onChange={(e) => setAssignStationId(e.target.value)} placeholder="VD: 6" />
+                <Label htmlFor="assign-station" className="text-sm font-medium text-gray-700 mb-2 block">Chọn trạm:</Label>
+                <select
+                  id="assign-station"
+                  value={assignStationId}
+                  onChange={(e) => setAssignStationId(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 bg-white text-sm font-medium
+                  focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+                  hover:border-gray-300 transition-all duration-200 cursor-pointer
+                  shadow-sm hover:shadow-md"
+                >
+                  <option value="">-- Chọn trạm --</option>
+                  {stationsData.map((station, index) => (
+                    <option key={`assign-station-${station.stationId}-${index}`} value={Number(station.stationId)}>
+                      Trạm {station.stationId} - {station.stationName}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <DialogFooter>

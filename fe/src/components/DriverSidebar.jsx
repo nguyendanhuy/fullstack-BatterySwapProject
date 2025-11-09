@@ -134,7 +134,7 @@ export function DriverSidebar() {
                                                         <div className="flex flex-col gap-1">
                                                             <p className="text-xs text-gray-500">Gói đăng ký của bạn</p>
                                                             <p className="text-sm font-bold text-green-600">
-                                                                {userData?.planName ? `Gói ${userData.planName} : Còn ${userData.maxSwaps - userData.usedSwaps} lượt` : "Chưa có gói"}
+                                                                {userData?.activeSubscriptionId ? `Gói ${userData.planName} : Còn ${userData.maxSwaps - userData.usedSwaps} lượt` : "Chưa có gói"}
                                                             </p>
                                                         </div>
                                                     </TooltipContent>

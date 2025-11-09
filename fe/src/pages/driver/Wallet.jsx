@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
     Wallet as WalletIcon,
     Home,
@@ -17,7 +16,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { depositSystemWallet, getInfoByToken, checkVNPayPaymentStatus } from "../../services/axios.services";
+import { depositSystemWallet, checkVNPayPaymentStatus } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 
 const Wallet = () => {
@@ -27,7 +26,6 @@ const Wallet = () => {
     const [amount, setAmount] = useState("");
     const [selectedAmount, setSelectedAmount] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [walletBalance, setWalletBalance] = useState(0);
 
     // Suggested amounts
     const suggestedAmounts = [
@@ -37,35 +35,11 @@ const Wallet = () => {
         { value: 500000, label: "500.000 ₫" },
         { value: 1000000, label: "1.000.000 ₫" },
         { value: 2000000, label: "2.000.000 ₫" },
+        { value: 5000000, label: "5.000.000 ₫" },
+        { value: 10000000, label: "10.000.000 ₫" },
+        { value: 15000000, label: "15.000.000 ₫" },
     ];
 
-    // // Load wallet balance
-    // useEffect(() => {
-    //     const fetchWalletBalance = async () => {
-    //         try {
-    //             const data = await getInfoByToken();
-    //             console.log("✅ Fetched wallet balance:", data?.walletBalance);
-    //             setWalletBalance(data?.walletBalance || 0);
-    //         } catch (error) {
-    //             console.error("❌ Fetch wallet balance error:", error);
-    //         }
-    //     };
-
-    //     fetchWalletBalance();
-    // }, []);
-
-    // Handle amount selection
-    const handleSelectAmount = (value) => {
-        setSelectedAmount(value);
-        setAmount(value.toString());
-    };
-
-    // Handle custom amount input
-    const handleAmountChange = (e) => {
-        const value = e.target.value.replace(/\D/g, ""); // Only numbers
-        setAmount(value);
-        setSelectedAmount(null);
-    };
 
     // Format currency
     const formatCurrency = (value) => {
@@ -149,11 +123,6 @@ const Wallet = () => {
                         duration: 7000,
                         icon: <CheckCircle className="h-5 w-5 text-green-500" />
                     });
-
-                    // Reload wallet balance after short delay
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
 
                 } else {
                     toast.error(paymentStatus.message || "Thanh toán thất bại hoặc đã bị hủy", {
@@ -254,7 +223,10 @@ const Wallet = () => {
                                             ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg scale-105"
                                             : "hover:border-blue-500 hover:bg-blue-50"
                                             }`}
-                                        onClick={() => handleSelectAmount(item.value)}
+                                        onClick={() => {
+                                            setSelectedAmount(item.value);
+                                            setAmount(item.value.toString());
+                                        }}
                                     >
                                         {item.label}
                                     </Button>
@@ -273,7 +245,13 @@ const Wallet = () => {
                                     type="text"
                                     placeholder="Nhập số tiền (VNĐ)"
                                     value={amount}
-                                    onChange={handleAmountChange}
+                                    onChange={
+                                        (e) => {
+                                            const value = e.target.value.replace(/\D/g, ""); // Only numbers
+                                            setAmount(value);
+                                            setSelectedAmount(null);
+                                        }
+                                    }
                                     className="h-14 text-lg pl-4 pr-16 border-2 focus:border-blue-500"
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">

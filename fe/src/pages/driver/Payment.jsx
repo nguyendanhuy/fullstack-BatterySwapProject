@@ -19,10 +19,12 @@ const Payment = () => {
   const { reservationData, totalPrice, pendingInvoice } = location.state || {};
   const { toast } = useToast();
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("VNPAY"); // "VNPAY" or "WALLET"
-
   const isPayingPendingInvoice = !!pendingInvoice;
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState(isPayingPendingInvoice ? "VNPAY" : "WALLET"); // "VNPAY" or "WALLET"
+
+
 
   const items = Object.values(reservationData || {});
   const groupedByStation = items.reduce((acc, item) => {
@@ -112,7 +114,7 @@ const Payment = () => {
       const vnpayResponse = await createVNPayUrl({
         invoiceId,
         bankCode: "VNPAY",
-        orderType: "Bookings"
+        orderType: "WALLET_TOPUP"
       });
       console.log("✅ VNPay response:", vnpayResponse);
 
@@ -188,7 +190,6 @@ const Payment = () => {
         return;
       }
 
-      // Nếu thanh toán bằng WALLET
       if (paymentMethod === "WALLET") {
         sessionStorage.removeItem('battery-booking-selection');
         toast({
@@ -198,44 +199,6 @@ const Payment = () => {
         });
         setTimeout(() => navigate("/driver/booking-history"), 2000);
         return;
-      }
-
-      // Nếu thanh toán bằng VNPAY
-      if (paymentMethod === "VNPAY") {
-        const invoiceId = response?.data?.bookings?.[0]?.invoiceId;
-
-        if (!invoiceId) {
-          toast({
-            title: "Lỗi",
-            description: "Không tìm thấy mã hóa đơn",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        console.log("📤 Creating VNPay URL for invoice:", invoiceId);
-        const vnpayResponse = await createVNPayUrl({
-          invoiceId,
-          bankCode: "VNPAY",
-          orderType: "Bookings"
-        });
-        console.log("✅ VNPay response:", vnpayResponse);
-
-        if (isErrorResponse(vnpayResponse) || !vnpayResponse.paymentUrl) {
-          toast({
-            title: "Lỗi thanh toán",
-            description: pickApiMessage(vnpayResponse),
-            variant: "destructive",
-          });
-          return;
-        }
-
-        toast({
-          title: "Chuyển hướng...",
-          description: "Đang chuyển đến cổng thanh toán...",
-          className: "bg-green-500 text-white",
-        });
-        setTimeout(() => window.location.href = vnpayResponse.paymentUrl, 1000);
       }
 
     } catch (error) {
@@ -299,24 +262,26 @@ const Payment = () => {
               <CardContent>
                 <div className="space-y-4">
                   {/* VNPay Option */}
-                  <button
-                    onClick={() => setPaymentMethod("VNPAY")}
-                    className={`w-full flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all ${paymentMethod === "VNPAY"
-                      ? "border-blue-500 bg-blue-50 shadow-md"
-                      : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-                      }`}
-                  >
-                    <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
-                      <CreditCard className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <Label className="text-lg font-semibold text-gray-800 cursor-pointer">
-                        Thẻ tín dụng/ghi nợ
-                      </Label>
-                      <p className="text-sm text-gray-600 mt-1">Visa, Mastercard, JCB qua VNPay</p>
-                    </div>
-                    {paymentMethod === "VNPAY" && <CheckCircle className="h-6 w-6 text-blue-500" />}
-                  </button>
+                  {isPayingPendingInvoice && (
+                    <button
+                      onClick={() => setPaymentMethod("VNPAY")}
+                      className={`w-full flex items-center space-x-4 p-6 border-2 rounded-2xl transition-all ${paymentMethod === "VNPAY"
+                        ? "border-blue-500 bg-blue-50 shadow-md"
+                        : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                        }`}
+                    >
+                      <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
+                        <CreditCard className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <Label className="text-lg font-semibold text-gray-800 cursor-pointer">
+                          Thẻ tín dụng/ghi nợ
+                        </Label>
+                        <p className="text-sm text-gray-600 mt-1">Visa, Mastercard, JCB qua VNPay</p>
+                      </div>
+                      {paymentMethod === "VNPAY" && <CheckCircle className="h-6 w-6 text-blue-500" />}
+                    </button>
+                  )}
 
                   {/* Wallet Option */}
                   {!!!pendingInvoice && (

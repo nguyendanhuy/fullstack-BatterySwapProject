@@ -52,5 +52,7 @@ ORDER BY u.userId
     boolean existsActiveAssign(@Param("stationId") Integer stationId,
                                @Param("userId") String userId);
 
+    List<StaffAssign> findAllByUser_UserId(String userId);
+
 }
 

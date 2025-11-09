@@ -238,7 +238,7 @@ public class VehicleImportService {
         String contentType = file.getContentType();
         String filename = file.getOriginalFilename();
         return (contentType != null && contentType.equals("text/csv")) ||
-               (filename != null && filename.endsWith(".csv"));
+                (filename != null && filename.endsWith(".csv"));
     }
 
     private Integer parseSafeInteger(String value) {
@@ -264,12 +264,12 @@ public class VehicleImportService {
 
         // Danh sách các format ngày được chấp nhận
         DateTimeFormatter[] formatters = {
-            DateTimeFormatter.ofPattern("yyyy-MM-dd"),     // 2023-05-15
-            DateTimeFormatter.ofPattern("yyyy/MM/dd"),     // 2023/05/15
-            DateTimeFormatter.ofPattern("dd/MM/yyyy"),     // 15/05/2023 (Excel mặc định)
-            DateTimeFormatter.ofPattern("dd-MM-yyyy"),     // 15-05-2023
-            DateTimeFormatter.ofPattern("d/M/yyyy"),       // 5/5/2023 (không có leading zero)
-            DateTimeFormatter.ofPattern("d-M-yyyy")        // 5-5-2023
+                DateTimeFormatter.ofPattern("yyyy-MM-dd"),     // 2023-05-15
+                DateTimeFormatter.ofPattern("yyyy/MM/dd"),     // 2023/05/15
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),     // 15/05/2023 (Excel mặc định)
+                DateTimeFormatter.ofPattern("dd-MM-yyyy"),     // 15-05-2023
+                DateTimeFormatter.ofPattern("d/M/yyyy"),       // 5/5/2023 (không có leading zero)
+                DateTimeFormatter.ofPattern("d-M-yyyy")        // 5-5-2023
         };
 
         for (DateTimeFormatter formatter : formatters) {

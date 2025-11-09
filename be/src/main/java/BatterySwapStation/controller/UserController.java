@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,4 +68,26 @@ public class UserController {
             ));
         }
     }
+
+//    @DeleteMapping("/{userId}")
+//    //@PreAuthorize("hasRole('ADMIN')") // chỉ admin được xoá user
+//    @Operation(summary = "Xoá tài khoản người dùng theo ID")
+//    public ResponseEntity<?> deleteUser(@PathVariable String userId) {
+//        userService.deleteUserById(userId);
+//        return ResponseEntity.ok(Map.of(
+//                "success", true,
+//                "message", "User deleted successfully"
+//        ));
+//    }
+
+    @DeleteMapping("/me")
+    @Operation(summary = "User tự xoá tài khoản của mình")
+    public ResponseEntity<?> deleteMyAccount(@AuthenticationPrincipal User user) {
+        userService.deleteUserPermanently(user.getUsername());
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Tài khoản của bạn đã bị xoá hoàn toàn"
+        ));
+    }
+
 }

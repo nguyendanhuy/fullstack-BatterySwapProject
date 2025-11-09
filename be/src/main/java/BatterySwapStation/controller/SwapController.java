@@ -25,7 +25,7 @@ public class SwapController {
 
     // ====================== CHECK MODEL BEFORE SWAP ======================
     @PostMapping("/checkBatteryModel")
-    public ResponseEntity<ApiResponseDto> checkBatteryModel(@RequestBody BatteryModelCheckRequest req) {
+    public ResponseEntity<ApiResponse> checkBatteryModel(@RequestBody BatteryModelCheckRequest req) {
         try {
             Booking booking = bookingRepository.findById(req.getBookingId())
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy booking #" + req.getBookingId()));
@@ -33,7 +33,7 @@ public class SwapController {
             List<String> batteryIds = req.getBatteryIds();
             if (batteryIds == null || batteryIds.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(new ApiResponseDto(false, "Thiếu danh sách mã pin cần kiểm tra."));
+                        .body(new ApiResponse(false, "Thiếu danh sách mã pin cần kiểm tra."));
             }
 
             List<Map<String, Object>> results = new ArrayList<>();
@@ -68,14 +68,14 @@ public class SwapController {
 
             boolean allMatch = results.stream().allMatch(r -> Boolean.TRUE.equals(r.get("valid")));
             return ResponseEntity.ok(
-                    new ApiResponseDto(allMatch,
+                    new ApiResponse(allMatch,
                             allMatch ? "Tất cả pin đều trùng model, có thể swap."
                                     : "Một hoặc nhiều pin không trùng model.",
                             results)
             );
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
-                    .body(new ApiResponseDto(false, "Lỗi kiểm tra model: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi kiểm tra model: " + e.getMessage()));
         }
     }
 

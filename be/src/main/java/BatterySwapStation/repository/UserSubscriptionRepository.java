@@ -128,5 +128,6 @@ WHERE us.user.userId = :userId
 ORDER BY us.startDate DESC
 """)
     List<Map<String, Object>> findSubscriptionHistorySimple(@Param("userId") String userId);
+    List<UserSubscription> findAllByUser_UserId(String userId);
 
 }

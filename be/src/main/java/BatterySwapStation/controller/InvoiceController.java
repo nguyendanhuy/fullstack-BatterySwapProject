@@ -1,6 +1,6 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.dto.ApiResponseDto;
+import BatterySwapStation.dto.ApiResponse;
 import BatterySwapStation.dto.InvoiceSimpleResponseDTO;
 import BatterySwapStation.entity.SystemPrice;
 import BatterySwapStation.repository.InvoiceRepository;
@@ -329,7 +329,7 @@ public class InvoiceController {
             // Kiểm tra kết quả
             if (invoices.isEmpty()) {
                 //  Status hợp lệ nhưng không có invoice
-                return ResponseEntity.ok(new ApiResponseDto(
+                return ResponseEntity.ok(new ApiResponse(
                         true,
                         String.format("Không tìm thấy hóa đơn nào có trạng thái '%s'", status.toUpperCase()),
                         new ArrayList<>()
@@ -337,7 +337,7 @@ public class InvoiceController {
             }
 
             //  Có invoice
-            return ResponseEntity.ok(new ApiResponseDto(
+            return ResponseEntity.ok(new ApiResponse(
                     true,
                     String.format("Tìm thấy %d hóa đơn có trạng thái '%s'", invoices.size(), status.toUpperCase()),
                     invoices
@@ -345,13 +345,13 @@ public class InvoiceController {
 
         } catch (IllegalArgumentException e) {
             //  Status không hợp lệ (service đã throw)
-            return ResponseEntity.badRequest().body(new ApiResponseDto(
+            return ResponseEntity.badRequest().body(new ApiResponse(
                     false,
                     e.getMessage()
             ));
         } catch (Exception e) {
             //  Lỗi khác
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDto(
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(
                     false,
                     "Lỗi hệ thống: " + e.getMessage()
             ));
@@ -366,28 +366,28 @@ public class InvoiceController {
     @Operation(summary = "Hủy Invoice (cho User)",
             description = "Cho phép người dùng hủy một invoice đang ở trạng thái PENDING. " +
                     "Tất cả booking và payment liên quan sẽ bị hủy theo.")
-    public ResponseEntity<ApiResponseDto> cancelInvoice(
+    public ResponseEntity<ApiResponse> cancelInvoice(
             @Parameter(description = "ID của invoice cần hủy") @PathVariable("id") Long invoiceId) {
 
         try {
             // Gọi service
             invoiceService.userCancelInvoice(invoiceId);
 
-            return ResponseEntity.ok(new ApiResponseDto(
+            return ResponseEntity.ok(new ApiResponse(
                     true,
                     "Invoice ID " + invoiceId + " và các booking liên quan đã được hủy thành công."
             ));
 
         } catch (EntityNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponseDto(false, e.getMessage()));
+                    .body(new ApiResponse(false, e.getMessage()));
         } catch (IllegalStateException e) {
             // Bắt lỗi (ví dụ: "Invoice đã được thanh toán")
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ApiResponseDto(false, e.getMessage()));
+                    .body(new ApiResponse(false, e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponseDto(false, "Lỗi máy chủ: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi máy chủ: " + e.getMessage()));
         }
     }
 }

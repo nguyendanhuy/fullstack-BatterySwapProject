@@ -1,6 +1,6 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.dto.ApiResponseDto;
+import BatterySwapStation.dto.ApiResponse;
 import BatterySwapStation.service.ReportExportService;
 import BatterySwapStation.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,55 +23,55 @@ public class ReportController {
 
     @Operation (summary = "Báo cáo hiệu suất trạm trong ngày hôm nay")
     @GetMapping("/station/performance")
-    public ResponseEntity<ApiResponseDto> getStationPerformance() {
-        return ResponseEntity.ok(new ApiResponseDto(true, "OK", reportService.getStationPerformanceReport()));
+    public ResponseEntity<ApiResponse> getStationPerformance() {
+        return ResponseEntity.ok(new ApiResponse(true, "OK", reportService.getStationPerformanceReport()));
     }
 
     @Operation (summary = "Báo cáo doanh thu hàng giờ trong khoảng thời gian")
     @GetMapping("/revenue/hourly")
-    public ResponseEntity<ApiResponseDto> getRevenueHourly(
+    public ResponseEntity<ApiResponse> getRevenueHourly(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return ResponseEntity.ok(new ApiResponseDto(true, "OK",
+        return ResponseEntity.ok(new ApiResponse(true, "OK",
                 reportService.getRevenueReport(startDate, endDate, true)));
     }
 
     @Operation (summary = "Báo cáo doanh thu hàng ngày trong khoảng thời gian")
     @GetMapping("/revenue/daily")
-    public ResponseEntity<ApiResponseDto> getRevenueDaily(
+    public ResponseEntity<ApiResponse> getRevenueDaily(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return ResponseEntity.ok(new ApiResponseDto(true, "OK",
+        return ResponseEntity.ok(new ApiResponse(true, "OK",
                 reportService.getRevenueReport(startDate, endDate, false)));
     }
 
     @Operation (summary = "Báo cáo số lần đổi pin hàng giờ trong khoảng thời gian")
     @GetMapping("/swap/hourly")
-    public ResponseEntity<ApiResponseDto> getSwapHourly(
+    public ResponseEntity<ApiResponse> getSwapHourly(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return ResponseEntity.ok(new ApiResponseDto(true, "OK",
+        return ResponseEntity.ok(new ApiResponse(true, "OK",
                 reportService.getSwapReport(startDate, endDate, true)));
     }
 
 
     @Operation (summary = "Báo cáo số lần đổi pin hàng ngày trong khoảng thời gian")
     @GetMapping("/swap/daily")
-    public ResponseEntity<ApiResponseDto> getSwapDaily(
+    public ResponseEntity<ApiResponse> getSwapDaily(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return ResponseEntity.ok(new ApiResponseDto(true, "OK",
+        return ResponseEntity.ok(new ApiResponse(true, "OK",
                 reportService.getSwapReport(startDate, endDate, false)));
     }
 
     @Operation (summary = "Báo cáo tổng hợp hiệu suất hoạt động của hệ thống")
     @GetMapping("/summary")
-    public ResponseEntity<ApiResponseDto> getSummary() {
-        return ResponseEntity.ok(new ApiResponseDto(true, "OK",
+    public ResponseEntity<ApiResponse> getSummary() {
+        return ResponseEntity.ok(new ApiResponse(true, "OK",
                 reportService.getSummary()));
     }
 
@@ -95,12 +95,12 @@ public class ReportController {
     }
     @Operation (summary = "Báo cáo hiệu suất trạm trong khoảng 7 ngày gần nhất")
     @GetMapping("/station/{stationId}/range")
-    public ResponseEntity<ApiResponseDto> getStationReportInRange(
+    public ResponseEntity<ApiResponse> getStationReportInRange(
             @PathVariable Integer stationId,
             @RequestParam(defaultValue = "7") int days
     ) {
         return ResponseEntity.ok(
-                new ApiResponseDto(true, "OK", reportService.getStationReportInRange(stationId, days))
+                new ApiResponse(true, "OK", reportService.getStationReportInRange(stationId, days))
         );
     }
 

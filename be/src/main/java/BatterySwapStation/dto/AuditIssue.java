@@ -6,7 +6,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuditIssueDTO {
+public class AuditIssue {
     private String batteryId;      // mã pin liên quan (có thể null)
     private Integer stationId;     // trạm liên quan (có thể null)
     private String dockName;       // tên dock (có thể null)

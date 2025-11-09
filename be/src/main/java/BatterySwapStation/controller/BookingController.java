@@ -43,27 +43,27 @@ public class BookingController {
 
     @PostMapping
     @Operation(summary = "Tạo booking mới", description = "Tạo một booking mới cho việc thay pin")
-    public ResponseEntity<ApiResponseDto> createBooking(
+    public ResponseEntity<ApiResponse> createBooking(
             @RequestBody BookingRequest request) {
         try {
             BookingResponse response = bookingService.createBooking(request);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Booking thành công!", response));
+            return ResponseEntity.ok(new ApiResponse(true, "Booking thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Booking thất bại: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Booking thất bại: " + e.getMessage()));
         }
     }
 
     @GetMapping("/user/{userId}")
     @Operation(summary = "Lấy danh sách booking của user", description = "Lấy tất cả booking của một user cụ thể")
-    public ResponseEntity<ApiResponseDto> getUserBookings(
+    public ResponseEntity<ApiResponse> getUserBookings(
             @PathVariable @Parameter(description = "ID của user") String userId) {
         try {
             List<BookingResponse> bookings = bookingService.getUserBookings(userId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
+            return ResponseEntity.ok(new ApiResponse(true, "Lấy danh sách booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
@@ -72,35 +72,35 @@ public class BookingController {
             summary = "Lấy thông tin booking theo ID",
             description = "Trả chi tiết thông tin booking: khách hàng, xe, trạm, thanh toán... Dùng cho cả FE và QR"
     )
-    public ResponseEntity<ApiResponseDto> getBookingById(@PathVariable Long bookingId) {
+    public ResponseEntity<ApiResponse> getBookingById(@PathVariable Long bookingId) {
         try {
             Map<String, Object> booking = bookingService.getBookingById(bookingId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy thông tin booking thành công!", booking));
+            return ResponseEntity.ok(new ApiResponse(true, "Lấy thông tin booking thành công!", booking));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi lấy thông tin booking: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi lấy thông tin booking: " + e.getMessage()));
         }
     }
 
     @PutMapping("/cancel")
     @Operation(summary = "Hủy booking", description = "Hủy một booking đã tạo")
-    public ResponseEntity<ApiResponseDto> cancelBooking(@RequestBody CancelBookingRequest request) {
+    public ResponseEntity<ApiResponse> cancelBooking(@RequestBody CancelBookingRequest request) {
         try {
             BookingResponse response = bookingService.cancelBooking(request);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Hủy booking thành công!", response));
+            return ResponseEntity.ok(new ApiResponse(true, "Hủy booking thành công!", response));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, e.getMessage()));
+                    .body(new ApiResponse(false, e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi hủy booking: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi hủy booking: " + e.getMessage()));
         }
     }
 
 
     @GetMapping("/status/{status}")
     @Operation(summary = "Lấy booking theo trạng thái", description = "Lấy danh sách booking theo trạng thái cụ thể (PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED)")
-    public ResponseEntity<ApiResponseDto> getBookingsByStatus(
+    public ResponseEntity<ApiResponse> getBookingsByStatus(
             @PathVariable @Parameter(description = "Trạng thái booking (PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED)")
             String status) {
         try {
@@ -108,33 +108,33 @@ public class BookingController {
             String normalizedStatus = status.toUpperCase();
             if (!normalizedStatus.matches("PENDINGPAYMENT|PENDINGSWAPPING|CANCELLED|COMPLETED")) {
                 return ResponseEntity.badRequest()
-                        .body(new ApiResponseDto(false, "Trạng thái không hợp lệ. Chỉ chấp nhận: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED"));
+                        .body(new ApiResponse(false, "Trạng thái không hợp lệ. Chỉ chấp nhận: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED"));
             }
 
             List<BookingResponse> bookings = bookingService.getBookingsByStatus(normalizedStatus);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
+            return ResponseEntity.ok(new ApiResponse(true, "Lấy danh sách booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
     @GetMapping("/station/{stationId}")
     @Operation(summary = "Lấy booking của station", description = "Lấy tất cả booking của một station cụ thể")
-    public ResponseEntity<ApiResponseDto> getStationBookings(
+    public ResponseEntity<ApiResponse> getStationBookings(
             @PathVariable @Parameter(description = "ID của station") Integer stationId) {
         try {
             List<BookingResponse> bookings = bookingService.getStationBookings(stationId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy danh sách booking thành công!", bookings));
+            return ResponseEntity.ok(new ApiResponse(true, "Lấy danh sách booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi lấy danh sách booking: " + e.getMessage()));
         }
     }
 
     @PutMapping("/{bookingId}/status")
     @Operation(summary = "Cập nhật trạng thái booking", description = "Cập nhật trạng thái của một booking (dành cho admin/staff). Trạng thái: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED, FAILED")
-    public ResponseEntity<ApiResponseDto> updateBookingStatus(
+    public ResponseEntity<ApiResponse> updateBookingStatus(
             @PathVariable @Parameter(description = "ID của booking") Long bookingId,
             @RequestParam @Parameter(description = "Trạng thái mới (PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED, FAILED)") String status) {
         try {
@@ -142,39 +142,39 @@ public class BookingController {
             String normalizedStatus = status.toUpperCase();
             if (!normalizedStatus.matches("PENDINGPAYMENT|PENDINGSWAPPING|CANCELLED|COMPLETED|FAILED")) {
                 return ResponseEntity.badRequest()
-                        .body(new ApiResponseDto(false, "Trạng thái không hợp lệ. Chỉ chấp nhận: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED, FAILED"));
+                        .body(new ApiResponse(false, "Trạng thái không hợp lệ. Chỉ chấp nhận: PENDINGPAYMENT, PENDINGSWAPPING, CANCELLED, COMPLETED, FAILED"));
             }
 
             BookingResponse response = bookingService.updateBookingStatus(bookingId, normalizedStatus);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Cập nhật trạng thái booking thành công!", response));
+            return ResponseEntity.ok(new ApiResponse(true, "Cập nhật trạng thái booking thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Cập nhật trạng thái booking thất bại: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Cập nhật trạng thái booking thất bại: " + e.getMessage()));
         }
     }
 
     @PutMapping("/{bookingId}/fail")
     @Operation(summary = "Chuyển trạng thái booking sang FAILED", description = "Cập nhật trạng thái của booking từ PENDINGPAYMENT sang FAILED trong trường hợp thanh toán thất bại")
-    public ResponseEntity<ApiResponseDto> markBookingAsFailed(
+    public ResponseEntity<ApiResponse> markBookingAsFailed(
             @PathVariable @Parameter(description = "ID của booking") Long bookingId) {
         try {
             BookingResponse response = bookingService.markBookingAsFailed(bookingId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Chuyển trạng thái booking sang FAILED thành công!", response));
+            return ResponseEntity.ok(new ApiResponse(true, "Chuyển trạng thái booking sang FAILED thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Chuyển trạng thái booking sang FAILED thất bại: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Chuyển trạng thái booking sang FAILED thất bại: " + e.getMessage()));
         }
     }
 
     @GetMapping
     @Operation(summary = "Lấy tất cả booking", description = "Lấy danh sách tất cả booking (dành cho admin)")
-    public ResponseEntity<ApiResponseDto> getAllBookings() {
+    public ResponseEntity<ApiResponse> getAllBookings() {
         try {
             List<BookingResponse> bookings = bookingService.getAllBookings();
-            return ResponseEntity.ok(new ApiResponseDto(true, "Lấy tất cả booking thành công!", bookings));
+            return ResponseEntity.ok(new ApiResponse(true, "Lấy tất cả booking thành công!", bookings));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi lấy booking: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi lấy booking: " + e.getMessage()));
         }
     }
 
@@ -727,41 +727,41 @@ public class BookingController {
 
     @PostMapping("/create-after-payment")
     @Operation(summary = "Tạo booking sau khi thanh toán", description = "Tạo booking sau khi thanh toán đã hoàn thành - Flow mới")
-    public ResponseEntity<ApiResponseDto> createBookingAfterPayment(
+    public ResponseEntity<ApiResponse> createBookingAfterPayment(
             @RequestBody BookingService.PaymentCompletedRequest request) {
         try {
             BookingResponse response = bookingService.createBookingAfterPayment(request);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Tạo booking sau thanh toán thành công!", response));
+            return ResponseEntity.ok(new ApiResponse(true, "Tạo booking sau thanh toán thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi tạo booking sau thanh toán: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi tạo booking sau thanh toán: " + e.getMessage()));
         }
     }
 
     @PutMapping("/{bookingId}/complete-swapping")
     @Operation(summary = "Hoàn thành đổi pin",
                description = "Chuyển booking từ trạng thái PENDINGSWAPPING sang COMPLETED sau khi đổi pin thành công")
-    public ResponseEntity<ApiResponseDto> completeBatterySwapping(
+    public ResponseEntity<ApiResponse> completeBatterySwapping(
             @PathVariable @Parameter(description = "ID của booking") Long bookingId) {
         try {
             BookingResponse response = bookingService.completeBatterySwapping(bookingId);
-            return ResponseEntity.ok(new ApiResponseDto(true, response.getMessage(), response));
+            return ResponseEntity.ok(new ApiResponse(true, response.getMessage(), response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Hoàn thành đổi pin thất bại: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Hoàn thành đổi pin thất bại: " + e.getMessage()));
         }
     }
 
     @PostMapping("/{bookingId}/process-payment")
     @Operation(summary = "Xử lý thanh toán booking", description = "Chuyển trạng thái booking từ PENDINGPAYMENT sang PENDINGSWAPPING")
-    public ResponseEntity<ApiResponseDto> processPayment(
+    public ResponseEntity<ApiResponse> processPayment(
             @PathVariable Long bookingId) {
         try {
             BookingResponse response = bookingService.processPayment(bookingId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Xử lý thanh toán thành công!", response));
+            return ResponseEntity.ok(new ApiResponse(true, "Xử lý thanh toán thành công!", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Xử lý thanh toán thất bại: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Xử lý thanh toán thất bại: " + e.getMessage()));
         }
     }
 
@@ -770,17 +770,17 @@ public class BookingController {
             summary = "Tạo nhiều booking linh hoạt (tối đa 3 xe)",
             description = "Mỗi xe có thể đặt khác trạm, khác giờ"
     )
-    public ResponseEntity<ApiResponseDto> createBatchBooking(
+    public ResponseEntity<ApiResponse> createBatchBooking(
             @RequestBody @Valid FlexibleBatchBookingRequest request) {
 
         // (Giữ nguyên các validation ban đầu của bạn)
         if (request.getBookings() == null || request.getBookings().isEmpty()) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Danh sách booking không được rỗng!"));
+                    .body(new ApiResponse(false, "Danh sách booking không được rỗng!"));
         }
         if (request.getBookings().size() > 3) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Chỉ cho phép book tối đa 3 xe cùng lúc!"));
+                    .body(new ApiResponse(false, "Chỉ cho phép book tối đa 3 xe cùng lúc!"));
         }
 
         try {
@@ -788,7 +788,7 @@ public class BookingController {
             // Service sẽ trả về Map nếu TẤT CẢ thành công
             Map<String, Object> response = bookingService.createFlexibleBatchBooking(request);
 
-            return ResponseEntity.ok(new ApiResponseDto(
+            return ResponseEntity.ok(new ApiResponse(
                     true,
                     (String) response.get("message"),
                     response
@@ -807,7 +807,7 @@ public class BookingController {
             );
 
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, errorMessage)); // Không trả về chi tiết booking
+                    .body(new ApiResponse(false, errorMessage)); // Không trả về chi tiết booking
         }
     }
 
@@ -822,13 +822,13 @@ public class BookingController {
     @DeleteMapping("/delete") // Bạn có thể dùng /batch hoặc /delete tùy ý
     @Operation(summary = "Xóa một hoặc nhiều booking",
             description = "Xóa booking theo danh sách ID, bất kể trạng thái. Gửi [101] để xóa 1 booking.")
-    public ResponseEntity<ApiResponseDto> deleteBatchBookings(
+    public ResponseEntity<ApiResponse> deleteBatchBookings(
             @Parameter(description = "Danh sách ID của các booking cần xóa. Ví dụ: [1, 2]")
             @RequestBody List<Long> bookingIds) {
 
         if (bookingIds == null || bookingIds.isEmpty()) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Danh sách ID không được rỗng."));
+                    .body(new ApiResponse(false, "Danh sách ID không được rỗng."));
         }
 
         try {
@@ -842,40 +842,40 @@ public class BookingController {
                 message += String.format(" Không tìm thấy %d booking.", notFoundCount);
             }
 
-            return ResponseEntity.ok(new ApiResponseDto(true, message, result));
+            return ResponseEntity.ok(new ApiResponse(true, message, result));
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponseDto(false, "Lỗi máy chủ khi xóa: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi máy chủ khi xóa: " + e.getMessage()));
         }
     }
 
     @GetMapping("/{bookingId}/generateQr")
     @Operation(summary = "Tạo QR token cho booking", description = "FE gọi để lấy token text dùng sinh QR hình ảnh, cho phép tạo QR ngay cả khi chưa thanh toán")
-    public ResponseEntity<ApiResponseDto> generateQr(@PathVariable Long bookingId) {
+    public ResponseEntity<ApiResponse> generateQr(@PathVariable Long bookingId) {
         try {
             Map<String, Object> bookingData = bookingService.getBookingById(bookingId);
             if (bookingData == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiResponseDto(false, "Không tìm thấy booking #" + bookingId));
+                        .body(new ApiResponse(false, "Không tìm thấy booking #" + bookingId));
             }
 
             // ✅ Kiểm tra trạng thái booking
             String status = (String) bookingData.get("bookingStatus");
             if ("COMPLETED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) {
                 return ResponseEntity.ok(
-                        new ApiResponseDto(false,
+                        new ApiResponse(false,
                                 String.format("Booking #%d đã ở trạng thái %s, không thể tạo QR.", bookingId, status))
                 );
             }
 
             // ✅ Cho phép tạo QR khi chưa thanh toán hoặc đang chờ swap
             String qrToken = QrTokenUtil.generateToken(bookingId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Đã tạo QR", Map.of("token", qrToken)));
+            return ResponseEntity.ok(new ApiResponse(true, "Đã tạo QR", Map.of("token", qrToken)));
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponseDto(false, "Lỗi tạo QR: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi tạo QR: " + e.getMessage()));
         }
     }
 
@@ -883,7 +883,7 @@ public class BookingController {
 
     @GetMapping("/verifyQr")
     @Operation(summary = "Xác thực QR booking", description = "FE staff quét QR và gửi token lên để lấy thông tin booking")
-    public ResponseEntity<ApiResponseDto> verifyQr(@RequestParam("token") String token) {
+    public ResponseEntity<ApiResponse> verifyQr(@RequestParam("token") String token) {
         try {
 
             long bookingId = QrTokenUtil.extractBookingId(token);
@@ -891,35 +891,35 @@ public class BookingController {
             Map<String, Object> bookingData = bookingService.getBookingById(bookingId);
             if (bookingData == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiResponseDto(false, "Không tìm thấy booking #" + bookingId));
+                        .body(new ApiResponse(false, "Không tìm thấy booking #" + bookingId));
             }
 
             String status = (String) bookingData.get("bookingStatus");
             if ("COMPLETED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) {
-                return ResponseEntity.ok(new ApiResponseDto(false,
+                return ResponseEntity.ok(new ApiResponse(false,
                         String.format("QR đã hết hiệu lực. Booking #%d ở trạng thái %s.", bookingId, status)));
             }
 
-            return ResponseEntity.ok(new ApiResponseDto(true, "QR hợp lệ", bookingData));
+            return ResponseEntity.ok(new ApiResponse(true, "QR hợp lệ", bookingData));
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new ApiResponseDto(false, "Token QR không hợp lệ"));
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Token QR không hợp lệ"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponseDto(false, "Lỗi xác thực QR: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi xác thực QR: " + e.getMessage()));
         }
     }
     @PutMapping("/{bookingId}/cancel-with-refund")
     @Operation(summary = "Hủy booking kèm hoàn tiền",
             description = "Nếu booking đã thanh toán, hệ thống sẽ tự động hoàn tiền VNPay. Nếu chưa thanh toán, chỉ hủy booking.")
-    public ResponseEntity<ApiResponseDto> cancelBookingWithRefund(
+    public ResponseEntity<ApiResponse> cancelBookingWithRefund(
             @PathVariable Long bookingId) {
         try {
             Map<String, Object> result = bookingService.cancelBookingWithRefund(bookingId);
-            return ResponseEntity.ok(new ApiResponseDto(true, "Đã hủy booking (và hoàn tiền nếu có)", result));
+            return ResponseEntity.ok(new ApiResponse(true, "Đã hủy booking (và hoàn tiền nếu có)", result));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(new ApiResponseDto(false, "Lỗi hủy booking: " + e.getMessage()));
+                    .body(new ApiResponse(false, "Lỗi hủy booking: " + e.getMessage()));
         }
     }
 

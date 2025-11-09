@@ -152,4 +152,10 @@ public class VehicleService {
         vehicle.setUser(null);
         vehicleRepository.save(vehicle);
     }
+
+    public List<Vehicle> getUnassignedVehicles() {
+        return vehicleRepository.findUnassignedVehicles();
+    }
+
+
 }

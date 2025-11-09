@@ -341,67 +341,65 @@ const StaffManagement = () => {
                             <DialogTitle>Nhân viên trong {st.stationName}</DialogTitle>
                           </DialogHeader>
 
-                          {/* Assign staff section - Only show if no staff */}
-                          {(!st.staffList || st.staffList.length === 0) && (
-                            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Phân công nhân viên vào trạm này:
-                              </Label>
-                              <div className="flex gap-2">
-                                <select
-                                  value={assignStationId}
-                                  onChange={(e) => setAssignStationId(e.target.value)}
-                                  className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-2.5 bg-white text-sm font-medium
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                  hover:border-gray-300 transition-all duration-200 cursor-pointer
-                                  shadow-sm hover:shadow-md"
-                                >
-                                  <option value="">-- Chọn nhân viên --</option>
-                                  {staffList
-                                    .filter(staff => staff.stationId === null || staff.stationId === undefined)
-                                    .map((staff, idx) => (
-                                      <option key={`unassigned-${staff.staffId}-${idx}`} value={staff.staffId}>
-                                        {staff.staffId} - {staff.fullName} ({staff.email})
-                                      </option>
-                                    ))
+                          {/* Assign staff section - Show for all stations */}
+                          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Thêm nhân viên vào trạm:
+                            </Label>
+                            <div className="flex gap-2">
+                              <select
+                                value={assignStationId}
+                                onChange={(e) => setAssignStationId(e.target.value)}
+                                className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-2.5 bg-white text-sm font-medium
+                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                hover:border-gray-300 transition-all duration-200 cursor-pointer
+                                shadow-sm hover:shadow-md"
+                              >
+                                <option value="">-- Chọn nhân viên --</option>
+                                {staffList
+                                  .filter(staff => staff.stationId === null || staff.stationId === undefined)
+                                  .map((staff, idx) => (
+                                    <option key={`unassigned-${staff.staffId}-${idx}`} value={staff.staffId}>
+                                      {staff.staffId} - {staff.fullName} ({staff.email})
+                                    </option>
+                                  ))
+                                }
+                              </select>
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  if (!assignStationId) {
+                                    toast.error("Vui lòng chọn nhân viên");
+                                    return;
                                   }
-                                </select>
-                                <Button
-                                  size="sm"
-                                  onClick={async () => {
-                                    if (!assignStationId) {
-                                      toast.error("Vui lòng chọn nhân viên");
+                                  setLoading({ [assignStationId]: true });
+                                  try {
+                                    const data = await assignStaff(assignStationId, st.stationId);
+                                    if (isErrorResponse(data)) {
+                                      toast.error(pickApiMessage(data));
                                       return;
                                     }
-                                    setLoading({ [assignStationId]: true });
-                                    try {
-                                      const data = await assignStaff(assignStationId, st.stationId);
-                                      if (isErrorResponse(data)) {
-                                        toast.error(pickApiMessage(data));
-                                        return;
-                                      }
-                                      toast.success("Phân công thành công");
-                                      setAssignStationId("");
-                                      setViewStaffStationId(null);
-                                      await fetchStaff();
-                                      await fetchStations();
-                                    } catch (err) {
-                                      toast.error("Không thể phân công");
-                                    } finally {
-                                      setLoading({});
-                                    }
-                                  }}
-                                  disabled={!assignStationId || !!loading[assignStationId]}
-                                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                                >
-                                  {loading[assignStationId] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assign"}
-                                </Button>
-                              </div>
-                              {staffList.filter(s => !s.stationId).length === 0 && (
-                                <p className="text-xs text-gray-500 mt-2">Không có nhân viên chưa được phân công</p>
-                              )}
+                                    toast.success("Phân công thành công");
+                                    setAssignStationId("");
+                                    setViewStaffStationId(null);
+                                    await fetchStaff();
+                                    await fetchStations();
+                                  } catch (err) {
+                                    toast.error("Không thể phân công");
+                                  } finally {
+                                    setLoading({});
+                                  }
+                                }}
+                                disabled={!assignStationId || !!loading[assignStationId]}
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                              >
+                                {loading[assignStationId] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Thêm"}
+                              </Button>
                             </div>
-                          )}
+                            {staffList.filter(s => !s.stationId).length === 0 && (
+                              <p className="text-xs text-gray-500 mt-2">Không có nhân viên chưa được phân công</p>
+                            )}
+                          </div>
 
                           {/* Staff list */}
                           <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">

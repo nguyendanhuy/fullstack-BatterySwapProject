@@ -106,6 +106,8 @@ SELECT new BatterySwapStation.dto.SwapDetail(
     batOut.batteryType,
     batIn.batteryId,
     batIn.batteryType,
+    s.dockOutSlot,
+    s.dockInSlot,
     s.status,
     s.completedTime,
     s.description

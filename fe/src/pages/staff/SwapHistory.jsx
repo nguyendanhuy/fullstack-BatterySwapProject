@@ -4,11 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { SystemContext } from "../../contexts/system.context";
 import { getSwapsByStation } from "../../services/axios.services";
 import dayjs from "dayjs";
-import { History, Search, User, Battery, Clock, CheckCircle, XCircle, BanIcon, Calendar } from "lucide-react";
+import { History, Search, User, Battery, Clock, CheckCircle, XCircle, BanIcon, Calendar, MapPin, Phone, UserCircle, Zap, Upload, Download } from "lucide-react";
 
 const statusToBadge = (status) => {
     switch ((status || "").toUpperCase()) {
@@ -40,7 +41,8 @@ const SwapHistory = () => {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
-    const [expandedDesc, setExpandedDesc] = useState({});
+    const [selectedSwap, setSelectedSwap] = useState(null);
+    const [sheetOpen, setSheetOpen] = useState(false);
 
     useEffect(() => {
         const fetchSwaps = async () => {
@@ -58,7 +60,7 @@ const SwapHistory = () => {
                     setError(res.message || "Không thể tải dữ liệu đổi pin.");
                     setSwaps([]);
                 } else {
-                    setSwaps(res || []);
+                    setSwaps(res.data || []);
                 }
             } catch (err) {
                 console.error(err);
@@ -76,8 +78,10 @@ const SwapHistory = () => {
         const matchesSearch = !searchTerm ||
             swap.swapId?.toString().includes(searchTerm) ||
             swap.bookingId?.toString().includes(searchTerm) ||
-            swap.userId?.toString().includes(searchTerm) ||
-            swap.staffUserId?.toString().includes(searchTerm);
+            swap.driverId?.toString().includes(searchTerm) ||
+            swap.driverName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            swap.staffId?.toString().includes(searchTerm) ||
+            swap.staffName?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = !filterStatus || filterStatus === "all" || swap.status?.toUpperCase() === filterStatus.toUpperCase();
         return matchesSearch && matchesStatus;
     });
@@ -167,16 +171,16 @@ const SwapHistory = () => {
                                             </div>
                                             <div className="space-y-2 text-sm bg-gray-50 p-4 rounded-xl">
                                                 <p className="flex items-center">
-                                                    <span className="text-gray-600 w-24">User ID:</span>
-                                                    <span className="font-semibold text-gray-800">{swap.userId}</span>
+                                                    <span className="text-gray-600 w-24">Driver ID:</span>
+                                                    <span className="font-semibold text-gray-800">#{swap.driverId}</span>
                                                 </p>
                                                 <p className="flex items-center">
                                                     <span className="text-gray-600 w-24">Staff ID:</span>
-                                                    <span className="font-semibold text-blue-600">{swap.staffUserId}</span>
+                                                    <span className="font-semibold text-blue-600">#{swap.staffId}</span>
                                                 </p>
                                                 <p className="flex items-center">
                                                     <span className="text-gray-600 w-24">Station ID:</span>
-                                                    <span className="font-semibold text-purple-600">{swap.stationId}</span>
+                                                    <span className="font-semibold text-purple-600">#{swap.stationId}</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -191,13 +195,23 @@ const SwapHistory = () => {
                                             </h4>
                                             <div className="space-y-3">
                                                 <div className="p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200">
-                                                    <p className="text-sm text-orange-700 font-semibold mb-1">Pin ra:</p>
-                                                    <p className="font-bold text-orange-800">ID: {swap.batteryOutId}</p>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="p-1.5 bg-orange-500 rounded-lg">
+                                                            <Upload className="h-4 w-4 text-white" />
+                                                        </div>
+                                                        <p className="text-sm text-orange-700 font-semibold">Pin ra</p>
+                                                    </div>
+                                                    <p className="font-bold text-orange-800">ID: #{swap.batteryOutId}</p>
                                                     <p className="text-xs text-orange-600 mt-1">Slot: {swap.dockOutSlot}</p>
                                                 </div>
                                                 <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                                                    <p className="text-sm text-green-700 font-semibold mb-1">Pin vào:</p>
-                                                    <p className="font-bold text-green-800">ID: {swap.batteryInId}</p>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="p-1.5 bg-green-500 rounded-lg">
+                                                            <Download className="h-4 w-4 text-white" />
+                                                        </div>
+                                                        <p className="text-sm text-green-700 font-semibold">Pin vào</p>
+                                                    </div>
+                                                    <p className="font-bold text-green-800">ID: #{swap.batteryInId}</p>
                                                     <p className="text-xs text-green-600 mt-1">Slot: {swap.dockInSlot}</p>
                                                 </div>
                                             </div>
@@ -226,35 +240,206 @@ const SwapHistory = () => {
 
                                         {/* Action Button */}
                                         <div className="space-y-4 flex items-start">
-                                            {swap.description && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => setExpandedDesc(prev => ({ ...prev, [swap.swapId]: !prev[swap.swapId] }))}
-                                                    className="w-full"
-                                                >
-                                                    {expandedDesc[swap.swapId] ? 'Ẩn mô tả' : 'Xem mô tả'}
-                                                </Button>
-                                            )}
+                                            <Button
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedSwap(swap);
+                                                    setSheetOpen(true);
+                                                }}
+                                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                                            >
+                                                Xem chi tiết
+                                            </Button>
                                         </div>
                                     </div>
-
-                                    {/* Description - Full Width Below */}
-                                    {expandedDesc[swap.swapId] && swap.description && (
-                                        <div className="mt-6 pt-6 border-t border-gray-200">
-                                            <h4 className="font-semibold text-lg text-gray-800 mb-4">Mô tả chi tiết</h4>
-                                            <div className="p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200">
-                                                <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                                    {swap.description}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
                                 </CardContent>
                             </Card>
                         ))}
                     </div>
                 )}
+
+                {/* Detail Sheet */}
+                <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                    <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+                        <SheetHeader>
+                            <SheetTitle className="text-2xl font-bold flex items-center">
+                                <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl mr-3">
+                                    <History className="h-6 w-6 text-white" />
+                                </div>
+                                Chi tiết Swap #{selectedSwap?.swapId}
+                            </SheetTitle>
+                            <SheetDescription>
+                                Thông tin đầy đủ về giao dịch đổi pin
+                            </SheetDescription>
+                        </SheetHeader>
+
+                        {selectedSwap && (
+                            <div className="mt-6 space-y-6">
+                                {/* Status Badge */}
+                                <div className="flex justify-center">
+                                    {statusToBadge(selectedSwap.status)}
+                                </div>
+
+                                {/* Station Info */}
+                                <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                                    <h3 className="font-semibold text-lg flex items-center text-purple-800 mb-3">
+                                        <MapPin className="h-5 w-5 mr-2" />
+                                        Thông tin trạm
+                                    </h3>
+                                    <div className="space-y-2 text-sm">
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-purple-700">Station ID:</span>
+                                            <span className="font-semibold text-purple-900">#{selectedSwap.stationId}</span>
+                                        </p>
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-purple-700">Tên trạm:</span>
+                                            <span className="font-semibold text-purple-900">{selectedSwap.stationName || 'N/A'}</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Driver Info */}
+                                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                                    <h3 className="font-semibold text-lg flex items-center text-blue-800 mb-3">
+                                        <UserCircle className="h-5 w-5 mr-2" />
+                                        Thông tin tài xế
+                                    </h3>
+                                    <div className="space-y-2 text-sm">
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-blue-700">Driver ID:</span>
+                                            <span className="font-semibold text-blue-900">#{selectedSwap.driverId}</span>
+                                        </p>
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-blue-700">Tên tài xế:</span>
+                                            <span className="font-semibold text-blue-900">{selectedSwap.driverName || 'N/A'}</span>
+                                        </p>
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-blue-700">
+                                                <Phone className="h-4 w-4 inline mr-1" />
+                                                Số điện thoại:
+                                            </span>
+                                            <span className="font-semibold text-blue-900">{selectedSwap.driverPhone || 'N/A'}</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Staff Info */}
+                                <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                                    <h3 className="font-semibold text-lg flex items-center text-green-800 mb-3">
+                                        <User className="h-5 w-5 mr-2" />
+                                        Thông tin nhân viên
+                                    </h3>
+                                    <div className="space-y-2 text-sm">
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-green-700">Staff ID:</span>
+                                            <span className="font-semibold text-green-900">#{selectedSwap.staffId}</span>
+                                        </p>
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-green-700">Tên nhân viên:</span>
+                                            <span className="font-semibold text-green-900">{selectedSwap.staffName || 'N/A'}</span>
+                                        </p>
+                                        {selectedSwap.staffPhone && (
+                                            <p className="flex items-center justify-between">
+                                                <span className="text-green-700">
+                                                    <Phone className="h-4 w-4 inline mr-1" />
+                                                    Số điện thoại:
+                                                </span>
+                                                <span className="font-semibold text-green-900">{selectedSwap.staffPhone}</span>
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Battery Info */}
+                                <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                                    <h3 className="font-semibold text-lg flex items-center text-amber-800 mb-3">
+                                        <Battery className="h-5 w-5 mr-2" />
+                                        Thông tin pin
+                                    </h3>
+                                    <div className="space-y-2 text-sm mb-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-amber-700">Loại pin:</span>
+                                            <Badge className="bg-amber-500 text-white">
+                                                <Zap className="h-3 w-3 mr-1" />
+                                                {selectedSwap.batteryOutType || selectedSwap.batteryInType || 'N/A'}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-3 bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="p-1.5 bg-red-500 rounded-lg">
+                                                    <Upload className="h-4 w-4 text-white" />
+                                                </div>
+                                                <p className="text-xs text-red-700 font-semibold">Pin ra</p>
+                                            </div>
+                                            <p className="font-bold text-red-800">ID: #{selectedSwap.batteryOutId}</p>
+                                            <p className="text-xs text-red-600 mt-1">Loại: {selectedSwap.batteryOutType || 'N/A'}</p>
+                                            <p className="text-xs text-red-600 mt-1">Slot: {selectedSwap.dockOutSlot}</p>
+                                        </div>
+                                        <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="p-1.5 bg-green-500 rounded-lg">
+                                                    <Download className="h-4 w-4 text-white" />
+                                                </div>
+                                                <p className="text-xs text-green-700 font-semibold">Pin vào</p>
+                                            </div>
+                                            <p className="font-bold text-green-800">ID: #{selectedSwap.batteryInId}</p>
+                                            <p className="text-xs text-green-600 mt-1">Loại: {selectedSwap.batteryInType || 'N/A'}</p>
+                                            <p className="text-xs text-green-600 mt-1">Slot: {selectedSwap.dockInSlot}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Time Info */}
+                                <div className="p-4 bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl border border-slate-200">
+                                    <h3 className="font-semibold text-lg flex items-center text-slate-800 mb-3">
+                                        <Clock className="h-5 w-5 mr-2" />
+                                        Thời gian
+                                    </h3>
+                                    <div className="space-y-2 text-sm">
+                                        <p className="flex items-center justify-between">
+                                            <span className="text-slate-700">Hoàn thành:</span>
+                                            <span className="font-semibold text-slate-900">
+                                                {selectedSwap.completedTime
+                                                    ? dayjs(selectedSwap.completedTime).format('DD/MM/YYYY HH:mm:ss')
+                                                    : 'N/A'}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Booking & Swap IDs */}
+                                <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200">
+                                    <h3 className="font-semibold text-lg flex items-center text-indigo-800 mb-3">
+                                        <History className="h-5 w-5 mr-2" />
+                                        Mã giao dịch
+                                    </h3>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-indigo-700">Swap ID:</span>
+                                            <Badge className="bg-indigo-500 text-white font-mono">#{selectedSwap.swapId}</Badge>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-indigo-700">Booking ID:</span>
+                                            <Badge className="bg-blue-500 text-white font-mono">#{selectedSwap.bookingId}</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Description */}
+                                {selectedSwap.description && (
+                                    <div className="p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200">
+                                        <h3 className="font-semibold text-lg text-gray-800 mb-3">Mô tả chi tiết</h3>
+                                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                            {selectedSwap.description}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </SheetContent>
+                </Sheet>
 
                 {/* Summary Stats */}
                 <Card className="mt-8 border-0 shadow-lg bg-white animate-scale-in rounded-3xl overflow-hidden">

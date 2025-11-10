@@ -28,7 +28,7 @@ const mainItems = [
     { title: "Dashboard", url: "/staff", icon: Home },
     { title: "Quét QR & Đổi pin", url: "/staff/qr-checkin", icon: QrCode },
     { title: "Quản lý tồn kho", url: "/staff/battery-inventory", icon: Battery },
-    { title: "Lịch sử giao dịch", url: "/staff/transaction-history", icon: CreditCard },
+    // { title: "Lịch sử giao dịch", url: "/staff/transaction-history", icon: CreditCard },
     { title: "Lịch sử đổi pin", url: "/staff/swap-history", icon: FileText },
     { title: "Kiểm tra pin", url: "/staff/battery-inspection", icon: Search },
     { title: "Quản lý tranh chấp pin", url: "/staff/battery-dispute", icon: TrendingUp },

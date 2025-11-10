@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Car, MapPin, Calendar, CreditCard, Battery, Zap, Star, TrendingUp, AlertCircle, Clock, X, FileText } from "lucide-react";
+import { Car, MapPin, Calendar, CreditCard, Battery, Zap, Star, TrendingUp, AlertCircle, Clock, X, FileText, Wallet } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -219,7 +219,7 @@ const DriverDashboard = () => {
             { icon: Car, count: "1", label: "Xe đã đăng ký", color: "from-blue-500 to-indigo-500" },
             { icon: MapPin, count: "12", label: "Trạm gần đây", color: "from-green-500 to-emerald-500" },
             { icon: Calendar, count: "3", label: "Lịch hẹn", color: "from-orange-500 to-yellow-500" },
-            { icon: CreditCard, count: "5", label: "Gói thuê bao", color: "from-purple-500 to-pink-500" }
+            { icon: CreditCard, count: "5", label: "Gói thuê bao", color: "from-purple-500 to-pink-500" },
           ].map((stat, index) => (<Card key={index} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-500 hover:-translate-y-1 group overflow-hidden" style={{ animationDelay: `${index * 0.1}s` }}>
             <CardContent className="p-6 text-center group-hover:scale-105 transition-transform duration-300">
               <div className={`p-3 bg-gradient-to-r ${stat.color} rounded-xl mx-auto mb-4 w-fit`}>
@@ -261,7 +261,8 @@ const DriverDashboard = () => {
             { icon: MapPin, title: "Tìm trạm & Tồn kho pin", desc: "Tìm trạm gần nhất và kiểm tra tình trạng pin", link: "/driver/find-stations", color: "from-green-500 to-emerald-500" },
             { icon: Calendar, title: "Lịch sử đặt chỗ", desc: "Xem lại thông tin booking đã đăng ký", link: "/driver/booking-history", color: "from-orange-500 to-yellow-500" },
             { icon: Battery, title: "Gói thuê pin", desc: "Đăng ký gói thuê bao pin hàng tháng", link: "/driver/subscriptions", color: "from-purple-500 to-pink-500" },
-            { icon: FileText, title: "Xem hóa đơn", desc: "Xem chi tiết hóa đơn đã thanh toán", link: "/driver/invoices", color: "from-purple-500 to-pink-500" }
+            { icon: FileText, title: "Xem hóa đơn", desc: "Xem chi tiết hóa đơn đã thanh toán", link: "/driver/invoices", color: "from-cyan-500 to-blue-500" },
+            { icon: Wallet, title: "Xem ví hệ thống", desc: "Xem chi tiết số dư và nạp tiền vào hệ thống", link: "/driver/wallet", color: "from-teal-500 to-cyan-500" }
           ].map((feature, index) => (<Card key={index} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-500 hover:-translate-y-2 group overflow-hidden" style={{ animationDelay: `${index * 0.1}s` }}>
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">

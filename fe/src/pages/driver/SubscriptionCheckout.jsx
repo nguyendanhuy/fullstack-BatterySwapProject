@@ -93,9 +93,12 @@ export default function SubscriptionCheckout() {
                 description: "Gói subscription đã được kích hoạt bằng ví hệ thống.",
                 className: "bg-green-500 text-white",
             });
-            setUserData(prev => ({ ...prev, activeSubscriptionId: plan.planId, planName: plan.planName, usedSwaps: 0, maxSwaps: plan.swapLimit, walletBalance: prev.walletBalance - priceNumber }));
-            setTimeout(() => navigate("/driver/subscriptions"), 2000);
+            // setUserData(prev => ({ ...prev, activeSubscriptionId: plan.planId, planName: plan.planName, usedSwaps: 0, maxSwaps: plan.swapLimit, walletBalance: prev.walletBalance - priceNumber }));
 
+            navigate("/driver/subscriptions");
+            setTimeout(() => {
+                window.location.reload(); //reload
+            }, 1000);
         } catch (err) {
             console.error("❌ Payment error:", err);
             toast({

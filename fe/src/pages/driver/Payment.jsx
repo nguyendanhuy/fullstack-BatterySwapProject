@@ -15,7 +15,7 @@ import { SystemContext } from "../../contexts/system.context";
 const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userData } = useContext(SystemContext);
+  const { userData, setUserData } = useContext(SystemContext);
   const { reservationData, totalPrice, pendingInvoice } = location.state || {};
   const { toast } = useToast();
 
@@ -197,7 +197,9 @@ const Payment = () => {
           description: "Booking đã được thanh toán bằng ví hệ thống.",
           className: "bg-green-500 text-white",
         });
-        setTimeout(() => navigate("/driver/booking-history"), 2000);
+
+        navigate("/driver/booking-history");
+        setUserData(prev => ({ ...prev, walletBalance: prev.walletBalance - totalPrice }));
         return;
       }
 

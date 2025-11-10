@@ -13,7 +13,7 @@ import { SystemContext } from "../../contexts/system.context";
 import { useToast } from "@/hooks/use-toast";
 
 const Reservation = () => {
-  const { userData } = useContext(SystemContext);
+  const { userData, setUserData } = useContext(SystemContext);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -159,11 +159,9 @@ const Reservation = () => {
 
       console.log("Creating bookings with subscription:", bookingData);
 
-      // Create bookings (API will auto-create invoice)
       const response = await createBookingForVehicles(bookingData);
       console.log("Booking response:", response);
 
-      // Check error
       if (isErrorResponse(response)) {
         toast({
           title: "Đặt lịch thất bại!",
@@ -173,9 +171,8 @@ const Reservation = () => {
         return;
       }
 
-      // Clear session storage
       sessionStorage.removeItem('battery-booking-selection');
-
+      setUserData(prev => ({ ...prev, usedSwaps: prev.usedSwaps + totalBatteries }));
       toast({
         title: "Đặt lịch thành công!",
         description: "Booking đã được tạo bằng gói subscription của bạn.",

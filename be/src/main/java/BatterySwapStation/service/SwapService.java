@@ -340,24 +340,6 @@ public class SwapService {
     }
 
 
-    private SwapListItemDTO toListItemDTO(Swap s) {
-        return SwapListItemDTO.builder()
-                .swapId(s.getSwapId())
-                .bookingId(s.getBooking().getBookingId())
-                .stationId(s.getBooking().getStation().getStationId())
-                .userId(s.getUserId())
-                .staffUserId(s.getStaffUserId())
-                .batteryOutId(s.getBatteryOutId())
-                .batteryInId(s.getBatteryInId())
-                .dockOutSlot(s.getDockOutSlot())
-                .dockInSlot(s.getDockInSlot())
-                .status(s.getStatus() != null ? s.getStatus().name() : null)
-                .completedTime(s.getCompletedTime())
-                .description(s.getDescription())
-                .build();
-    }
-
-
     @Transactional(readOnly = true)
     public List<SwapDetail> getDetailedSwapsByStation(Integer stationId) {
         return swapRepository.findDetailedSwapsByStation(stationId);

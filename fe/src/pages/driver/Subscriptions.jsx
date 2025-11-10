@@ -94,7 +94,6 @@ const Subscriptions = () => {
           className: 'bg-green-500 text-white',
         });
         setCurrentSubscription(prev => ({ ...prev, autoRenew: false }));
-        // setLoading(true);
       } else {
         toast({
           title: 'Hủy gia hạn thất bại',
@@ -116,7 +115,9 @@ const Subscriptions = () => {
           className: 'bg-green-500 text-white',
         });
         setCurrentSubscription(null);
-        setUserData(prev => ({ ...prev, activeSubscriptionId: null, planName: null, usedSwaps: 0, maxSwaps: 0 }));
+        setTimeout(() => {
+          window.location.reload(); //reload 
+        }, 1500);
       } else {
         toast({
           title: 'Hủy gói thất bại',
@@ -155,7 +156,7 @@ const Subscriptions = () => {
                     Gói {currentSubscription.plan.planName}
                   </h3>
                   <p className="text-gray-600">{currentSubscription.autoRenew ? "Đang bật gia hạn tự động" : "Đã tắt tự động gia hạn"}</p>
-                  {currentSubscription.plan.planName === "PREMIUM" && (
+                  {currentSubscription.plan.planId === 2 && ( //hard code cho gói phổ biến
                     <Badge className="mt-2 bg-green-100 text-green-800">Gói phổ biến</Badge>
                   )}
                 </div>
@@ -164,7 +165,7 @@ const Subscriptions = () => {
                   <p className="text-gray-600">Bạn đã dùng</p>
                   <Progress
                     type="circle"
-                    percent={parseInt(currentSubscription.usedSwaps / currentSubscription.plan.swapLimit) * 100}
+                    percent={parseInt(currentSubscription.usedSwaps) / parseInt(currentSubscription.plan.swapLimit) * 100}
                     format={() => `${currentSubscription.usedSwaps}/${currentSubscription.plan.swapLimit}`}
                   />
 
@@ -227,42 +228,34 @@ const Subscriptions = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             {packages.map((pkg, index) => {
-              // Helper function to get display name
-              const getDisplayName = (planName) => {
-                switch (planName) {
-                  case "BASIC": return "Gói Cơ bản";
-                  case "PREMIUM": return "Gói Premium";
-                  case "BUSINESS": return "Gói Doanh nghiệp";
-                  default: return planName;
-                }
-              };
+
 
               // Helper function to get icon
-              const getIcon = (planName) => {
-                switch (planName) {
-                  case "BASIC": return Battery;
-                  case "PREMIUM": return Star;
-                  case "BUSINESS": return Crown;
+              const getIcon = (index) => {
+                switch (index) {
+                  case 0: return Battery;
+                  case 1: return Star;
+                  case 2: return Crown;
                   default: return Battery;
                 }
               };
 
               // Helper function to get color
-              const getColor = (planName) => {
-                switch (planName) {
-                  case "BASIC": return "from-blue-500 to-indigo-500";
-                  case "PREMIUM": return "from-green-500 to-emerald-500";
-                  case "BUSINESS": return "from-purple-500 to-pink-500";
+              const getColor = (index) => {
+                switch (index) {
+                  case 0: return "from-blue-500 to-indigo-500";
+                  case 1: return "from-green-500 to-emerald-500";
+                  case 2: return "from-purple-500 to-pink-500";
                   default: return "from-gray-500 to-slate-500";
                 }
               };
 
               // Helper function to get background color
-              const getBgColor = (planName) => {
-                switch (planName) {
-                  case "BASIC": return "from-blue-50 to-indigo-50";
-                  case "PREMIUM": return "from-green-50 to-emerald-50";
-                  case "BUSINESS": return "from-purple-50 to-pink-50";
+              const getBgColor = (index) => {
+                switch (index) {
+                  case 0: return "from-blue-50 to-indigo-50";
+                  case 1: return "from-green-50 to-emerald-50";
+                  case 2: return "from-purple-50 to-pink-50";
                   default: return "from-gray-50 to-slate-50";
                 }
               };
@@ -273,10 +266,10 @@ const Subscriptions = () => {
                 .filter(item => item.trim().length > 0)
                 .map(item => item.trim().endsWith('.') ? item.trim() : item.trim() + '.');
 
-              const IconComponent = getIcon(pkg.planName);
-              const color = getColor(pkg.planName);
-              const bgColor = getBgColor(pkg.planName);
-              const popular = pkg.planName === "PREMIUM";
+              const IconComponent = getIcon(index);
+              const color = getColor(index);
+              const bgColor = getBgColor(index);
+              const popular = index === 1;
 
               return (<Card key={pkg.planId} className={`relative border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 overflow-hidden group ${popular ? 'ring-2 ring-green-500 scale-105' : ''}`} style={{ animationDelay: `${index * 0.1}s` }}>
                 {popular && (<div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
@@ -293,7 +286,7 @@ const Subscriptions = () => {
                       <IconComponent className="h-8 w-8 text-white" />
                     </div>
                   </div>
-                  <CardTitle className="text-2xl font-bold text-gray-800 mb-2">{getDisplayName(pkg.planName)}</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-gray-800 mb-2">{pkg.planName}</CardTitle>
                   {/* <CardDescription className="text-gray-600 text-base mb-4">{pkg.description}</CardDescription> */}
                   <div className="text-4xl font-bold text-gray-800 mb-2">
                     {pkg.price.toLocaleString('vi-VN')} VNĐ

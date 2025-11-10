@@ -115,8 +115,21 @@ public class BookingService {
 
         // ================== XÁC ĐỊNH SỐ PIN MUỐN ĐỔI ==================
         Integer requestedBatteryCount = request.getBatteryCount();
-        if (requestedBatteryCount == null) {
-            requestedBatteryCount = vehicle.getBatteryCount();
+        if (requestedBatteryCount == null || requestedBatteryCount <= 0) {
+            throw new IllegalArgumentException(
+                    "Số lượng pin cần đổi (batteryCount) là bắt buộc và phải lớn hơn 0. " +
+                    "Vui lòng chọn số lượng pin bạn muốn đổi trong booking request."
+            );
+        }
+
+        // Kiểm tra số pin không vượt quá số pin của xe
+        if (requestedBatteryCount > vehicle.getBatteryCount()) {
+            throw new IllegalArgumentException(String.format(
+                    "Số lượng pin yêu cầu (%d) vượt quá số pin của xe (%d). " +
+                    "Xe %s chỉ có %d pin.",
+                    requestedBatteryCount, vehicle.getBatteryCount(),
+                    vehicle.getVIN(), vehicle.getBatteryCount()
+            ));
         }
 
         // ================== KIỂM TRA CÔNG SUẤT TRẠM ==================
@@ -549,6 +562,122 @@ public class BookingService {
                 request.getCancelReason() != null ? request.getCancelReason() : "Không có lý do"
         );
         response.setMessage(cancelMessage);
+
+        return response;
+    }
+
+    /**
+     * Staff hủy booking kèm hoàn tiền (không cần kiểm tra điều kiện thời gian)
+     */
+    @Transactional
+    public BookingResponse staffCancelBookingWithRefund(Long bookingId, StaffCancelBookingRequest request) {
+        // 1. Validate staff
+        User staff = userRepository.findById(request.getStaffUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhân viên với mã: " + request.getStaffUserId()));
+
+        // Kiểm tra có phải staff không (có thể thêm role check ở đây)
+        // if (!staff.getRole().getRoleName().contains("STAFF")) {
+        //     throw new IllegalStateException("User này không phải là nhân viên!");
+        // }
+
+        // 2. Lấy booking
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy booking với mã: " + bookingId));
+
+        User user = booking.getUser();
+
+        // 3. Kiểm tra trạng thái booking
+        if (Booking.BookingStatus.CANCELLED.equals(booking.getBookingStatus())) {
+            throw new IllegalStateException("Booking này đã bị hủy trước đó.");
+        }
+        if (Booking.BookingStatus.COMPLETED.equals(booking.getBookingStatus())) {
+            throw new IllegalStateException("Không thể hủy booking đã hoàn thành.");
+        }
+
+        // 4. Hủy booking
+        booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
+        // cancellationReason sẽ chỉ chứa tag staff + lý do. Ghi chú (notes) lưu riêng vào cột Notes.
+        String staffDisplay = staff.getFullName() != null ? staff.getFullName() : request.getStaffUserId();
+        String fullCancelReason = String.format("[STAFF: %s] %s", staffDisplay, request.getCancelReason());
+        booking.setCancellationReason(fullCancelReason);
+        // Ghi notes tách riêng (có thể null hoặc rỗng)
+        booking.setNotes(request.getNotes());
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // 5. Xử lý hoàn tiền nếu booking đã thanh toán
+        Invoice invoice = booking.getInvoice();
+        if (invoice != null && invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
+
+            Payment successfulPayment = invoice.getPayments().stream()
+                    .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS
+                            && p.getTransactionType() == Payment.TransactionType.PAYMENT)
+                    .max(Comparator.comparing(Payment::getCreatedAt))
+                    .orElse(null);
+
+            // Hoàn tiền nếu có payment SUCCESS và số tiền > 0
+            if (successfulPayment != null && booking.getAmount() != null && booking.getAmount() > 0) {
+                double refundAmount = booking.getAmount();
+
+                // Tạo bản ghi Payment REFUND
+                Payment refund = Payment.builder()
+                        .amount(refundAmount)
+                        .paymentMethod(Payment.PaymentMethod.WALLET)
+                        .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                        .transactionType(Payment.TransactionType.REFUND)
+                        .gateway("STAFF_REFUND")
+                        .invoice(invoice)
+                        .message(String.format(
+                                "Staff %s hoàn tiền cho booking #%d về ví. Lý do: %s",
+                                staff.getFullName() != null ? staff.getFullName() : request.getStaffUserId(),
+                                booking.getBookingId(),
+                                request.getCancelReason()
+                        ))
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                paymentRepository.save(refund);
+
+                // Cộng tiền vào ví user
+                try {
+                    user.setWalletBalance(user.getWalletBalance() + refundAmount);
+                    userRepository.save(user);
+                    log.info("Staff {} đã hoàn {} VNĐ cho user {} (booking #{})",
+                            request.getStaffUserId(), refundAmount, user.getUserId(), bookingId);
+                } catch (Exception ex) {
+                    if (ex.getMessage() != null && ex.getMessage().contains("chk_wallet_balance_limit")) {
+                        throw new IllegalStateException(
+                                "Ví user đã đạt giới hạn, không thể hoàn tiền. Vui lòng liên hệ admin."
+                        );
+                    }
+                    throw ex;
+                }
+            }
+        }
+
+        // 6. Trả lượt subscription nếu có
+        Optional<UserSubscription> activeSub = userSubscriptionRepository.findActiveSubscriptionForUser(
+                user.getUserId(),
+                UserSubscription.SubscriptionStatus.ACTIVE,
+                LocalDateTime.now()
+        );
+
+        if (activeSub.isPresent() && booking.getBatteryCount() != null) {
+            UserSubscription sub = activeSub.get();
+            // Trả lại lượt đã dùng
+            int currentUsed = sub.getUsedSwaps();
+            int batteryCount = booking.getBatteryCount();
+            sub.setUsedSwaps(Math.max(0, currentUsed - batteryCount));
+            userSubscriptionRepository.save(sub);
+            log.info("Staff {} đã hoàn {} lượt subscription cho user {} (booking #{})",
+                    request.getStaffUserId(), batteryCount, user.getUserId(), bookingId);
+        }
+
+        // 7. Trả về response
+        BookingResponse response = convertToResponse(savedBooking);
+        response.setMessage(String.format(
+                "Staff đã hủy booking #%d và hoàn tiền thành công!",
+                savedBooking.getBookingId()
+        ));
 
         return response;
     }
@@ -1232,11 +1361,10 @@ public class BookingService {
             SubscriptionPlan plan = subscription.getPlan();
 
             int limit = (plan.getSwapLimit() == null || plan.getSwapLimit() < 0) ? -1 : plan.getSwapLimit();
-            int usedSwaps = subscription.getUsedSwaps(); // ✅ Lấy số lượt đã dùng
 
             response.setIsFreeSwap(true);
             response.setSubscriptionPlanName(plan.getPlanName());
-            response.setUsedSwaps(usedSwaps); // ✅ Set số lượt đã dùng
+            response.setUsedSwaps(subscription.getUsedSwaps()); // ✅ Lấy số lượt đã dùng
             response.setTotalSwapLimit(limit);
         } else {
             response.setIsFreeSwap(false);
@@ -1383,7 +1511,25 @@ public class BookingService {
             if (bookingRepository.hasIncompleteBookingForVehicle(vehicle.getVehicleId())) {
                 throw new IllegalStateException("Xe " + vehicle.getVIN() + " đang có booking chưa hoàn thành.");
             }
-            Integer reqCount = (req.getBatteryCount() != null) ? req.getBatteryCount() : vehicle.getBatteryCount();
+            // ✅ Validate batteryCount bắt buộc
+            Integer reqCount = req.getBatteryCount();
+            if (reqCount == null || reqCount <= 0) {
+                throw new IllegalArgumentException(String.format(
+                        "Số lượng pin cần đổi (batteryCount) cho xe %s là bắt buộc và phải lớn hơn 0. " +
+                        "Vui lòng chọn số lượng pin trong booking request.",
+                        vehicle.getVIN()
+                ));
+            }
+
+            // ✅ Validate không vượt quá số pin của xe
+            if (reqCount > vehicle.getBatteryCount()) {
+                throw new IllegalArgumentException(String.format(
+                        "Xe %s: Số lượng pin yêu cầu (%d) vượt quá số pin của xe (%d). " +
+                        "Xe này chỉ có %d pin.",
+                        vehicle.getVIN(), reqCount, vehicle.getBatteryCount(), vehicle.getBatteryCount()
+                ));
+            }
+
             Integer alreadyBooked = bookingRepository.getBookedBatteryCountAtTimeSlot(station, req.getBookingDate(), timeSlot);
             if (alreadyBooked == null) alreadyBooked = 0;
             if ((alreadyBooked + reqCount) > station.getDocks().size()) {

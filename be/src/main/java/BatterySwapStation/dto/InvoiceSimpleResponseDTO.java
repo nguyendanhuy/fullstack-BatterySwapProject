@@ -27,6 +27,9 @@ public class InvoiceSimpleResponseDTO {
     private String paymentMethod;
     private SimplePlanInfo planToActivate;
 
+    // ✅ Thông tin payment liên quan
+    private SimplePaymentInfo paymentInfo;
+
 
     @Data
     @NoArgsConstructor
@@ -62,5 +65,21 @@ public class InvoiceSimpleResponseDTO {
         private Integer durationInDays;
         private String priceType;
         private Integer swapLimit;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SimplePaymentInfo {
+        private Long paymentId;
+        private String transactionType; // PAYMENT hoặc REFUND
+        private Double amount;
+        private String displayAmount; // Số tiền hiển thị với dấu + hoặc -
+        private String paymentMethod;
+        private String paymentStatus;
+        private LocalDateTime createdAt;
+        private String gateway;
+        private String vnpTransactionNo;
     }
 }

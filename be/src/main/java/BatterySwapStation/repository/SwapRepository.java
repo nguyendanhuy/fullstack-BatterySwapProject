@@ -77,6 +77,22 @@ public interface SwapRepository extends JpaRepository<Swap, Long> {
     @Query("SELECT COUNT(s) FROM Swap s WHERE s.batteryOutId = :batteryId OR s.batteryInId = :batteryId")
     long countSwapsByBattery(@Param("batteryId") String batteryId);
 
+    // ✅ Lấy tất cả swap của một trạm trong khoảng thời gian với eager fetch
+    @Query("""
+        SELECT s
+        FROM Swap s
+        JOIN FETCH s.booking b
+        JOIN FETCH b.user
+        JOIN FETCH b.vehicle
+        WHERE b.station.stationId = :stationId
+          AND FUNCTION('DATE', s.completedTime) BETWEEN :start AND :end
+        ORDER BY s.completedTime DESC
+    """)
+    List<Swap> findAllByStationIdAndDateRange(
+            @Param("stationId") Integer stationId,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
 
     @Query("""
 SELECT s.booking.bookingId

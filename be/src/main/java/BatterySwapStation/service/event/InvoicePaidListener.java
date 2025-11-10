@@ -52,7 +52,6 @@ public class InvoicePaidListener {
             case SUBSCRIPTION -> buildSubscriptionInfo(invoice);
             case WALLET_TOPUP -> buildWalletTopupInfo(invoice);
             case PENALTY -> buildPenaltyInfo(invoice);
-            case REFUND -> buildRefundInfo(invoice);
         };
 
         return """
@@ -168,59 +167,5 @@ public class InvoicePaidListener {
             </p>
             <p>Xin cảm ơn bạn đã hoàn tất nghĩa vụ thanh toán đúng hạn.</p>
         """;
-    }
-
-    // 🔹 Chi tiết cho hóa đơn REFUND
-    private String buildRefundInfo(Invoice invoice) {
-        if (invoice.getPayments() == null || invoice.getPayments().isEmpty()) {
-            return "<p>Không có thông tin hoàn tiền.</p>";
-        }
-
-        // Lấy payment có TransactionType = REFUND
-        Payment refundPayment = invoice.getPayments().stream()
-                .filter(p -> p.getTransactionType() == Payment.TransactionType.REFUND)
-                .findFirst()
-                .orElse(null);
-
-        if (refundPayment == null) {
-            return "<p>Không tìm thấy giao dịch hoàn tiền.</p>";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("<div style=\"margin-top:15px;\">");
-        sb.append("<p><b>🔄 Thông tin hoàn tiền:</b></p>");
-        sb.append("<ul>");
-        sb.append(String.format("<li><b>Số tiền hoàn:</b> <span style=\"color:#28a745;\">%,.0f VNĐ</span></li>",
-                Math.abs(refundPayment.getAmount())));
-        sb.append(String.format("<li><b>Phương thức hoàn tiền:</b> %s</li>",
-                refundPayment.getPaymentChannel() != null ? refundPayment.getPaymentChannel() : "—"));
-        sb.append(String.format("<li><b>Trạng thái:</b> %s</li>", refundPayment.getPaymentStatus()));
-
-        // Thông tin VNPay nếu có
-        if (refundPayment.getVnpTransactionNo() != null) {
-            sb.append(String.format("<li><b>Mã giao dịch VNPay:</b> %s</li>", refundPayment.getVnpTransactionNo()));
-        }
-        if (refundPayment.getVnpTxnRef() != null) {
-            sb.append(String.format("<li><b>Mã tham chiếu:</b> %s</li>", refundPayment.getVnpTxnRef()));
-        }
-
-        // Thông tin phạt nếu có
-        if (refundPayment.getPenaltyAmount() != null && refundPayment.getPenaltyAmount() > 0) {
-            sb.append(String.format("<li><b>Số tiền phạt trừ:</b> <span style=\"color:#dc3545;\">%,.0f VNĐ</span></li>",
-                    refundPayment.getPenaltyAmount()));
-            if (refundPayment.getPenaltyLevel() != null) {
-                sb.append(String.format("<li><b>Mức phạt:</b> %s</li>", refundPayment.getPenaltyLevel()));
-            }
-        }
-
-        // Lý do hoàn tiền
-        if (refundPayment.getMessage() != null) {
-            sb.append(String.format("<li><b>Lý do:</b> %s</li>", refundPayment.getMessage()));
-        }
-
-        sb.append("</ul>");
-        sb.append("</div>");
-
-        return sb.toString();
     }
 }

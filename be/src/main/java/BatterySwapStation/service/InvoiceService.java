@@ -432,6 +432,44 @@ public class InvoiceService {
                     .build();
         }
 
+        // ✅ Fetch payments riêng từ repository để tránh MultipleBagFetchException
+        InvoiceSimpleResponseDTO.SimplePaymentInfo paymentInfo = null;
+        List<Payment> payments = paymentRepository.findAllByInvoice(invoice);
+
+        if (payments != null && !payments.isEmpty()) {
+            // Ưu tiên lấy payment REFUND nếu có, nếu không thì lấy payment đầu tiên
+            Payment payment = payments.stream()
+                    .filter(p -> p.getTransactionType() == Payment.TransactionType.REFUND)
+                    .findFirst()
+                    .orElse(payments.get(0));
+
+            // ✅ Tính displayAmount CHỈ dựa trên TransactionType và WALLET_TOPUP
+            // (Không cần kiểm tra InvoiceType.REFUND nữa)
+            String displayAmount;
+            boolean isPositive = payment.getTransactionType() == Payment.TransactionType.REFUND
+                    || invoice.getInvoiceType() == Invoice.InvoiceType.WALLET_TOPUP;
+
+            if (isPositive) {
+                // REFUND hoặc nạp tiền vào ví -> hiển thị dấu +
+                displayAmount = "+" + String.format("%.0f", payment.getAmount());
+            } else {
+                // PAYMENT thông thường (booking, subscription, penalty) -> hiển thị dấu -
+                displayAmount = "-" + String.format("%.0f", payment.getAmount());
+            }
+
+            paymentInfo = InvoiceSimpleResponseDTO.SimplePaymentInfo.builder()
+                    .paymentId(payment.getPaymentId())
+                    .transactionType(payment.getTransactionType().name())
+                    .amount(payment.getAmount())
+                    .displayAmount(displayAmount)
+                    .paymentMethod(payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : null)
+                    .paymentStatus(payment.getPaymentStatus() != null ? payment.getPaymentStatus().name() : null)
+                    .createdAt(payment.getCreatedAt())
+                    .gateway(payment.getGateway())
+                    .vnpTransactionNo(payment.getVnpTransactionNo())
+                    .build();
+        }
+
         return InvoiceSimpleResponseDTO.builder()
                 .invoiceId(invoice.getInvoiceId())
                 .invoiceStatus(invoice.getInvoiceStatus().toString())
@@ -440,6 +478,7 @@ public class InvoiceService {
                 .createdDate(invoice.getCreatedDate())
                 .bookings(simpleBookings)             // ✅ giữ nguyên key FE đang dùng
                 .planToActivate(simplePlanInfo)       // ✅ giữ nguyên key FE đang dùng
+                .paymentInfo(paymentInfo)             // ✅ Thêm thông tin payment
                 .build();
     }
 }

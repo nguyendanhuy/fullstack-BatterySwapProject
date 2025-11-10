@@ -13,6 +13,7 @@ import BatterySwapStation.utils.QrTokenUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -90,6 +91,30 @@ public class BookingController {
             return ResponseEntity.ok(new ApiResponse(true, "Hủy booking thành công!", response));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, "Lỗi hủy booking: " + e.getMessage()));
+        }
+    }
+    
+    @PutMapping("/staff/cancel-with-refund/{bookingId}")
+    @Operation(
+        summary = "Staff hủy booking kèm hoàn tiền",
+        description = "Cho phép staff hủy booking của user và hoàn tiền về ví mà không cần kiểm tra điều kiện thời gian. " +
+                      "Staff cần cung cấp lý do hủy."
+    )
+    public ResponseEntity<ApiResponse> staffCancelBookingWithRefund(
+            @PathVariable @Parameter(description = "ID của booking cần hủy") Long bookingId,
+            @RequestBody @Parameter(description = "Thông tin hủy booking") StaffCancelBookingRequest request) {
+        try {
+            BookingResponse response = bookingService.staffCancelBookingWithRefund(bookingId, request);
+            return ResponseEntity.ok(new ApiResponse(true, "Staff đã hủy booking và hoàn tiền thành công!", response));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, e.getMessage()));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(404)
                     .body(new ApiResponse(false, e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest()

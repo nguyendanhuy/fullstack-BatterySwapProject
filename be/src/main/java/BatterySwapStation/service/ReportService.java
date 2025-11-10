@@ -1,10 +1,8 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.BookingReportItemDTO;
-import BatterySwapStation.dto.StationDetailReportDTO;
+import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Report;
-import BatterySwapStation.entity.Station;
 import BatterySwapStation.entity.Swap;
 import BatterySwapStation.repository.InvoiceRepository;
 import BatterySwapStation.repository.ReportRepository;
@@ -187,6 +185,9 @@ public class ReportService {
         var station = stationRepository.findById(stationId)
                 .orElseThrow(() -> new EntityNotFoundException("Station not found"));
 
+        // ✅ Lấy chi tiết các giao dịch (transactions)
+        List<Map<String, Object>> transactions = getStationTransactionDetails(stationId, start, end);
+
         return Map.of(
                 "stationId", stationId,
                 "stationName", station.getStationName(),
@@ -195,8 +196,101 @@ public class ReportService {
                 "totalRevenue", totalRevenue,
                 "totalSwaps", totalSwaps,
                 "revenueChart", revenueRows,
-                "swapChart", swapRows
+                "swapChart", swapRows,
+                "transactions", transactions
         );
+    }
+
+    // 📋 Lấy chi tiết các giao dịch của trạm
+    private List<Map<String, Object>> getStationTransactionDetails(Integer stationId, LocalDate start, LocalDate end) {
+        // Lấy tất cả swap trong khoảng thời gian
+        List<Swap> swaps = swapRepository.findAllByStationIdAndDateRange(stationId, start, end);
+
+        // Gom nhóm theo booking
+        Map<Long, List<Swap>> swapsByBooking = swaps.stream()
+                .collect(Collectors.groupingBy(s -> s.getBooking().getBookingId()));
+
+        List<Map<String, Object>> transactions = new ArrayList<>();
+        java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        for (Map.Entry<Long, List<Swap>> entry : swapsByBooking.entrySet()) {
+            Long bookingId = entry.getKey();
+            List<Swap> swapList = entry.getValue();
+
+            if (swapList.isEmpty()) continue;
+
+            Swap firstSwap = swapList.getFirst();
+            Booking booking = firstSwap.getBooking();
+
+            // Lấy invoice
+            Invoice invoice = invoiceRepository.findByBookingId(bookingId).orElse(null);
+
+            // Lấy thời gian hoàn thành
+            LocalDateTime completedDateTime = firstSwap.getCompletedTime();
+
+            // Lấy thông tin xe & pin
+            String vehicleModel = booking.getVehicle() != null
+                    ? booking.getVehicle().getVehicleType().toString().replace("_", " ")
+                    : "N/A";
+            String batteryType = booking.getBatteryType() != null
+                    ? booking.getBatteryType()
+                    : "";
+
+            // Lấy danh sách pin đã đổi
+            String batteryIds = swapList.stream()
+                    .map(s -> s.getBatteryOutId() != null ? s.getBatteryOutId() : "")
+                    .filter(id -> !id.isEmpty())
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+
+            String vehicleAndBattery = String.format("%s %s", vehicleModel, batteryType).trim();
+            if (!batteryIds.isEmpty()) {
+                vehicleAndBattery += "\n" + batteryIds;
+            }
+
+            // Xác định phương thức thanh toán
+            String paymentMethod = "Chuyển khoản";
+            if (invoice != null) {
+                if (booking.getTotalPrice() != null && booking.getTotalPrice() == 0) {
+                    paymentMethod = "Thẻ tín dụng";
+                } else if (invoice.getTotalAmount() <= booking.getAmount()) {
+                    paymentMethod = "Ví điện tử";
+                }
+            }
+
+            // Chuyển trạng thái sang tiếng Việt
+            String statusVN = switch (booking.getBookingStatus()) {
+                case COMPLETED -> "Hoàn thành";
+                case PENDINGSWAPPING -> "Đang xử lý";
+                case CANCELLED -> "Đã hủy";
+                case PENDINGPAYMENT -> "Chờ thanh toán";
+                case FAILED -> "Thất bại";
+            };
+
+            // Format số tiền
+            String amountStr = invoice != null
+                    ? String.format("%d VNĐ", invoice.getTotalAmount().intValue())
+                    : "0 VNĐ";
+
+            transactions.add(Map.of(
+                    "transactionId", "TXN" + String.format("%04d", bookingId),
+                    "customerName", booking.getUser().getFullName(),
+                    "vehicleAndBattery", vehicleAndBattery,
+                    "time", completedDateTime.format(timeFormatter),
+                    "amount", amountStr,
+                    "paymentMethod", paymentMethod,
+                    "status", statusVN
+            ));
+        }
+
+        // Sắp xếp theo thời gian giảm dần
+        transactions.sort((a, b) -> {
+            String timeA = (String) a.get("time");
+            String timeB = (String) b.get("time");
+            return timeB.compareTo(timeA);
+        });
+
+        return transactions;
     }
 
     // 📊 Lấy báo cáo tất cả trạm

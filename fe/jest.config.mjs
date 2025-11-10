@@ -7,7 +7,8 @@ export default {
 
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
-    "\\.(css|less|scss|sass|jpg|jpeg|png|gif|svg)$": "identity-obj-proxy",
+    "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+    "\\.(jpg|jpeg|png|gif|svg|webp|ico)$": "<rootDir>/src/__mocks__/fileMock.js",
   },
 
   setupFilesAfterEnv: ["<rootDir>/src/setupTests.js"],

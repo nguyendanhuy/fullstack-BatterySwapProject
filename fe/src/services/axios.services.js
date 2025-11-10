@@ -93,6 +93,15 @@ const checkVNPayPaymentStatus = (txnRef) => {
     return axios.get(`/payments/vnpay/status/${txnRef}`);
 }
 
+const depositSystemWallet = (amount) => {
+    const data = {
+        amount,
+        bankCode: "VNPAY",
+        orderType: "wallet_topup"
+    };
+    return axios.post("/payments/vnpay/wallet/topup", data);
+}
+
 const getInvoicebyUserId = (userId) => {
     return axios.get(`/invoices/user/${userId}`);
 }
@@ -216,6 +225,7 @@ export {
     createInvoiceForBookings,
     createVNPayUrl,
     checkVNPayPaymentStatus,
+    depositSystemWallet,
     getInvoicebyUserId,
     generateQRBooking,
     verifyQrBooking,

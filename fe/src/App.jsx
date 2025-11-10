@@ -19,6 +19,7 @@ import Payment from "./pages/driver/Payment";
 import Subscriptions from "./pages/driver/Subscriptions";
 import SubscriptionCheckout from "./pages/driver/SubscriptionCheckout";
 import BookingHistory from "./pages/driver/BookingHistory";
+import Wallet from "./pages/driver/Wallet";
 // Staff pages
 import StaffDashboard from "./pages/staff/Dashboard";
 import QRCheckIn from "./pages/staff/QRCheckIn";
@@ -71,6 +72,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
               <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="subscriptions/checkout" element={<SubscriptionCheckout />} />
               <Route path="booking-history" element={<BookingHistory />} />
+              <Route path="wallet" element={<Wallet />} />
             </Route>
 
             {/* Staff routes */}

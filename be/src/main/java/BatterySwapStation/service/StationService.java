@@ -138,8 +138,21 @@ public class StationService {
     }
 
     public List<Battery> getAllLooseBatteries(Integer stationId) {
-        return batteryRepository.findAllLooseBatteriesByStation(stationId);
+        List<Object[]> rows = batteryRepository.findLooseBatteriesFastByStation(stationId);
+
+        // Map thủ công sang Battery (chỉ các field cần thiết)
+        return rows.stream().map(r -> {
+            Battery b = new Battery();
+            b.setBatteryId((String) r[0]);
+            b.setBatteryType(Battery.BatteryType.valueOf((String) r[1]));
+            b.setBatteryStatus(Battery.BatteryStatus.valueOf((String) r[2]));
+            b.setStateOfHealth(r[3] != null ? ((Number) r[3]).doubleValue() : null);
+            b.setCurrentCapacity(r[4] != null ? ((Number) r[4]).doubleValue() : null);
+            b.setStationId(r[5] != null ? ((Number) r[5]).intValue() : null);
+            return b;
+        }).toList();
     }
+
 
 
     public List<DockBatteryGroupDTO> getGroupedBatteriesFull(Integer stationId) {

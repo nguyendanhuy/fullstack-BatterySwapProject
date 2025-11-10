@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -211,21 +212,22 @@ public class BatteryService {
     // ==================== PIN RỜI TRONG TRẠM (KHÔNG TRONG DOCKSLOT) ====================
     @Transactional
     public List<Map<String, Object>> getLooseBatteriesByStation(Integer stationId) {
-        List<Battery> list = batteryRepository.findAllLooseBatteriesByStation(stationId);
+        List<Object[]> list = batteryRepository.findLooseBatteriesFastByStation(stationId);
 
         return list.stream()
-                .map(b -> {
-                    Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("batteryId", b.getBatteryId());
-                    map.put("batteryType", b.getBatteryType());
-                    map.put("batteryStatus", b.getBatteryStatus());
-                    map.put("stateOfHealth", b.getStateOfHealth());
-                    map.put("currentCapacity", b.getCurrentCapacity());
-                    map.put("stationId", b.getStationId());
+                .map(r -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("batteryId", r[0]);
+                    map.put("batteryType", r[1]);
+                    map.put("batteryStatus", r[2]);
+                    map.put("stateOfHealth", r[3]);
+                    map.put("currentCapacity", r[4]);
+                    map.put("stationId", r[5]);
                     return map;
                 })
                 .toList();
     }
+
 
 
 
@@ -258,6 +260,58 @@ public class BatteryService {
                 .swapCount(swapCount)
                 .build();
     }
+    @Transactional
+    public Map<String, Object> getBatteryStatistics() {
+        List<Battery> all = batteryRepository.findAll();
+
+        long total = all.size();
+
+        // ✅ Thống kê theo loại pin
+        Map<String, Long> byType = all.stream()
+                .collect(Collectors.groupingBy(
+                        b -> b.getBatteryType().name(),
+                        Collectors.counting()
+                ));
+
+        // ✅ Thống kê theo station
+        Map<Integer, Long> byStation = all.stream()
+                .filter(b -> b.getStationId() != null)
+                .collect(Collectors.groupingBy(Battery::getStationId, Collectors.counting()));
+
+        // ✅ Pin không thuộc trạm nào
+        long unassigned = all.stream()
+                .filter(b -> b.getStationId() == null)
+                .count();
+
+        return Map.of(
+                "totalBatteries", total,
+                "byType", byType,
+                "byStation", byStation,
+                "unassigned", unassigned
+        );
+    }
+
+    @Transactional()
+    public Map<Integer, List<Map<String, Object>>> getAllLooseBatteriesGroupedByStation() {
+        List<Object[]> rows = batteryRepository.findLooseBatteriesWithStationFast();
+
+        Map<Integer, List<Map<String, Object>>> result = new HashMap<>();
+
+        for (Object[] r : rows) {
+            Integer stationId = (Integer) r[5];
+            Map<String, Object> map = new HashMap<>();
+            map.put("batteryId", r[0]);
+            map.put("batteryType", r[1]);
+            map.put("batteryStatus", r[2]);
+            map.put("stateOfHealth", r[3]);
+            map.put("currentCapacity", r[4]);
+            map.put("stationId", stationId);
+
+            result.computeIfAbsent(stationId, k -> new ArrayList<>()).add(map);
+        }
+        return result;
+    }
+
 
 
 }

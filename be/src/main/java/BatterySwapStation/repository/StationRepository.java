@@ -11,6 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface StationRepository extends JpaRepository<Station, Integer> {
+    Optional<Station> findByStationName(String stationName);
 
     // Tổng hợp pin đầy / sạc / tổng cho từng trạm
     @Query("""

@@ -6,6 +6,7 @@ import BatterySwapStation.repository.BookingRepository;
 import BatterySwapStation.service.SwapService;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.Booking;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -121,14 +122,21 @@ public class SwapController {
             ));
         }
     }
-
+    @Operation (summary = "Lấy danh sách các lần swap theo trạm")
     @GetMapping
-    public ResponseEntity<List<SwapListItemDTO>> getSwapsByStation(
-            @RequestParam(name = "stationId") Integer stationId
-    ) {
-        return ResponseEntity.ok(swapService.getSwapsByStation(stationId));
+    public ResponseEntity<?> getSwapsByStation(@RequestParam(name = "stationId") Integer stationId) {
+        try {
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "data", swapService.getSwapsByStation(stationId)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "message", "Lỗi lấy danh sách swap: " + e.getMessage()
+            ));
+        }
     }
-
 
 
 }

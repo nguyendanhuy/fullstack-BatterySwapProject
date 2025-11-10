@@ -1,5 +1,6 @@
 package BatterySwapStation.repository;
 
+import BatterySwapStation.dto.SwapDetail;
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Swap;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -87,5 +88,38 @@ ORDER BY s.completedTime DESC
 
     @Query(value = "SELECT COUNT(*) FROM swap WHERE userid = :userId", nativeQuery = true)
     int countSwapsByUser(String userId);
+
+
+    @Query("""
+SELECT new BatterySwapStation.dto.SwapDetail(
+    s.swapId,
+    b.bookingId,
+    st.stationId,
+    st.stationName,
+    u.userId,
+    u.fullName,
+    u.phone,
+    sf.userId,
+    sf.fullName,
+    sf.phone,
+    batOut.batteryId,
+    batOut.batteryType,
+    batIn.batteryId,
+    batIn.batteryType,
+    s.status,
+    s.completedTime,
+    s.description
+)
+FROM Swap s
+JOIN s.booking b
+JOIN b.station st
+JOIN b.user u
+LEFT JOIN User sf ON sf.userId = s.staffUserId
+LEFT JOIN Battery batOut ON batOut.batteryId = s.batteryOutId
+LEFT JOIN Battery batIn ON batIn.batteryId = s.batteryInId
+WHERE st.stationId = :stationId
+ORDER BY s.completedTime DESC
+""")
+    List<SwapDetail> findDetailedSwapsByStation(@Param("stationId") Integer stationId);
 
 }

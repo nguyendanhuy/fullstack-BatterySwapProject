@@ -1,9 +1,6 @@
 package BatterySwapStation.service;
 
-import BatterySwapStation.dto.BatteryRealtimeEvent;
-import BatterySwapStation.dto.SwapListItemDTO;
-import BatterySwapStation.dto.SwapRequest;
-import BatterySwapStation.dto.SwapResponseDTO;
+import BatterySwapStation.dto.*;
 import BatterySwapStation.entity.*;
 import BatterySwapStation.repository.*;
 import BatterySwapStation.websocket.BatterySocketController; // ✅ STOMP controller
@@ -338,10 +335,10 @@ public class SwapService {
     }
 
     @Transactional(readOnly = true)
-    public List<SwapListItemDTO> getSwapsByStation(Integer stationId) {
-        List<Swap> swaps = swapRepository.findAllByStationId(stationId);
-        return swaps.stream().map(this::toListItemDTO).toList();
+    public List<SwapDetail> getSwapsByStation(Integer stationId) {
+        return swapRepository.findDetailedSwapsByStation(stationId);
     }
+
 
     private SwapListItemDTO toListItemDTO(Swap s) {
         return SwapListItemDTO.builder()
@@ -359,4 +356,11 @@ public class SwapService {
                 .description(s.getDescription())
                 .build();
     }
+
+
+    @Transactional(readOnly = true)
+    public List<SwapDetail> getDetailedSwapsByStation(Integer stationId) {
+        return swapRepository.findDetailedSwapsByStation(stationId);
+    }
+
 }

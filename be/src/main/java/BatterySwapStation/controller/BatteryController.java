@@ -65,6 +65,16 @@ public class BatteryController {
         return ResponseEntity.ok(batteryService.getBatteryDetail(batteryId));
     }
 
+    @Operation(summary = "[TEST]Thống kê pin trong hệ thống")
+    @GetMapping("/analytics")
+    public ResponseEntity<?> getBatteryAnalytics() {
+        return ResponseEntity.ok(batteryService.getBatteryStatistics());
+    }
 
+    @Operation(summary = "Liệt kê toàn bộ pin rời theo từng trạm (không nằm trong DockSlot)")
+    @GetMapping("/loose/all")
+    public ResponseEntity<?> getAllLooseBatteriesGroupedByStation() {
+        return ResponseEntity.ok(batteryService.getAllLooseBatteriesGroupedByStation());
+    }
 
 }

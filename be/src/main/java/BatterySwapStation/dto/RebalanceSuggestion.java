@@ -14,4 +14,5 @@ public class RebalanceSuggestion {
     private String reason;       // Lý do gợi ý
     private int confidence;      // Độ tin cậy (%)
     private String priority;     // Ưu tiên cao/trung bình/thấp
+    private String batteryType;
 }

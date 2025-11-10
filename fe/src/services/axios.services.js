@@ -240,29 +240,45 @@ const confirmCashPenalty = (ticketId, staffId) => {
     return axios.put(`/staff/tickets/${ticketId}/confirm-cash?staffId=${staffId}`);
 }
 
-const getSystemPriceAdmin=() => {
+const getSystemPriceAdmin = () => {
     return axios.get("/admin/system-prices");
 }
 
-const updateSystemPriceAdmin=(priceType, newPrice, description) => {
-    const data={
-        price:newPrice,
-        description:description
+const updateSystemPriceAdmin = (priceType, newPrice, description) => {
+    const data = {
+        price: newPrice,
+        description: description
     }
     return axios.put(`/admin/system-prices/${priceType}`, data);
 }
-const swapHourlyReport=(starDate, endDate) => {
+const swapHourlyReport = (starDate, endDate) => {
     return axios.get(`reports/swap/hourly?startDate=${starDate}&endDate=${endDate}`);
 }
-const swapDaylyReport=(starDate, endDate) => {
+const swapDaylyReport = (starDate, endDate) => {
     return axios.get(`reports/swap/daily?startDate=${starDate}&endDate=${endDate}`);
 }
-const revenueHourlyReport=(starDate, endDate) => {
+const revenueHourlyReport = (starDate, endDate) => {
     return axios.get(`reports/revenue/hourly?startDate=${starDate}&endDate=${endDate}`);
 }
-const revenueDaylyReport=(starDate, endDate) => {
+const revenueDaylyReport = (starDate, endDate) => {
     return axios.get(`reports/revenue/daily?startDate=${starDate}&endDate=${endDate}`);
 }
+
+const getAllRebalance = () => {
+    return axios.get("/rebalances");
+}
+
+const getAIRebalanceSuggestion = () => {
+    return axios.get("/rebalances/suggestions");
+};
+
+const createARebalanceRequest = (data) => {
+    return axios.post("/rebalances", data);
+}
+
+const updateRebalanceRequest = (rebalanceId, status) => {
+    return axios.patch(`/rebalances/${rebalanceId}/status?status=${status}`);
+};
 export {
     swapHourlyReport,
     swapDaylyReport,
@@ -324,5 +340,9 @@ export {
     cancelAutoRenewSubscription,
     cancelSubscriptionImmediate,
     getStationById,
-    confirmCashPenalty
+    confirmCashPenalty,
+    getAllRebalance,
+    getAIRebalanceSuggestion,
+    createARebalanceRequest,
+    updateRebalanceRequest
 };

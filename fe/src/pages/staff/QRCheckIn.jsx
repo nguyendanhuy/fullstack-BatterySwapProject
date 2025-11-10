@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike, Loader2, ClipboardCheck } from "lucide-react";
+import { QrCode, CheckCircle, User, Zap, Star, Smartphone, Box, AlertCircle, Battery, Barcode, Bike, Loader2, ClipboardCheck, Fuel, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Divider, Space, Upload, Popconfirm } from "antd";
@@ -29,6 +29,9 @@ const QRCheckIn = () => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [enteredBatteryId, setEnteredBatteryId] = useState("");
   const [verificationError, setVerificationError] = useState("");
+  const [enteredPhone, setEnteredPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [qrData, setQrData] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isService, setIsService] = useState(false);
@@ -99,6 +102,38 @@ const QRCheckIn = () => {
       setIsVerifying(false);
     }
   }
+
+  //hàm xác nhận số điện thoại
+  const handlePhoneVerify = () => {
+    if (!enteredPhone.trim()) {
+      setPhoneError("Vui lòng nhập số điện thoại khách hàng");
+      setIsPhoneVerified(false);
+      return;
+    }
+
+    // Check if phone matches
+    if (enteredPhone.trim() !== scannedCustomer.phone) {
+      setPhoneError("Số điện thoại không khớp với thông tin booking");
+      setIsPhoneVerified(false);
+      toast({
+        title: "Số điện thoại không đúng",
+        description: "Vui lòng kiểm tra lại số điện thoại khách hàng",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Phone verified successfully
+    setPhoneError("");
+    setIsPhoneVerified(true);
+    toast({
+      title: "Xác thực thành công",
+      description: "Số điện thoại khớp với thông tin booking",
+      className: "bg-green-500 text-white",
+      duration: 3000,
+    });
+  };
+
   //hàm bắt đầu dịch vụ
   const startService = async () => {
     if (!enteredBatteryId.trim()) {
@@ -534,7 +569,7 @@ const QRCheckIn = () => {
                   <div className="grid grid-cols-1 gap-6">
                     {[
                       { icon: User, label: "Tên khách hàng", value: scannedCustomer.fullName, color: "from-blue-500 to-indigo-500" },
-                      { icon: Smartphone, label: "Số điện thoại", value: scannedCustomer.phone, color: "from-green-500 to-emerald-500" },
+                      { icon: Fuel, label: "Trạm", value: scannedCustomer.stationName, color: "from-green-500 to-emerald-500" },
                       { icon: QrCode, label: "Loại xe", value: scannedCustomer.vehicleType, color: "from-purple-500 to-pink-500" },
                       { icon: Zap, label: "Loại pin", value: scannedCustomer.batteryType, color: "from-orange-500 to-yellow-500" },
                       { icon: Bike, label: "Mã vin", value: scannedCustomer.vehicleVin, color: "from-red-500 to-yellow-500" },
@@ -572,6 +607,56 @@ const QRCheckIn = () => {
 
                   {/* Battery ID Verification Section */}
                   <div className="pt-6 border-t border-gray-200">
+                    {/* Phone Number Verification */}
+                    <div className="space-y-2 mb-6">
+                      <Label htmlFor="customer-phone" className="text-sm font-semibold text-gray-700">
+                        Số điện thoại khách hàng <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="flex gap-3">
+                        <Input
+                          id="customer-phone"
+                          type="tel"
+                          placeholder="Nhập số điện thoại (VD: 0123456789)"
+                          value={enteredPhone}
+                          onChange={(e) => {
+                            setEnteredPhone(e.target.value);
+                            setPhoneError("");
+                            setIsPhoneVerified(false);
+                          }}
+                          className={`text-lg font-semibold flex-1 ${phoneError
+                            ? "border-destructive focus-visible:ring-destructive"
+                            : isPhoneVerified
+                              ? "border-green-500 focus-visible:ring-green-500"
+                              : ""
+                            }`}
+                        />
+
+                        <Button
+                          onClick={handlePhoneVerify}
+                          variant="outline"
+                          disabled={!enteredPhone.trim()}
+                          className={`relative rounded-xl px-6 font-semibold ${isPhoneVerified
+                            ? "border-green-500 text-green-700 hover:bg-green-50"
+                            : "border-blue-500 text-blue-700 hover:bg-blue-50"
+                            } disabled:opacity-60`}
+                        >
+                          <CheckCircle className={`h-5 w-5 mr-2 ${isPhoneVerified ? "text-green-600" : "text-blue-600"}`} />
+                          {isPhoneVerified ? "Đã xác nhận" : "Xác nhận"}
+                        </Button>
+                      </div>
+                      {phoneError && (
+                        <div className="flex items-center gap-2 text-destructive text-sm animate-fade-in">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{phoneError}</span>
+                        </div>
+                      )}
+                      {isPhoneVerified && (
+                        <div className="flex items-center gap-2 text-green-600 text-sm animate-fade-in">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Số điện thoại đã được xác thực</span>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="space-y-2 mb-6">
                       <Label htmlFor="battery-id" className="text-sm font-semibold text-gray-700">
@@ -621,7 +706,7 @@ const QRCheckIn = () => {
 
                     <Button
                       onClick={startService}
-                      disabled={!enteredBatteryId.trim() || isVerifying || isService}
+                      disabled={!enteredBatteryId.trim() || !isPhoneVerified || isVerifying || isService}
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {/* Nội dung nút ẩn khi loading */}
@@ -659,7 +744,9 @@ const QRCheckIn = () => {
                               Đang hủy đặt lịch...
                             </span>
                           ) : (
-                            "Hủy booking"
+                            <span className="flex items-center justify-center">
+                              <XCircle className="h-5 w-5 mr-2" /> Hủy booking
+                            </span>
                           )}
                         </Button>
                       </Popconfirm>
@@ -831,7 +918,10 @@ const QRCheckIn = () => {
                 setIsDialogOpen(false);
                 setScannedCustomer(null);
                 setEnteredBatteryId("");
+                setEnteredPhone("");
+                setIsPhoneVerified(false);
                 setVerificationError("");
+                setPhoneError("");
                 setPreviewUrl(null);
               }}
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-8"

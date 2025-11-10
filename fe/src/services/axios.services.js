@@ -251,7 +251,23 @@ const updateSystemPriceAdmin=(priceType, newPrice, description) => {
     }
     return axios.put(`/admin/system-prices/${priceType}`, data);
 }
+const swapHourlyReport=(starDate, endDate) => {
+    return axios.get(`reports/swap/hourly?startDate=${starDate}&endDate=${endDate}`);
+}
+const swapDaylyReport=(starDate, endDate) => {
+    return axios.get(`reports/swap/daily?startDate=${starDate}&endDate=${endDate}`);
+}
+const revenueHourlyReport=(starDate, endDate) => {
+    return axios.get(`reports/revenue/hourly?startDate=${starDate}&endDate=${endDate}`);
+}
+const revenueDaylyReport=(starDate, endDate) => {
+    return axios.get(`reports/revenue/daily?startDate=${starDate}&endDate=${endDate}`);
+}
 export {
+    swapHourlyReport,
+    swapDaylyReport,
+    revenueHourlyReport,
+    revenueDaylyReport,
     getSystemPriceAdmin,
     updateSystemPriceAdmin,
     registerAPI,

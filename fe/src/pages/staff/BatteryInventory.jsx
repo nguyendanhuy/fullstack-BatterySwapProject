@@ -81,6 +81,7 @@ const BatteryInventory = () => {
 
   const [docksData, setDocksData] = useState([]);
 
+
   const [newBattery, setNewBattery] = useState({
     batteryId: "",
     slotId: "",
@@ -90,7 +91,6 @@ const BatteryInventory = () => {
     id: "",
     status: "empty", // "full" | "charging" | "waiting" | "empty"
   });
-
   // ====================
   // Chay real time
   // ====================
@@ -226,6 +226,12 @@ const BatteryInventory = () => {
 
   const currentDock = docks[selectedDockIndex] || { name: "", capacity: 0, slots: [] };
 
+  // Lấy danh sách slot trống của dock hiện tại cho select thêm pin
+  const availableSlots = (docks[selectedDockIndex]?.slots || []).filter(
+    (s) => (s.isEmpty || !s.id));
+
+
+  // ==============
   // Đếm trạng thái tổng (trên tất cả dock)
   const allSlotsFlat = docks.flatMap((d) => d.slots);
   const statusCounts = {
@@ -282,7 +288,6 @@ const BatteryInventory = () => {
     return filled;
   };
 
-  // ==============
   // UI utilities
   // ==============
   const getStatusBadge = (status) => {
@@ -703,16 +708,38 @@ const BatteryInventory = () => {
 
                     <div className="space-y-2">
                       <Label>Slot ID</Label>
-                      <Input
-                        type="number"
-                        value={newBattery.slotId}
-                        onChange={(e) => setNewBattery({ ...newBattery, slotId: e.target.value })}
-                        placeholder="VD: 57"
-                        min="1"
-                      />
+
+                      <Select
+                        value={newBattery.slotId || ""}
+                        onValueChange={(value) => {
+                          console.log("Selected slot value:", value);
+                          setNewBattery({ ...newBattery, slotId: value });
+                        }}
+                        disabled={availableSlots.length === 0}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Chọn SlotID trống" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableSlots.map((s) => (
+                            <SelectItem
+                              key={s.slotId}
+                              value={String(s.slotId)}
+                            >
+                              {s.location} — SlotID {s.slotId}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
                       <p className="text-xs text-gray-500">
                         Gợi ý: xem <i>SlotID</i> trên ô lưới (label góc dưới bên trái).
                       </p>
+                      {newBattery.slotId && (
+                        <p className="text-xs text-green-600 font-medium">
+                          ✓ Đã chọn SlotID: {newBattery.slotId}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -764,6 +791,13 @@ const BatteryInventory = () => {
                             getSlotColor(slot.status)
                           )}
                         >
+                          {isOccupied && (
+                            <div className="absolute top-2 left-1/2 -translate-x-1/2">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black/35 text-white/90 backdrop-blur-sm whitespace-nowrap max-w-[88px] truncate inline-block text-center">
+                                {slot.type || "—"}
+                              </span>
+                            </div>
+                          )}
                           <div className="text-xs font-bold text-white/90 mb-2">
                             {slot.location}
                           </div>

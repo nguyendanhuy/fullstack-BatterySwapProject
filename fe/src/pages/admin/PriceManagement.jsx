@@ -10,8 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Check, Home, Users } from "lucide-react";
-
-// ---- 2 API bạn có ----
 import { getSystemPriceAdmin, updateSystemPriceAdmin } from "../../services/axios.services";
 
 // Helpers

@@ -12,18 +12,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, ArrowLeft, Search, CalendarIcon, TrendingUp, DollarSign, Battery, Users, Clock, MapPin, CreditCard, Eye, Download, Filter, ChevronRight, Activity, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
-import { getStationPerformanceReports, swapHourlyReport, swapDaylyReport, revenueHourlyReport, revenueDaylyReport } from "@/services/axios.services";
+import { getStationPerformanceReports, swapHourlyReport, swapDaylyReport, revenueHourlyReport, revenueDaylyReport, getStationReportByRangeDate } from "../../services/axios.services";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, ComposedChart, Line } from 'recharts';
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
+import { Pagination } from 'antd';
 
 const Reports = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStation, setSelectedStation] = useState("");
   const [loading, setLoading] = useState(true);
   const [stations, setStations] = useState([]);
-  const [timeRange, setTimeRange] = useState("week")
+  const [timeRange, setTimeRange] = useState("7")
   const [selectedStationDetails, setSelectedStationDetails] = useState(null);
+  const [stationTransactions, setStationTransactions] = useState([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   // States for analytics chart
   const [chartViewMode, setChartViewMode] = useState("daily"); // "hourly" or "daily"
@@ -174,61 +179,36 @@ const Reports = () => {
     loadChartData();
   }, [chartViewMode, chartDateRange]);
 
-  const getWeeklyTransactions = stationId => {
-    // Dữ liệu mock
-    const transactions = [{
-      id: "TXN001",
-      customerName: "Nguyễn Văn A",
-      vehicleType: "VinFast VF8",
-      batteryType: "Lithium-ion",
-      swapTime: "15/01/2024 14:30",
-      duration: "3 phút 45 giây",
-      amount: "120,000",
-      status: "Hoàn thành",
-      paymentMethod: "Thẻ tín dụng"
-    }, {
-      id: "TXN002",
-      customerName: "Trần Thị B",
-      vehicleType: "VinFast VF9",
-      batteryType: "LFP",
-      swapTime: "15/01/2024 16:15",
-      duration: "4 phút 12 giây",
-      amount: "110,000",
-      status: "Hoàn thành",
-      paymentMethod: "Ví điện tử"
-    }, {
-      id: "TXN003",
-      customerName: "Lê Văn C",
-      vehicleType: "VinFast VF6",
-      batteryType: "Lithium-ion",
-      swapTime: "16/01/2024 09:20",
-      duration: "3 phút 28 giây",
-      amount: "115,000",
-      status: "Hoàn thành",
-      paymentMethod: "Chuyển khoản"
-    }, {
-      id: "TXN004",
-      customerName: "Phạm Thị D",
-      vehicleType: "VinFast VF8",
-      batteryType: "Lithium-ion",
-      swapTime: "16/01/2024 11:45",
-      duration: "2 phút 56 giây",
-      amount: "120,000",
-      status: "Hoàn thành",
-      paymentMethod: "Thẻ tín dụng"
-    }, {
-      id: "TXN005",
-      customerName: "Hoàng Văn E",
-      vehicleType: "VinFast VF9",
-      batteryType: "LFP",
-      swapTime: "17/01/2024 08:30",
-      duration: "4 phút 05 giây",
-      amount: "110,000",
-      status: "Đang xử lý",
-      paymentMethod: "Ví điện tử"
-    }];
-    return transactions;
-  };
+  // Load station transactions when station or time range changes
+  useEffect(() => {
+    const loadStationTransactions = async () => {
+      if (!selectedStationDetails?.stationId) {
+        setStationTransactions([]);
+        return;
+      }
+      try {
+        setTransactionsLoading(true);
+        const response = await getStationReportByRangeDate(
+          selectedStationDetails.stationId,
+          parseInt(timeRange)
+        );
+
+        const transactions = response?.data?.transactions || [];
+        setStationTransactions(transactions);
+        setCurrentPage(1); // Reset to first page when data changes
+      } catch (error) {
+        setStationTransactions([]);
+        const errorMessage = error.response?.data?.message ||
+          error.message ||
+          "Không thể tải dữ liệu giao dịch. Vui lòng thử lại sau.";
+        toast.error(errorMessage);
+      } finally {
+        setTransactionsLoading(false);
+      }
+    };
+
+    loadStationTransactions();
+  }, [selectedStationDetails?.stationId, timeRange]);
 
   const kpiData = useMemo(() => {
     if (!stations || stations.length === 0) {
@@ -260,6 +240,18 @@ const Reports = () => {
       avgEfficiency: `${avgEfficiency.toFixed(1)}%`
     };
   }, [stations]);
+
+  // Paginated transactions
+  const paginatedTransactions = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return stationTransactions.slice(startIndex, endIndex);
+  }, [stationTransactions, currentPage, pageSize]);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
   return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
     {/* Header */}
     <div className="bg-white border-b border-slate-200/60 sticky top-0 z-10 backdrop-blur-lg bg-white/95">
@@ -761,54 +753,83 @@ const Reports = () => {
                                             <SelectValue placeholder="Chọn khoảng thời gian" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            <SelectItem value="day">Xem theo ngày</SelectItem>
-                                            <SelectItem value="week">Xem theo tuần</SelectItem>
-                                            <SelectItem value="month">Xem theo tháng</SelectItem>
+                                            <SelectItem value="1"> Xem theo ngày</SelectItem>
+                                            <SelectItem value="7">Xem theo tuần</SelectItem>
+                                            <SelectItem value="30">Xem theo tháng</SelectItem>
                                           </SelectContent>
                                         </Select>
                                       </div>
                                     </div>
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="rounded-lg border border-slate-200/60 overflow-hidden">
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow className="bg-slate-50/50">
-                                            <TableHead className="font-semibold">Mã Giao Dịch</TableHead>
-                                            <TableHead className="font-semibold">Khách Hàng</TableHead>
-                                            <TableHead className="font-semibold">Xe & Pin</TableHead>
-                                            <TableHead className="font-semibold">Thời Gian</TableHead>
-                                            <TableHead className="font-semibold">Thời Lượng</TableHead>
-                                            <TableHead className="font-semibold">Số Tiền</TableHead>
-                                            <TableHead className="font-semibold">Thanh Toán</TableHead>
-                                            <TableHead className="font-semibold">Trạng Thái</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {getWeeklyTransactions(selectedStationDetails.stationId).map(transaction => <TableRow key={transaction.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <TableCell className="font-medium text-blue-600">{transaction.id}</TableCell>
-                                            <TableCell className="font-medium">{transaction.customerName}</TableCell>
-                                            <TableCell>
-                                              <div>
-                                                <div className="font-medium text-slate-900">{transaction.vehicleType}</div>
-                                                <div className="text-xs text-slate-500">{transaction.batteryType}</div>
-                                              </div>
-                                            </TableCell>
-                                            <TableCell className="text-sm">{transaction.swapTime}</TableCell>
-                                            <TableCell className="text-sm">{transaction.duration}</TableCell>
-                                            <TableCell className="font-bold text-emerald-700">
-                                              {parseInt(transaction.amount).toLocaleString()} VNĐ
-                                            </TableCell>
-                                            <TableCell className="text-sm">{transaction.paymentMethod}</TableCell>
-                                            <TableCell>
-                                              <Badge variant={transaction.status === "Hoàn thành" ? "default" : "secondary"} className={transaction.status === "Hoàn thành" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : ""}>
-                                                {transaction.status}
-                                              </Badge>
-                                            </TableCell>
-                                          </TableRow>)}
-                                        </TableBody>
-                                      </Table>
-                                    </div>
+                                    {transactionsLoading ? (
+                                      <div className="py-12 flex items-center justify-center text-slate-600">
+                                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                        Đang tải dữ liệu giao dịch...
+                                      </div>
+                                    ) : stationTransactions.length === 0 ? (
+                                      <div className="py-12 text-center text-slate-500">
+                                        Không có giao dịch trong khoảng thời gian này
+                                      </div>
+                                    ) : (
+                                      <div className="rounded-lg border border-slate-200/60 overflow-hidden">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow className="bg-slate-50/50">
+                                              <TableHead className="font-semibold">Mã Giao Dịch</TableHead>
+                                              <TableHead className="font-semibold">Khách Hàng</TableHead>
+                                              <TableHead className="font-semibold">Xe & Pin</TableHead>
+                                              <TableHead className="font-semibold">Thời Gian</TableHead>
+                                              <TableHead className="font-semibold">Số Tiền</TableHead>
+                                              <TableHead className="font-semibold">Thanh Toán</TableHead>
+                                              <TableHead className="font-semibold">Trạng Thái</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {paginatedTransactions.map(transaction => <TableRow key={transaction.transactionId} className="hover:bg-slate-50/50 transition-colors">
+                                              <TableCell className="font-medium text-blue-600">{transaction.transactionId}</TableCell>
+                                              <TableCell className="font-medium">{transaction.customerName}</TableCell>
+                                              <TableCell>
+                                                <div className="whitespace-pre-line text-sm">
+                                                  {transaction.vehicleAndBattery}
+                                                </div>
+                                              </TableCell>
+                                              <TableCell className="text-sm">{transaction.time}</TableCell>
+                                              <TableCell className="font-bold text-emerald-700">
+                                                {transaction.amount}
+                                              </TableCell>
+                                              <TableCell className="text-sm">{transaction.paymentMethod}</TableCell>
+                                              <TableCell>
+                                                <Badge
+                                                  variant={transaction.status === "Hoàn thành" ? "default" : transaction.status === "Đã hủy" ? "destructive" : "secondary"}
+                                                  className={
+                                                    transaction.status === "Hoàn thành"
+                                                      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                                      : transaction.status === "Đã hủy"
+                                                        ? "bg-red-100 text-red-700 border-red-200"
+                                                        : ""
+                                                  }
+                                                >
+                                                  {transaction.status}
+                                                </Badge>
+                                              </TableCell>
+                                            </TableRow>)}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    )}
+
+                                    {/* Pagination */}
+                                    {!transactionsLoading && stationTransactions.length > 0 && (
+                                      <div className="mt-4 flex justify-center">
+                                        <Pagination
+                                          current={currentPage}
+                                          pageSize={pageSize}
+                                          total={stationTransactions.length}
+                                          onChange={handlePageChange}
+                                        />
+                                      </div>
+                                    )}
                                   </CardContent>
                                 </Card>
 

@@ -279,7 +279,12 @@ const createARebalanceRequest = (data) => {
 const updateRebalanceRequest = (rebalanceId, status) => {
     return axios.patch(`/rebalances/${rebalanceId}/status?status=${status}`);
 };
+
+const getStationReportByRangeDate = (stationId, range) => {
+    return axios.get(`/reports/station/${stationId}/range?days=${range}`);
+}
 export {
+    getStationReportByRangeDate,
     swapHourlyReport,
     swapDaylyReport,
     revenueHourlyReport,

@@ -120,30 +120,6 @@ const getPaymentMethodInfo = (paymentMethod) => {
     return methodConfig[paymentMethod] || { label: paymentMethod, icon: "💳" };
 };
 
-// Lấy thông tin hiển thị cho loại giao dịch
-const getTransactionTypeInfo = (transactionType) => {
-    const typeConfig = {
-        PAYMENT: {
-            label: "Chi trả",
-            icon: ArrowUpRight,
-            color: "text-red-600",
-            bgColor: "bg-red-50"
-        },
-        REFUND: {
-            label: "Hoàn tiền",
-            icon: ArrowDownLeft,
-            color: "text-green-600",
-            bgColor: "bg-green-50"
-        }
-    };
-    return typeConfig[transactionType] || {
-        label: transactionType || "Khác",
-        icon: FileText,
-        color: "text-gray-600",
-        bgColor: "bg-gray-50"
-    };
-};
-
 // Chỉ giữ 2 trạng thái cho HÓA ĐƠN: PENDING, PAID
 const getStatusBadge = (status) => {
     const statusConfig = {

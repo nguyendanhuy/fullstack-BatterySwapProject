@@ -233,7 +233,7 @@ const DriverDashboard = () => {
 
         {/* Enhanced Hero Section */}
         <div className="relative mb-8 rounded-2xl overflow-hidden animate-fade-in group">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 via-indigo-600/90 to-purple-600/90" />
+          <div className="absolute" />
           <img src="/src/assets/ev-station-hero.jpg" alt="EV Station" className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-700" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           <div className="absolute inset-6 flex flex-col justify-center">
@@ -244,10 +244,6 @@ const DriverDashboard = () => {
                 <span className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
                   99.8% uptime
-                </span>
-                <span className="flex items-center gap-2">
-                  <Star className="h-5 w-5" />
-                  4.9/5 đánh giá
                 </span>
               </div>
             </div>

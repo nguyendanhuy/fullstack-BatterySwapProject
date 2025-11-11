@@ -26,7 +26,6 @@ const SignUp = () => {
     userType: 1,
     password: "",
     confirmPassword: "",
-    agreeTerms: false,
   });
 
   useEffect(() => {
@@ -245,20 +244,6 @@ const SignUp = () => {
                   {showConfirmPassword ? (<EyeOff className="h-4 w-4" />) : (<Eye className="h-4 w-4" />)}
                 </Button>
               </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox id="agreeTerms" checked={formData.agreeTerms} onCheckedChange={(checked) => handleInputChange("agreeTerms", checked)} />
-              <Label htmlFor="agreeTerms" className="text-sm">
-                Tôi đồng ý với{" "}
-                <Link to="#" className="text-electric-blue hover:underline">
-                  điều khoản sử dụng
-                </Link>{" "}
-                và{" "}
-                <Link to="#" className="text-electric-blue hover:underline">
-                  chính sách bảo mật
-                </Link>
-              </Label>
             </div>
 
             <Button

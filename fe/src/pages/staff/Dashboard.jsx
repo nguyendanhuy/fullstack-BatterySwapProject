@@ -41,7 +41,7 @@ const StaffDashboard = () => {
           variant: "destructive",
         });
       } else {
-        setTotalSwapCount(swapRes.length);
+        setTotalSwapCount(swapRes.data.length);
       }
       const waitingBatteryRes = await getWattingBatteryInventory(userData.assignedStationId);
       if (isErrorResponse(waitingBatteryRes)) {

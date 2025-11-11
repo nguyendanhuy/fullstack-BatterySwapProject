@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -105,7 +105,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">69x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -129,19 +129,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">70x</span>
+<span class="cline-any cline-yes">70x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-function <span class="fstat-no" title="function not covered" >Calendar(</span>{ className, classNames, showOutsideDays = <span class="branch-0 cbranch-no" title="branch not covered" >true,</span> ...props }) {
-<span class="cstat-no" title="statement not covered" >    return (&lt;DayPicker showOutsideDays={showOutsideDays} className={cn("p-3", className)} classNames={{</span>
+function Calendar({ className, classNames, showOutsideDays = true, ...props }) {
+    return (&lt;DayPicker showOutsideDays={showOutsideDays} className={cn("p-3", className)} classNames={{
             months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
             month: "space-y-4",
             caption: "flex justify-center pt-1 relative items-center",
@@ -165,11 +165,11 @@ function <span class="fstat-no" title="function not covered" >Calendar(</span>{ 
             day_hidden: "invisible",
             ...classNames,
         }} components={{
-            IconLeft: <span class="fstat-no" title="function not covered" >({</span> ..._props }) =&gt; <span class="cstat-no" title="statement not covered" >&lt;ChevronLeft className="h-4 w-4"/&gt;,</span>
-            IconRight: <span class="fstat-no" title="function not covered" >({</span> ..._props }) =&gt; <span class="cstat-no" title="statement not covered" >&lt;ChevronRight className="h-4 w-4"/&gt;,</span>
+            IconLeft: ({ ..._props }) =&gt; &lt;ChevronLeft className="h-4 w-4"/&gt;,
+            IconRight: ({ ..._props }) =&gt; &lt;ChevronRight className="h-4 w-4"/&gt;,
         }} {...props}/&gt;);
 }
-<span class="cstat-no" title="statement not covered" >Calendar.displayName = "Calendar";</span>
+Calendar.displayName = "Calendar";
 export { Calendar };
 &nbsp;</pre></td></tr></table></pre>
 
@@ -178,7 +178,7 @@ export { Calendar };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-11-10T13:09:33.457Z
+                at 2025-11-11T14:24:49.331Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

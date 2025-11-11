@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>22/22</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/16</span>
+                <span class='fraction'>16/16</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -97,13 +97,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">104x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">755x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -113,27 +113,27 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">71x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">38x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">71x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">71x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-const Dialog = <span class="cstat-no" title="statement not covered" >DialogPrimitive.Root;</span>
-const DialogTrigger = <span class="cstat-no" title="statement not covered" >DialogPrimitive.Trigger;</span>
-const DialogPortal = <span class="cstat-no" title="statement not covered" >DialogPrimitive.Portal;</span>
-const DialogClose = <span class="cstat-no" title="statement not covered" >DialogPrimitive.Close;</span>
-const DialogOverlay = <span class="cstat-no" title="statement not covered" >React.forwardRef(<span class="fstat-no" title="function not covered" >({</span> className, ...props }, ref) =&gt; (<span class="cstat-no" title="statement not covered" >&lt;DialogPrimitive.Overlay ref={ref} className={cn("fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0", className)} {...props}/&gt;)</span>);</span>
-<span class="cstat-no" title="statement not covered" >DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;</span>
-const DialogContent = <span class="cstat-no" title="statement not covered" >React.forwardRef(<span class="fstat-no" title="function not covered" >({</span> className, children, ...props }, ref) =&gt; (<span class="cstat-no" title="statement not covered" >&lt;DialogPortal&gt;</span></span>
+const Dialog = DialogPrimitive.Root;
+const DialogTrigger = DialogPrimitive.Trigger;
+const DialogPortal = DialogPrimitive.Portal;
+const DialogClose = DialogPrimitive.Close;
+const DialogOverlay = React.forwardRef(({ className, ...props }, ref) =&gt; (&lt;DialogPrimitive.Overlay ref={ref} className={cn("fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0", className)} {...props}/&gt;));
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+const DialogContent = React.forwardRef(({ className, children, ...props }, ref) =&gt; (&lt;DialogPortal&gt;
     &lt;DialogOverlay /&gt;
     &lt;DialogPrimitive.Content ref={ref} className={cn("fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg", className)} {...props}&gt;
       {children}
@@ -143,15 +143,15 @@ const DialogContent = <span class="cstat-no" title="statement not covered" >Reac
       &lt;/DialogPrimitive.Close&gt;
     &lt;/DialogPrimitive.Content&gt;
   &lt;/DialogPortal&gt;));
-<span class="cstat-no" title="statement not covered" >DialogContent.displayName = DialogPrimitive.Content.displayName;</span>
-const DialogHeader = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >({</span> className, ...props }) =&gt; (<span class="cstat-no" title="statement not covered" >&lt;div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props}/&gt;)</span>;</span>
-<span class="cstat-no" title="statement not covered" >DialogHeader.displayName = "DialogHeader";</span>
-const DialogFooter = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >({</span> className, ...props }) =&gt; (<span class="cstat-no" title="statement not covered" >&lt;div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props}/&gt;)</span>;</span>
-<span class="cstat-no" title="statement not covered" >DialogFooter.displayName = "DialogFooter";</span>
-const DialogTitle = <span class="cstat-no" title="statement not covered" >React.forwardRef(<span class="fstat-no" title="function not covered" >({</span> className, ...props }, ref) =&gt; (<span class="cstat-no" title="statement not covered" >&lt;DialogPrimitive.Title ref={ref} className={cn("text-lg font-semibold leading-none tracking-tight", className)} {...props}/&gt;)</span>);</span>
-<span class="cstat-no" title="statement not covered" >DialogTitle.displayName = DialogPrimitive.Title.displayName;</span>
-const DialogDescription = <span class="cstat-no" title="statement not covered" >React.forwardRef(<span class="fstat-no" title="function not covered" >({</span> className, ...props }, ref) =&gt; (<span class="cstat-no" title="statement not covered" >&lt;DialogPrimitive.Description ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props}/&gt;)</span>);</span>
-<span class="cstat-no" title="statement not covered" >DialogDescription.displayName = DialogPrimitive.Description.displayName;</span>
+DialogContent.displayName = DialogPrimitive.Content.displayName;
+const DialogHeader = ({ className, ...props }) =&gt; (&lt;div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props}/&gt;);
+DialogHeader.displayName = "DialogHeader";
+const DialogFooter = ({ className, ...props }) =&gt; (&lt;div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props}/&gt;);
+DialogFooter.displayName = "DialogFooter";
+const DialogTitle = React.forwardRef(({ className, ...props }, ref) =&gt; (&lt;DialogPrimitive.Title ref={ref} className={cn("text-lg font-semibold leading-none tracking-tight", className)} {...props}/&gt;));
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
+const DialogDescription = React.forwardRef(({ className, ...props }, ref) =&gt; (&lt;DialogPrimitive.Description ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props}/&gt;));
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
 export { Dialog, DialogPortal, DialogOverlay, DialogClose, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, };
 &nbsp;</pre></td></tr></table></pre>
 
@@ -160,7 +160,7 @@ export { Dialog, DialogPortal, DialogOverlay, DialogClose, DialogTrigger, Dialog
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-11-10T13:09:33.457Z
+                at 2025-11-11T14:24:49.331Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

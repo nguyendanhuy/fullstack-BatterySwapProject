@@ -40,9 +40,12 @@ public class InvoiceController {
     public ResponseEntity<Map<String, Object>> getInvoiceSimple(
             @PathVariable @Parameter(description = "ID của invoice") Long invoiceId) {
         try {
+            // ⚡ BƯỚC 1: Fetch invoice với bookings, stations, vehicles
             Invoice invoice = invoiceRepository.findByIdWithFullDetails(invoiceId)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
 
+            // ⚡ BƯỚC 2: Fetch payments riêng cho invoice này (tránh N+1)
+            invoiceRepository.fetchPaymentsForInvoice(invoiceId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("invoiceId", invoice.getInvoiceId());
@@ -100,11 +103,16 @@ public class InvoiceController {
             @PathVariable @Parameter(description = "ID của user") String userId) {
 
         try {
-            // ⚡ DÙNG JOIN FETCH ĐỂ LẤY TOÀN BỘ DỮ LIỆU LIÊN QUAN
+            // ⚡ BƯỚC 1: Fetch invoices với bookings, stations, vehicles
             List<Invoice> userInvoices = invoiceRepository.findByUserIdWithFullDetails(userId);
 
-            // ⚡ KHÔNG GỌI SERVICE.getInvoiceSimple() (vì sẽ query lại DB từng invoice)
-            // → Gọi method mới, dùng dữ liệu đã fetch sẵn
+            // ⚡ BƯỚC 2: Batch fetch payments cho TẤT CẢ invoices (chỉ 1 query)
+            // Hibernate sẽ tự động populate collection payments vào các invoice entities
+            if (!userInvoices.isEmpty()) {
+                invoiceRepository.fetchPaymentsForInvoices(userInvoices);
+            }
+
+            // ⚡ BƯỚC 3: Build DTO từ dữ liệu đã fetch sẵn (không query thêm)
             List<InvoiceSimpleResponseDTO> invoiceDTOs = userInvoices.stream()
                     .map(invoiceService::buildInvoiceSimpleFromFetched)
                     .collect(Collectors.toList());

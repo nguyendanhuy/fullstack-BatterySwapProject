@@ -103,6 +103,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             "ORDER BY i.createdDate DESC")
     List<Invoice> findLatestPaidSubscriptionInvoices(@Param("userId") String userId);
 
+    /**
+     * ⚡ Fetch invoices với bookings, stations, vehicles và planToActivate
+     * NOTE: Không fetch payments ở đây để tránh MultipleBagFetchException
+     * Payments sẽ được fetch riêng trong batch query
+     */
     @Query("""
 SELECT DISTINCT i FROM Invoice i
 LEFT JOIN FETCH i.bookings b
@@ -114,17 +119,41 @@ ORDER BY i.createdDate DESC
 """)
     List<Invoice> findByUserIdWithFullDetails(@Param("userId") String userId);
 
+    /**
+     * ⚡ Batch fetch payments cho nhiều invoices cùng lúc
+     * Tránh N+1 problem khi cần payments cho nhiều invoices
+     */
+    @Query("""
+SELECT DISTINCT i FROM Invoice i
+LEFT JOIN FETCH i.payments
+WHERE i IN :invoices
+""")
+    List<Invoice> fetchPaymentsForInvoices(@Param("invoices") List<Invoice> invoices);
 
+    /**
+     * ⚡ Fetch 1 invoice với đầy đủ thông tin
+     * NOTE: Để tránh MultipleBagFetchException, query này chỉ fetch bookings
+     * Payments sẽ được fetch riêng bằng fetchPaymentsForInvoice()
+     */
     @Query("""
 SELECT DISTINCT i FROM Invoice i
 LEFT JOIN FETCH i.bookings b
 LEFT JOIN FETCH b.station
 LEFT JOIN FETCH b.vehicle
-LEFT JOIN FETCH i.payments
 LEFT JOIN FETCH i.planToActivate
 WHERE i.invoiceId = :invoiceId
 """)
     Optional<Invoice> findByIdWithFullDetails(@Param("invoiceId") Long invoiceId);
+
+    /**
+     * ⚡ Fetch payments riêng cho 1 invoice
+     */
+    @Query("""
+SELECT i FROM Invoice i
+LEFT JOIN FETCH i.payments
+WHERE i.invoiceId = :invoiceId
+""")
+    Optional<Invoice> fetchPaymentsForInvoice(@Param("invoiceId") Long invoiceId);
 
 
 }

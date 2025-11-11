@@ -340,9 +340,8 @@ public class InvoiceService {
 
     /**
      * Lọc Invoices theo trạng thái (PENDING/ PAID/ PAYMENTFAILED)
-     * ✅ [CẬP NHẬT] Thêm @Transactional
      */
-    @Transactional(readOnly = true) // <-- THÊM MỚI (Rất quan trọng để fix lỗi Lazy loading)
+    @Transactional(readOnly = true)
     public List<InvoiceSimpleResponseDTO> getInvoicesByStatus(String statusString) {
         Invoice.InvoiceStatus status;
         String upperStatus = statusString.trim().toUpperCase();
@@ -360,12 +359,28 @@ public class InvoiceService {
             );
         }
 
+        // ⚡ Lấy danh sách invoices theo status
         List<Invoice> invoices = invoiceRepository.findByInvoiceStatus(status);
 
-        // Chuyển đổi sang DTO
-        // (Cuộc gọi 'getInvoiceSimple' này giờ đã an toàn vì @Transactional)
+        // ⚡ QUAN TRỌNG: Nếu có invoices, fetch tất cả relationships một lần
+        // để tránh N+1 problem
+        if (!invoices.isEmpty()) {
+            // Batch fetch bookings, stations, vehicles, planToActivate
+            // (Hibernate sẽ tự động fetch nếu chúng được đánh dấu LAZY)
+            invoices.forEach(inv -> {
+                inv.getBookings().size(); // Force initialize bookings
+                inv.getBookings().forEach(b -> {
+                    if (b.getStation() != null) b.getStation().getStationId();
+                    if (b.getVehicle() != null) b.getVehicle().getVehicleId();
+                });
+                if (inv.getPlanToActivate() != null) inv.getPlanToActivate().getId();
+                inv.getPayments().size(); // Force initialize payments
+            });
+        }
+
+        // ⚡ Chuyển đổi sang DTO (không query thêm vì đã fetch sẵn)
         return invoices.stream()
-                .map(invoice -> getInvoiceSimple(invoice.getInvoiceId()))
+                .map(this::buildInvoiceSimpleFromFetched)
                 .collect(Collectors.toList());
     }
 
@@ -434,7 +449,7 @@ public class InvoiceService {
 
         // ✅ Fetch payments riêng từ repository để tránh MultipleBagFetchException
         InvoiceSimpleResponseDTO.SimplePaymentInfo paymentInfo = null;
-        List<Payment> payments = paymentRepository.findAllByInvoice(invoice);
+        List<Payment> payments = invoice.getPayments(); // Lấy từ invoice đã fetch
 
         if (payments != null && !payments.isEmpty()) {
             // Ưu tiên lấy payment REFUND nếu có, nếu không thì lấy payment đầu tiên
@@ -444,7 +459,6 @@ public class InvoiceService {
                     .orElse(payments.get(0));
 
             // ✅ Tính displayAmount CHỈ dựa trên TransactionType và WALLET_TOPUP
-            // (Không cần kiểm tra InvoiceType.REFUND nữa)
             String displayAmount;
             boolean isPositive = payment.getTransactionType() == Payment.TransactionType.REFUND
                     || invoice.getInvoiceType() == Invoice.InvoiceType.WALLET_TOPUP;

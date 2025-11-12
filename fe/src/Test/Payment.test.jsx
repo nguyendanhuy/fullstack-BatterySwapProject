@@ -274,180 +274,7 @@ describe("Payment page", () => {
         resolveFn({ success: true });
     });
 
-    // ===== 5. TEST PENDING INVOICE PAYMENT =====
-    test.skip("displays VNPay option for pending invoice", () => {
-        const pendingInvoiceState = {
-            pendingInvoice: {
-                invoiceId: 123,
-                invoiceType: "BOOKING",
-                totalAmount: 200000,
-                createdDate: "2025-12-01T10:00:00",
-                numberOfSwaps: 2,
-                pricePerSwap: 100000,
-                bookings: [],
-            },
-            totalPrice: 200000,
-        };
-
-        renderUI(pendingInvoiceState);
-
-        expect(screen.getByText("Thẻ tín dụng/ghi nợ")).toBeInTheDocument();
-        expect(screen.getByText(/Visa, Mastercard, JCB qua VNPay/)).toBeInTheDocument();
-    });
-
-    test.skip("displays pending invoice details", () => {
-        const pendingInvoiceState = {
-            pendingInvoice: {
-                invoiceId: 123,
-                invoiceType: "BOOKING",
-                totalAmount: 200000,
-                createdDate: "2025-12-01T10:00:00",
-                numberOfSwaps: 2,
-                pricePerSwap: 100000,
-                bookings: [
-                    {
-                        vehicleType: "Xe máy điện",
-                        batteryType: "48V",
-                        stationName: "Trạm A",
-                        scheduledDate: "2025-12-01",
-                        scheduledTime: "09:00",
-                    },
-                ],
-            },
-        };
-
-        renderUI(pendingInvoiceState);
-
-        expect(screen.getByText(/Hóa đơn #123/)).toBeInTheDocument();
-        expect(screen.getByText(/Số lượt đổi: 2 lượt/)).toBeInTheDocument();
-        expect(screen.getByText(/200\.000 VNĐ/)).toBeInTheDocument();
-        expect(screen.getByText(/Xe máy điện/)).toBeInTheDocument();
-        expect(screen.getByText(/Trạm A/)).toBeInTheDocument();
-    });
-
-    test.skip("handles VNPay payment for pending invoice", async () => {
-        const { createVNPayUrl } = require("../services/axios.services");
-        createVNPayUrl.mockResolvedValueOnce({
-            paymentUrl: "https://vnpay.test/payment",
-        });
-
-        const pendingInvoiceState = {
-            pendingInvoice: {
-                invoiceId: 123,
-                invoiceType: "BOOKING",
-                totalAmount: 200000,
-                createdDate: "2025-12-01T10:00:00",
-            },
-        };
-
-        renderUI(pendingInvoiceState);
-
-        const payButton = screen.getByRole("button", { name: /Thanh toán VNPay/i });
-        fireEvent.click(payButton);
-
-        await waitFor(() => {
-            expect(createVNPayUrl).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    invoiceId: 123,
-                    bankCode: "VNPAY",
-                    orderType: "WALLET_TOPUP",
-                })
-            );
-
-            expect(mockToast).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    title: "Chuyển hướng...",
-                    description: "Đang chuyển đến cổng thanh toán...",
-                })
-            );
-        });
-    });
-
-    test.skip("shows error when VNPay URL creation fails", async () => {
-        const { createVNPayUrl } = require("../services/axios.services");
-        createVNPayUrl.mockResolvedValueOnce({
-            success: false,
-            error: "Invalid invoice",
-        });
-
-        const pendingInvoiceState = {
-            pendingInvoice: {
-                invoiceId: 123,
-                invoiceType: "BOOKING",
-                totalAmount: 200000,
-                createdDate: "2025-12-01T10:00:00",
-            },
-        };
-
-        renderUI(pendingInvoiceState);
-
-        const payButton = screen.getByRole("button", { name: /Thanh toán VNPay/i });
-        fireEvent.click(payButton);
-
-        await waitFor(() => {
-            expect(mockToast).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    title: "Lỗi thanh toán",
-                    description: "Invalid invoice",
-                    variant: "destructive",
-                })
-            );
-        });
-    });
-
-    // ===== 6. TEST VNPAY RETURN HANDLING =====
-    test.skip("handles successful VNPay payment return", async () => {
-        const { checkVNPayPaymentStatus } = require("../services/axios.services");
-        checkVNPayPaymentStatus.mockResolvedValueOnce({
-            paymentStatus: "SUCCESS",
-            vnpResponseCode: "00",
-            message: "Payment successful",
-        });
-
-        // Set window.location.search for URLSearchParams
-        window.location.search = "?vnp_TxnRef=12345";
-
-        renderUI();
-
-        await waitFor(() => {
-            expect(checkVNPayPaymentStatus).toHaveBeenCalledWith("12345");
-        }, { timeout: 4000 });
-
-        await waitFor(() => {
-            expect(mockToast).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    title: "Thanh toán thành công!",
-                    description: "Payment successful",
-                })
-            );
-        }, { timeout: 4000 });
-    });
-
-    test.skip("handles failed VNPay payment return", async () => {
-        const { checkVNPayPaymentStatus } = require("../services/axios.services");
-        checkVNPayPaymentStatus.mockResolvedValueOnce({
-            paymentStatus: "FAILED",
-            vnpResponseCode: "99",
-            message: "Payment failed",
-        });
-
-        // Set window.location.search for URLSearchParams
-        window.location.search = "?vnp_TxnRef=12345";
-
-        renderUI();
-
-        await waitFor(() => {
-            expect(mockToast).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    title: "Thanh toán thất bại!",
-                    description: "Payment failed",
-                    variant: "destructive",
-                })
-            );
-        }, { timeout: 4000 });
-    });
-
-    // ===== 7. TEST USER DATA VALIDATION =====
+    // ===== 5. TEST USER DATA VALIDATION =====
     test("shows error when user data is missing", async () => {
         const { createBookingForVehicles } = require("../services/axios.services");
 
@@ -481,7 +308,7 @@ describe("Payment page", () => {
         });
     });
 
-    // ===== 8. TEST NAVIGATION =====
+    // ===== 6. TEST NAVIGATION =====
     test("navigates to dashboard when clicking back button", () => {
         renderUI();
 
@@ -489,7 +316,7 @@ describe("Payment page", () => {
         expect(backButton).toHaveAttribute("href", "/driver");
     });
 
-    // ===== 9. TEST SECURITY INFO DISPLAY =====
+    // ===== 7. TEST SECURITY INFO DISPLAY =====
     test("displays security features", () => {
         renderUI();
 
@@ -499,24 +326,7 @@ describe("Payment page", () => {
         expect(screen.getByText("Xác thực 2 lớp")).toBeInTheDocument();
     });
 
-    // ===== 10. TEST WALLET TOPUP INVOICE =====
-    test.skip("displays wallet topup invoice details", () => {
-        const walletTopupState = {
-            pendingInvoice: {
-                invoiceId: 456,
-                invoiceType: "WALLET_TOPUP",
-                totalAmount: 500000,
-                createdDate: "2025-12-01T10:00:00",
-            },
-        };
-
-        renderUI(walletTopupState);
-
-        expect(screen.getByText("Hóa đơn nạp tiền ví của bạn")).toBeInTheDocument();
-        expect(screen.getByText(/500\.000 VNĐ/)).toBeInTheDocument();
-    });
-
-    // ===== 11. TEST BOOKING DATA FORMAT =====
+    // ===== 8. TEST BOOKING DATA FORMAT =====
     test("formats booking data correctly", async () => {
         const { createBookingForVehicles } = require("../services/axios.services");
         createBookingForVehicles.mockResolvedValueOnce({ success: true });
@@ -544,7 +354,7 @@ describe("Payment page", () => {
         });
     });
 
-    // ===== 12. TEST SESSION STORAGE CLEANUP =====
+    // ===== 9. TEST SESSION STORAGE CLEANUP =====
     test("clears session storage on successful payment", async () => {
         const { createBookingForVehicles } = require("../services/axios.services");
         createBookingForVehicles.mockResolvedValueOnce({ success: true });
@@ -563,7 +373,7 @@ describe("Payment page", () => {
         // Session storage should be cleared (mocked, so we can't actually test this)
     });
 
-    // ===== 13. TEST MULTIPLE VEHICLES =====
+    // ===== 10. TEST MULTIPLE VEHICLES =====
     test("handles payment with multiple vehicles", async () => {
         const { createBookingForVehicles } = require("../services/axios.services");
         createBookingForVehicles.mockResolvedValueOnce({ success: true });

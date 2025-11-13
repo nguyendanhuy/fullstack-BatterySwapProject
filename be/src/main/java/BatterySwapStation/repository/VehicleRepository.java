@@ -1,5 +1,6 @@
 package BatterySwapStation.repository;
 
+import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.User;
 import BatterySwapStation.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,4 +42,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
 
     @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.user.userId = :userId")
     int countByUserId(@Param("userId") String userId);
+
+
 }

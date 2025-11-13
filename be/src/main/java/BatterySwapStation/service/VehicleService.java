@@ -4,8 +4,10 @@ import BatterySwapStation.dto.VehicleMyResponse;
 import BatterySwapStation.dto.VehicleRegistrationRequest;
 import BatterySwapStation.dto.VehicleInfoResponse;
 import BatterySwapStation.dto.VehicleSimpleResponse;
+import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.User;
 import BatterySwapStation.entity.Vehicle;
+import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.UserRepository;
 import BatterySwapStation.repository.VehicleRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,6 +23,8 @@ public class VehicleService {
 
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
+    private final BatteryRepository batteryRepository;
+
 
     private boolean validateVIN(String vin) {
         return vin != null && vin.length() == 17 && vin.matches("^[A-HJ-NPR-Z0-9]{17}$");
@@ -39,11 +43,11 @@ public class VehicleService {
     public VehicleInfoResponse getVehicleInfoResponseByVin(String vin) {
         Vehicle vehicle = vehicleRepository.findByVIN(vin)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy xe với mã VIN: " + vin));
+
         VehicleInfoResponse response = new VehicleInfoResponse();
 
-        // Thiết lập theo thứ tự UI
         response.setVin(vehicle.getVIN());
-        response.setOwnerName(vehicle.getOwnerName()); // Lấy ownerName từ trường ownerName của Vehicle
+        response.setOwnerName(vehicle.getOwnerName());
         response.setUserId(vehicle.getUser() != null ? vehicle.getUser().getUserId() : null);
         response.setVehicleType(vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : null);
         response.setBatteryType(vehicle.getBatteryType() != null ? vehicle.getBatteryType().toString() : null);
@@ -52,13 +56,22 @@ public class VehicleService {
         response.setManufactureYear(vehicle.getManufactureDate() != null ? vehicle.getManufactureDate().getYear() : 0);
         response.setColor(vehicle.getColor());
         response.setLicensePlate(vehicle.getLicensePlate());
-
-        // Thông tin bổ sung
         response.setVehicleId(vehicle.getVehicleId());
         response.setActive(vehicle.isActive());
 
+        // 🔥 NEW: Lấy danh sách pin → convert sang chuỗi
+        List<String> batteryIds = batteryRepository.findByVehicle(vehicle)
+                .stream()
+                .map(Battery::getBatteryId)
+                .toList();
+
+        String batteryIdsString = String.join(", ", batteryIds);
+        response.setBatteryIds(batteryIdsString);
+
         return response;
     }
+
+
 
     @Transactional
     public Vehicle assignVehicleToUser(String userId, String vin) {
@@ -190,9 +203,20 @@ public class VehicleService {
             dto.setOwnerName(v.getOwnerName());
             dto.setActive(v.isActive());
             dto.setVin(v.getVIN());
+
+            List<String> batteryIds = batteryRepository.findByVehicle(v)
+                    .stream()
+                    .map(Battery::getBatteryId)
+                    .toList();
+
+            String batteryIdsString = String.join(", ", batteryIds);
+            dto.setBatteryIds(batteryIdsString);
+
             return dto;
         }).toList();
     }
+
+
 
 
     @Transactional(readOnly = true)

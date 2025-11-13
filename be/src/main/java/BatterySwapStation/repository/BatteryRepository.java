@@ -21,23 +21,23 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
     // Tìm pin theo trạng thái
     List<Battery> findByBatteryStatus(Battery.BatteryStatus status);
 
-    // Tìm pin khả dụng tại station
-    @Query("SELECT b FROM Battery b WHERE b.stationId = :stationId AND b.isActive = true AND " +
-            "(b.batteryStatus = 'AVAILABLE' OR b.batteryStatus = 'CHARGING') AND " +
-            "b.stateOfHealth > 70.0")
-    //List<Battery> findAvailableBatteriesAtStation(@Param("stationId") Integer stationId);
+//    // Tìm pin khả dụng tại station
+//    @Query("SELECT b FROM Battery b WHERE b.stationId = :stationId AND b.isActive = true AND " +
+//            "(b.batteryStatus = 'AVAILABLE' OR b.batteryStatus = 'CHARGING') AND " +
+//            "b.stateOfHealth > 70.0")
+//    //List<Battery> findAvailableBatteriesAtStation(@Param("stationId") Integer stationId);
 
     // Tìm pin theo loại
     List<Battery> findByBatteryType(Battery.BatteryType batteryType);
 
-    // Đếm số pin khả dụng tại station
-    @Query("SELECT COUNT(b) FROM Battery b WHERE b.stationId = :stationId AND b.isActive = true AND " +
-            "(b.batteryStatus = 'AVAILABLE' OR b.batteryStatus = 'CHARGING') AND " +
-            "b.stateOfHealth > 70.0")
-    //Long countAvailableBatteriesAtStation(@Param("stationId") Integer stationId);
+//    // Đếm số pin khả dụng tại station
+//    @Query("SELECT COUNT(b) FROM Battery b WHERE b.stationId = :stationId AND b.isActive = true AND " +
+//            "(b.batteryStatus = 'AVAILABLE' OR b.batteryStatus = 'CHARGING') AND " +
+//            "b.stateOfHealth > 70.0")
+//    //Long countAvailableBatteriesAtStation(@Param("stationId") Integer stationId);
 
 
-    Optional<Battery> findByVehicle(Vehicle vehicle);
+    List<Battery> findByVehicle(Vehicle vehicle);
 
     @EntityGraph(attributePaths = {"dockSlot", "dockSlot.dock", "dockSlot.dock.station"})
     List<Battery> findAll(); // ✅ chỉ override findAll() mặc định

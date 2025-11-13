@@ -1,8 +1,8 @@
 package BatterySwapStation.dto;
 
 import lombok.Data;
-
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class VehicleInfoResponse {
@@ -18,4 +18,6 @@ public class VehicleInfoResponse {
     private boolean active;
     private String licensePlate;
     private String userId;
+    private String batteryIds;
+
 }

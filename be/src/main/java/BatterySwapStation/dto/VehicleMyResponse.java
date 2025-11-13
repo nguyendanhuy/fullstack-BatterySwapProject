@@ -2,6 +2,8 @@ package BatterySwapStation.dto;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class VehicleMyResponse {
     private int vehicleId;
@@ -15,4 +17,6 @@ public class VehicleMyResponse {
     private String ownerName;
     private boolean active;
     private String vin;
+    private String batteryIds;
+
 }

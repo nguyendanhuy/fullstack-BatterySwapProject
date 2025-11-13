@@ -15,6 +15,7 @@ import BatterySwapStation.repository.UserSubscriptionRepository;
 import BatterySwapStation.entity.UserSubscription;
 import BatterySwapStation.entity.SubscriptionPlan;
 import BatterySwapStation.entity.Invoice;
+import BatterySwapStation.service.InvoiceService;
 import BatterySwapStation.entity.User;
 import org.springframework.context.event.EventListener;
 
@@ -321,28 +322,44 @@ public class BookingService {
         // 🔹 2. Preload toàn bộ subscription (1 query duy nhất)
         List<UserSubscription> subscriptions = userSubscriptionRepository.findByUser_UserIdOrderByStartDateDesc(userId);
 
-        // 🔹 3. Map sang BookingResponse (giữ format cũ)
+        // 🔹 3. Lấy user info (1 query)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại: " + userId));
+
+        // 🔹 4. Map sang BookingResponse
         return bookings.stream().map(b -> {
             BookingResponse res = new BookingResponse();
+
+            // Thông tin booking
             res.setBookingId(b.getBookingId());
             res.setBookingDate(b.getBookingDate());
             res.setTimeSlot(b.getTimeSlot());
             res.setBookingStatus(b.getBookingStatus().name());
             res.setAmount(b.getAmount());
+            res.setNotes(b.getNotes());
+
+            // ✅ Thông tin user
+            res.setUserId(user.getUserId());
+            res.setUserName(user.getFullName());
+
+            // Thông tin trạm
             res.setStationId(b.getStationId());
             res.setStationName(b.getStationName());
             res.setStationAddress(b.getStationAddress());
+
+            // Thông tin xe
             res.setVehicleId(b.getVehicleId());
             res.setVehicleVin(b.getVehicleVin());
-            res.setVehicleType(
-                    b.getVehicleType() != null ? b.getVehicleType().name() : null
-            );
-            res.setInvoiceId(b.getInvoiceId() != null ? String.valueOf(b.getInvoiceId()) : null);
-            res.setBookingStatus(b.getBookingStatus().name());
-            res.setAmount(b.getAmount());
-            res.setTotalSwapLimit(null); // set sau nếu có subscription
+            res.setVehicleType(b.getVehicleType() != null ? b.getVehicleType().name() : null);
 
-            // 🔸 Logic Free Swap
+            // ✅ Thông tin pin - FIX: lấy từ BookingSimpleDto
+            res.setBatteryCount(b.getBatteryCount());
+            res.setBatteryType(b.getBatteryType());
+
+            // Thông tin hóa đơn
+            res.setInvoiceId(b.getInvoiceId() != null ? String.valueOf(b.getInvoiceId()) : null);
+
+            // 🔸 Logic Free Swap - tìm subscription phù hợp
             UserSubscription matchedSub = null;
             if (b.getTotalPrice() != null && b.getTotalPrice() == 0.0 && b.getInvoiceCreatedDate() != null) {
                 LocalDateTime createdAt = b.getInvoiceCreatedDate();
@@ -362,9 +379,12 @@ public class BookingService {
                 res.setTotalSwapLimit(plan.getSwapLimit());
             } else {
                 res.setIsFreeSwap(false);
+                res.setSubscriptionPlanName(null);
+                res.setUsedSwaps(null);
+                res.setTotalSwapLimit(null);
             }
 
-            // 🔹 Payment info (nếu cần, để trống nếu không fetch)
+            // 🔹 Payment info - không cần thiết cho booking history
             res.setPayment(null);
 
             return res;
@@ -484,7 +504,7 @@ public class BookingService {
         Booking booking = bookingRepository.findByBookingIdAndUser(request.getBookingId(), user)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lượt đặt pin với mã: " + request.getBookingId()));
 
-        // Kiểm tra đặt chỗ có thể hủy không
+        // ⚠️ Kiểm tra trạng thái hợp lệ
         if (Booking.BookingStatus.CANCELLED.equals(booking.getBookingStatus())) {
             throw new IllegalStateException("Lượt đặt pin này đã bị hủy trước đó.");
         }
@@ -492,76 +512,85 @@ public class BookingService {
             throw new IllegalStateException("Không thể hủy lượt đặt pin đã hoàn thành.");
         }
 
-        // ✅ Chỉ kiểm tra thời gian hủy cho booking đã thanh toán (PENDINGSWAPPING)
-        // Booking chưa thanh toán (PENDINGPAYMENT) có thể hủy bất cứ lúc nào
+        // ✅ Chỉ kiểm tra thời gian nếu booking đã thanh toán (PENDINGSWAPPING)
         if (Booking.BookingStatus.PENDINGSWAPPING.equals(booking.getBookingStatus())) {
             LocalDateTime scheduledDateTime = LocalDateTime.of(booking.getBookingDate(), booking.getTimeSlot());
             LocalDateTime currentDateTime = LocalDateTime.now();
             LocalDateTime minimumCancelTime = scheduledDateTime.minusHours(1);
             if (currentDateTime.isAfter(minimumCancelTime)) {
                 throw new IllegalStateException(String.format(
-                        "Không thể hủy booking đã thanh toán. Chỉ hủy trước ít nhất 1 tiếng so với thời gian đặt (%s %s). Giới hạn: %s",
+                        "Không thể hủy booking đã thanh toán. Chỉ hủy trước ít nhất 1 tiếng (%s %s). Giới hạn: %s",
                         booking.getBookingDate(), booking.getTimeSlot(), minimumCancelTime));
             }
         }
 
-        // ✅ Hủy và lưu lý do
+        // 🔸 Cập nhật trạng thái booking
         booking.setBookingStatus(Booking.BookingStatus.CANCELLED);
         booking.setCancellationReason(request.getCancelReason());
-        Booking savedBooking = bookingRepository.save(booking);
+        bookingRepository.save(booking);
 
-        // ✅ Chỉ hoàn tiền nếu booking đã thanh toán (PENDINGSWAPPING trước khi hủy)
-        // Booking PENDINGPAYMENT chưa thanh toán nên không cần hoàn tiền
-        Invoice invoice = booking.getInvoice();
-        if (invoice != null && invoice.getPayments() != null && !invoice.getPayments().isEmpty()) {
+        // 🔸 Nếu đã thanh toán => tạo hóa đơn hoàn tiền
+        Invoice oldInvoice = booking.getInvoice();
+        if (oldInvoice != null && oldInvoice.getPayments() != null && !oldInvoice.getPayments().isEmpty()) {
 
-            Payment successfulPayment = invoice.getPayments().stream()
+            Payment successfulPayment = oldInvoice.getPayments().stream()
                     .filter(p -> p.getPaymentStatus() == Payment.PaymentStatus.SUCCESS
                             && p.getTransactionType() == Payment.TransactionType.PAYMENT)
                     .max(Comparator.comparing(Payment::getCreatedAt))
                     .orElse(null);
 
-            // ✅ Chỉ hoàn tiền nếu có payment SUCCESS và CHARGE (đã thanh toán thật)
             if (successfulPayment != null && booking.getAmount() != null && booking.getAmount() > 0) {
                 double refundAmount = booking.getAmount();
 
-                // ✅ Tạo bản ghi Payment REFUND
+                // ✅ 1. Tạo hóa đơn hoàn tiền
+                Invoice refundInvoice = new Invoice();
+                refundInvoice.setUserId(user.getUserId());
+                refundInvoice.setCreatedDate(LocalDateTime.now());
+                refundInvoice.setInvoiceType(oldInvoice.getInvoiceType());
+                refundInvoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+                refundInvoice.setPricePerSwap(oldInvoice.getPricePerSwap());
+                refundInvoice.setTotalAmount(refundAmount);
+                refundInvoice.setNumberOfSwaps(1);
+                invoiceRepository.save(refundInvoice);
+
+                // ✅ 2. Liên kết hóa đơn hoàn tiền vào booking
+                booking.setRefundInvoice(refundInvoice);
+                bookingRepository.save(booking);
+
+                // ✅ 3. Tạo bản ghi payment hoàn tiền
                 Payment refund = Payment.builder()
                         .amount(refundAmount)
                         .paymentMethod(Payment.PaymentMethod.WALLET)
                         .paymentStatus(Payment.PaymentStatus.SUCCESS)
                         .transactionType(Payment.TransactionType.REFUND)
                         .gateway("INTERNAL_WALLET")
-                        .invoice(invoice)
-                        .message("Hoàn tiền cho booking #" + booking.getBookingId() + " về ví trung gian")
+                        .invoice(refundInvoice)
+                        .message("Hoàn tiền cho booking #" + booking.getBookingId() +
+                                " (invoice gốc #" + oldInvoice.getInvoiceId() + ")")
                         .createdAt(LocalDateTime.now())
                         .build();
-
                 paymentRepository.save(refund);
 
-                // ✅ Cộng tiền ví với xử lý lỗi giới hạn ví
+                // ✅ 4. Cộng lại tiền ví
                 try {
                     user.setWalletBalance(user.getWalletBalance() + refundAmount);
                     userRepository.save(user);
                 } catch (Exception ex) {
                     if (ex.getMessage() != null && ex.getMessage().contains("chk_wallet_balance_limit")) {
-                        throw new IllegalStateException(
-                                "Ví đã đạt giới hạn, không thể hoàn tiền. Vui lòng xài bớt tiền"
-                        );
+                        throw new IllegalStateException("Ví đã đạt giới hạn, không thể hoàn tiền. Vui lòng xài bớt tiền.");
                     }
                     throw ex;
                 }
             }
         }
 
-        // ✅ Trả về response
-        BookingResponse response = convertToResponse(savedBooking);
-        String cancelMessage = String.format(
-                "Booking #%d đã được hủy thành công! Lý do: %s",
-                savedBooking.getBookingId(),
-                request.getCancelReason() != null ? request.getCancelReason() : "Không có lý do"
-        );
-        response.setMessage(cancelMessage);
+        // ✅ Trả về response FE
+        BookingResponse response = convertToResponse(booking);
+        response.setMessage(String.format(
+                "Booking #%d đã được hủy thành công%s",
+                booking.getBookingId(),
+                request.getCancelReason() != null ? " (Lý do: " + request.getCancelReason() + ")" : ""
+        ));
 
         return response;
     }
@@ -1151,6 +1180,7 @@ public class BookingService {
                     .station(station)
                     .vehicle(vehicle)
                     .vehicleType(vehicle.getVehicleType() != null ? vehicle.getVehicleType().toString() : "UNKNOWN")
+                    .batteryType(vehicle.getBatteryType() != null ? vehicle.getBatteryType().toString() : "UNKNOWN")
                     .amount(request.getPaidAmount())
                     .batteryCount(request.getQuantity())
                     .bookingDate(bookingDate)
@@ -1868,6 +1898,20 @@ public class BookingService {
     @Getter
     private String paymentMethod;
 
+    /**
+     * Đếm số lượng booking đang ở trạng thái PENDINGSWAPPING
+     */
+    @Transactional(readOnly = true)
+    public int countPendingSwappingBookingsForUser(String userId) {
+        if (userId == null) return 0;
+        Long count = bookingRepository.countByUser_UserIdAndBookingStatus(userId, Booking.BookingStatus.PENDINGSWAPPING);
+        return count == null ? 0 : count.intValue();
+    }
 
+    @Transactional(readOnly = true)
+    public int countDistinctStationsForUser(String userId) {
+        if (userId == null) return 0;
+        Long count = bookingRepository.countDistinctStationsByUser(userId);
+        return count == null ? 0 : count.intValue();
+    }
 }
-

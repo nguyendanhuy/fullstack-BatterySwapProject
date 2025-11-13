@@ -3,7 +3,6 @@ package BatterySwapStation.dto;
 import BatterySwapStation.entity.Booking;
 import BatterySwapStation.entity.Invoice;
 import BatterySwapStation.entity.Vehicle;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -30,6 +29,11 @@ public class BookingSimpleDto {
     private Vehicle.VehicleType vehicleType;  // ⚠️ sửa kiểu này từ String → VehicleType
     private String licensePlate;
 
+    // ✅ Thêm batteryCount, batteryType, notes
+    private Integer batteryCount;
+    private String batteryType;  // ⚠️ Giữ String vì Booking entity dùng String
+    private String notes;
+
     private Long invoiceId;
     private Double totalAmount;
     private Invoice.InvoiceStatus invoiceStatus;
@@ -50,6 +54,9 @@ public class BookingSimpleDto {
             String vehicleVin,
             Vehicle.VehicleType vehicleType,   // ⚠️ trùng enum entity
             String licensePlate,
+            Integer batteryCount,               // ✅ Thêm
+            String batteryType,                 // ✅ Thêm (String, không phải enum)
+            String notes,                       // ✅ Thêm
             Long invoiceId,
             Double totalAmount,
             Invoice.InvoiceStatus invoiceStatus,
@@ -68,6 +75,9 @@ public class BookingSimpleDto {
         this.vehicleVin = vehicleVin;
         this.vehicleType = vehicleType;
         this.licensePlate = licensePlate;
+        this.batteryCount = batteryCount;      // ✅ Thêm
+        this.batteryType = batteryType;        // ✅ Thêm
+        this.notes = notes;                    // ✅ Thêm
         this.invoiceId = invoiceId;
         this.totalAmount = totalAmount;
         this.invoiceStatus = invoiceStatus;

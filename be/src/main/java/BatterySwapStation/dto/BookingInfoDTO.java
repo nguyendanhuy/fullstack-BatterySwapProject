@@ -5,7 +5,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-public class BookingInfoDTO {
+public class
+BookingInfoDTO {
     private Long bookingId;
     private LocalDate bookingDate;
     private LocalTime timeSlot;

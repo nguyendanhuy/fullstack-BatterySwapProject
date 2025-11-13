@@ -18,7 +18,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.userdetails.UserDetails;
 
 
 
@@ -877,7 +879,7 @@ public class BookingController {
 
     @GetMapping("/{bookingId}/generateQr")
     @Operation(summary = "Tạo QR token cho booking", description = "FE gọi để lấy token text dùng sinh QR hình ảnh, cho phép tạo QR ngay cả khi chưa thanh toán")
-    public ResponseEntity<ApiResponse> generateQr(@PathVariable Long bookingId) {
+    public ResponseEntity<ApiResponse> generateQr(@PathVariable Long bookingId, @AuthenticationPrincipal UserDetails userDetails) {
         try {
             Map<String, Object> bookingData = bookingService.getBookingById(bookingId);
             if (bookingData == null) {

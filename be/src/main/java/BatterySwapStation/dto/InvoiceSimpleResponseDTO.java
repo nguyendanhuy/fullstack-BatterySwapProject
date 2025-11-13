@@ -43,6 +43,10 @@ public class InvoiceSimpleResponseDTO {
         private Double amount;
         private String bookingStatus;
 
+        // Thông tin số lượng pin và loại pin trong booking
+        private Integer batteryCount;
+        private String batteryType;
+
         // Chỉ thông tin cơ bản của station
         private Integer stationId;
         private String stationName;

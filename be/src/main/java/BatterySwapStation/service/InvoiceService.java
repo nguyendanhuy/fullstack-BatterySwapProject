@@ -414,23 +414,34 @@ public class InvoiceService {
 
     @Transactional(readOnly = true)
     public InvoiceSimpleResponseDTO buildInvoiceSimpleFromFetched(Invoice invoice) {
+
+        if (invoice.getRefundedBookings() != null && !invoice.getRefundedBookings().isEmpty()) {
+
+            if (invoice.getBookings() == null) {
+                invoice.setBookings(new java.util.ArrayList<>());
+            }
+
+            invoice.getBookings().addAll(invoice.getRefundedBookings());
+        }
         // ✅ Dữ liệu đã được JOIN FETCH -> không cần query lại
         List<InvoiceSimpleResponseDTO.SimpleBookingInfo> simpleBookings = invoice.getBookings().stream()
                 .map(booking -> InvoiceSimpleResponseDTO.SimpleBookingInfo.builder()
                         .bookingId(booking.getBookingId())
                         .bookingDate(booking.getBookingDate())
                         .timeSlot(booking.getTimeSlot())
-                        .vehicleType(booking.getVehicleType())
-                        .amount(booking.getAmount())
-                        .bookingStatus(booking.getBookingStatus().toString())
+                        .vehicleType(booking.getVehicleType() != null ? booking.getVehicleType() : "") // ✅ Fix null for vehicleType
+                        .amount(booking.getAmount() != null ? booking.getAmount() : 0.0) // ✅ Fix null
+                        .bookingStatus(booking.getBookingStatus() != null ? booking.getBookingStatus().toString() : "UNKNOWN")
+                        .batteryCount(booking.getBatteryCount() != null ? booking.getBatteryCount() : 0) // ✅ Fix null
+                        .batteryType(booking.getBatteryType() != null ? booking.getBatteryType() : "") // ✅ Fix null
                         .stationId(booking.getStation() != null ? booking.getStation().getStationId() : null)
-                        .stationName(booking.getStation() != null ? booking.getStation().getStationName() : null)
-                        .stationAddress(booking.getStation() != null ? booking.getStation().getAddress() : null)
+                        .stationName(booking.getStation() != null ? booking.getStation().getStationName() : "") // ✅ Already has null check
+                        .stationAddress(booking.getStation() != null ? booking.getStation().getAddress() : "") // ✅ Already has null check
                         .vehicleId(booking.getVehicle() != null ? booking.getVehicle().getVehicleId() : null)
-                        .licensePlate(booking.getVehicle() != null ? booking.getVehicle().getLicensePlate() : null)
+                        .licensePlate(booking.getVehicle() != null ? booking.getVehicle().getLicensePlate() : "") // ✅ Already has null check
                         .vehicleBatteryType(booking.getVehicle() != null && booking.getVehicle().getBatteryType() != null
                                 ? booking.getVehicle().getBatteryType().toString()
-                                : null)
+                                : "") // ✅ Already has null check
                         .build())
                 .collect(Collectors.toList());
 
@@ -439,16 +450,17 @@ public class InvoiceService {
             var plan = invoice.getPlanToActivate();
             simplePlanInfo = InvoiceSimpleResponseDTO.SimplePlanInfo.builder()
                     .planId(plan.getId())
-                    .planName(plan.getPlanName())
-                    .description(plan.getDescription())
-                    .durationInDays(plan.getDurationInDays())
-                    .priceType(plan.getPriceType() != null ? plan.getPriceType().toString() : null)
-                    .swapLimit(plan.getSwapLimit())
+                    .planName(plan.getPlanName() != null ? plan.getPlanName() : "") // ✅ Fix null
+                    .description(plan.getDescription() != null ? plan.getDescription() : "") // ✅ Fix null
+                    .durationInDays(plan.getDurationInDays() != null ? plan.getDurationInDays() : 0) // ✅ Fix null
+                    .priceType(plan.getPriceType() != null ? plan.getPriceType().toString() : "")
+                    .swapLimit(plan.getSwapLimit() != null ? plan.getSwapLimit() : 0) // ✅ Fix null
                     .build();
         }
 
         // ✅ Fetch payments riêng từ repository để tránh MultipleBagFetchException
         InvoiceSimpleResponseDTO.SimplePaymentInfo paymentInfo = null;
+        String paymentMethod = null; // ✅ Thêm biến paymentMethod để set vào DTO chính
         List<Payment> payments = invoice.getPayments(); // Lấy từ invoice đã fetch
 
         if (payments != null && !payments.isEmpty()) {
@@ -458,6 +470,9 @@ public class InvoiceService {
                     .findFirst()
                     .orElse(payments.get(0));
 
+            // ✅ Set paymentMethod từ payment
+            paymentMethod = payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : "";
+
             // ✅ Tính displayAmount CHỈ dựa trên TransactionType và WALLET_TOPUP
             String displayAmount;
             boolean isPositive = payment.getTransactionType() == Payment.TransactionType.REFUND
@@ -465,34 +480,38 @@ public class InvoiceService {
 
             if (isPositive) {
                 // REFUND hoặc nạp tiền vào ví -> hiển thị dấu +
-                displayAmount = "+" + String.format("%.0f", payment.getAmount());
+                displayAmount = "+" + String.format("%.0f", payment.getAmount()); // primitive double, no null check needed
             } else {
                 // PAYMENT thông thường (booking, subscription, penalty) -> hiển thị dấu -
-                displayAmount = "-" + String.format("%.0f", payment.getAmount());
+                displayAmount = "-" + String.format("%.0f", payment.getAmount()); // primitive double, no null check needed
             }
 
             paymentInfo = InvoiceSimpleResponseDTO.SimplePaymentInfo.builder()
                     .paymentId(payment.getPaymentId())
-                    .transactionType(payment.getTransactionType().name())
-                    .amount(payment.getAmount())
+                    .transactionType(payment.getTransactionType() != null ? payment.getTransactionType().name() : "PAYMENT")
+                    .amount(payment.getAmount()) // ✅ primitive double - no null check needed
                     .displayAmount(displayAmount)
-                    .paymentMethod(payment.getPaymentMethod() != null ? payment.getPaymentMethod().name() : null)
-                    .paymentStatus(payment.getPaymentStatus() != null ? payment.getPaymentStatus().name() : null)
+                    .paymentMethod(paymentMethod)
+                    .paymentStatus(payment.getPaymentStatus() != null ? payment.getPaymentStatus().name() : "PENDING")
                     .createdAt(payment.getCreatedAt())
-                    .gateway(payment.getGateway())
-                    .vnpTransactionNo(payment.getVnpTransactionNo())
+                    .gateway(payment.getGateway() != null ? payment.getGateway() : "") // ✅ Fix null
+                    .vnpTransactionNo(payment.getVnpTransactionNo() != null ? payment.getVnpTransactionNo() : "") // ✅ Fix null
                     .build();
         }
 
         return InvoiceSimpleResponseDTO.builder()
                 .invoiceId(invoice.getInvoiceId())
-                .invoiceStatus(invoice.getInvoiceStatus().toString())
-                .invoiceType(invoice.getInvoiceType().toString())
-                .totalAmount(invoice.getTotalAmount())
-                .createdDate(invoice.getCreatedDate())
+                .userId(invoice.getUserId() != null ? invoice.getUserId() : "") // ✅ Fix null - THÊM FIELD này
+                .invoiceStatus(invoice.getInvoiceStatus() != null ? invoice.getInvoiceStatus().toString() : "PENDING")
+                .invoiceType(invoice.getInvoiceType() != null ? invoice.getInvoiceType().toString() : "BOOKING")
+                .totalAmount(invoice.getTotalAmount() != null ? invoice.getTotalAmount() : 0.0) // ✅ Fix null
+                .pricePerSwap(invoice.getPricePerSwap() != null ? invoice.getPricePerSwap() : 0.0) // ✅ Fix null - THÊM FIELD này
+                .numberOfSwaps(invoice.getNumberOfSwaps() != null ? invoice.getNumberOfSwaps() : 0) // ✅ Fix null - THÊM FIELD này
+                .createdDate(invoice.getCreatedDate()) // LocalDateTime có thể null, FE sẽ xử lý
                 .bookings(simpleBookings)             // ✅ giữ nguyên key FE đang dùng
                 .planToActivate(simplePlanInfo)       // ✅ giữ nguyên key FE đang dùng
                 .paymentInfo(paymentInfo)             // ✅ Thêm thông tin payment
+                .paymentMethod(paymentMethod != null ? paymentMethod : "") // ✅ Fix null - THÊM FIELD này
                 .build();
     }
 }

@@ -88,6 +88,10 @@ public class Invoice {
     @JoinColumn(name = "planidtoactivate")
     private SubscriptionPlan planToActivate;
 
+    @OneToMany(mappedBy = "refundInvoice", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Booking> refundedBookings;
+
     // Getters and setters
     public Long getInvoiceId() {
         return invoiceId;

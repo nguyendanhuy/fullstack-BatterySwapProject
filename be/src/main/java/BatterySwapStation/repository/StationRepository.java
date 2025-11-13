@@ -63,4 +63,7 @@ public interface StationRepository extends JpaRepository<Station, Integer> {
         WHERE b.dockSlot.dock.station.stationId = :stationId
     """)
     long countBatteriesAtStation(Integer stationId);
+
+    @Query("SELECT COUNT(s) FROM Station s")
+    int countAllStations();
 }

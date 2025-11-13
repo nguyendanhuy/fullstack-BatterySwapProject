@@ -53,14 +53,16 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     /**
      * Lấy danh sách invoice VÀ các payment liên quan (để tránh LazyInitException)
+     * ✅ UPDATED: Thêm LEFT JOIN FETCH creditCardInfo để tránh N+1 với CreditCardPayment
      */
-    @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.payments WHERE i.userId = :userId ORDER BY i.createdDate DESC")
+    @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.payments p LEFT JOIN FETCH p.creditCardInfo WHERE i.userId = :userId ORDER BY i.createdDate DESC")
     List<Invoice> findByUserIdWithPayments(@Param("userId") String userId);
 
     /**
      * Lấy 1 invoice VÀ các payment liên quan (để tránh LazyInitException)
+     * ✅ UPDATED: Thêm LEFT JOIN FETCH creditCardInfo để tránh N+1 với CreditCardPayment
      */
-    @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.payments WHERE i.invoiceId = :invoiceId")
+    @Query("SELECT i FROM Invoice i LEFT JOIN FETCH i.payments p LEFT JOIN FETCH p.creditCardInfo WHERE i.invoiceId = :invoiceId")
     Optional<Invoice> findByIdWithPayments(@Param("invoiceId") Long invoiceId);
 
 
@@ -119,13 +121,25 @@ ORDER BY i.createdDate DESC
 """)
     List<Invoice> findByUserIdWithFullDetails(@Param("userId") String userId);
 
+    @Query("""
+SELECT DISTINCT i FROM Invoice i
+LEFT JOIN FETCH i.refundedBookings rb
+LEFT JOIN FETCH rb.station
+LEFT JOIN FETCH rb.vehicle
+WHERE i IN :invoices
+""")
+    List<Invoice> fetchRefundedBookings(@Param("invoices") List<Invoice> invoices);
+
+
     /**
      * ⚡ Batch fetch payments cho nhiều invoices cùng lúc
      * Tránh N+1 problem khi cần payments cho nhiều invoices
+     * ✅ UPDATED: Thêm LEFT JOIN FETCH creditCardInfo để tránh N+1 với CreditCardPayment
      */
     @Query("""
 SELECT DISTINCT i FROM Invoice i
-LEFT JOIN FETCH i.payments
+LEFT JOIN FETCH i.payments p
+LEFT JOIN FETCH p.creditCardInfo
 WHERE i IN :invoices
 """)
     List<Invoice> fetchPaymentsForInvoices(@Param("invoices") List<Invoice> invoices);
@@ -147,10 +161,12 @@ WHERE i.invoiceId = :invoiceId
 
     /**
      * ⚡ Fetch payments riêng cho 1 invoice
+     * ✅ UPDATED: Thêm LEFT JOIN FETCH creditCardInfo để tránh N+1 với CreditCardPayment
      */
     @Query("""
 SELECT i FROM Invoice i
-LEFT JOIN FETCH i.payments
+LEFT JOIN FETCH i.payments p
+LEFT JOIN FETCH p.creditCardInfo
 WHERE i.invoiceId = :invoiceId
 """)
     Optional<Invoice> fetchPaymentsForInvoice(@Param("invoiceId") Long invoiceId);

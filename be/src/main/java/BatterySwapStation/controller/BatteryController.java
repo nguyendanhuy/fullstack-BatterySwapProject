@@ -76,5 +76,9 @@ public class BatteryController {
     public ResponseEntity<?> getAllLooseBatteriesGroupedByStation() {
         return ResponseEntity.ok(batteryService.getAllLooseBatteriesGroupedByStation());
     }
+    @GetMapping("/random")
+    public ResponseEntity<?> getRandomUnassignedBatteriesByType(@RequestParam Battery.BatteryType type) {
+        return ResponseEntity.ok(batteryService.getRandomUnassignedBatteriesByType(type));
+    }
 
 }

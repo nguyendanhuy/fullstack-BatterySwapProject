@@ -103,25 +103,52 @@ public class InvoiceController {
             @PathVariable @Parameter(description = "ID của user") String userId) {
 
         try {
-            // ⚡ BƯỚC 1: Fetch invoices với bookings, stations, vehicles
-            List<Invoice> userInvoices = invoiceRepository.findByUserIdWithFullDetails(userId);
+            long startTime = System.currentTimeMillis();
+            System.out.println("[START] Bắt đầu lấy invoices cho user: " + userId);
 
-            // ⚡ BƯỚC 2: Batch fetch payments cho TẤT CẢ invoices (chỉ 1 query)
-            // Hibernate sẽ tự động populate collection payments vào các invoice entities
+            // ⚡ BƯỚC 1: Fetch invoices với bookings, stations, vehicles
+            long step1Start = System.currentTimeMillis();
+            List<Invoice> userInvoices = invoiceRepository.findByUserIdWithFullDetails(userId);
+            long step1Duration = System.currentTimeMillis() - step1Start;
+            System.out.println("[STEP 1] Fetch invoices với bookings/stations/vehicles: "
+                    + step1Duration + "ms - Số lượng: " + userInvoices.size());
+
+            // ⚡ BƯỚC 1.1: Fetch refundedBookings (TRÁNH MultipleBagFetchException)
+            long step1_1Start = System.currentTimeMillis();
+            if (!userInvoices.isEmpty()) {
+                invoiceRepository.fetchRefundedBookings(userInvoices);
+            }
+            long step1_1Duration = System.currentTimeMillis() - step1_1Start;
+            System.out.println("[STEP 1.1] Fetch refundedBookings: " + step1_1Duration + "ms");
+
+            // ⚡ BƯỚC 2: Batch fetch payments + creditCardInfo
+            long step2Start = System.currentTimeMillis();
             if (!userInvoices.isEmpty()) {
                 invoiceRepository.fetchPaymentsForInvoices(userInvoices);
             }
+            long step2Duration = System.currentTimeMillis() - step2Start;
+            System.out.println(" [STEP 2] Batch fetch payments + creditCardInfo: "
+                    + step2Duration + "ms (1 query duy nhất)");
 
             // ⚡ BƯỚC 3: Build DTO từ dữ liệu đã fetch sẵn (không query thêm)
+            long step3Start = System.currentTimeMillis();
             List<InvoiceSimpleResponseDTO> invoiceDTOs = userInvoices.stream()
                     .map(invoiceService::buildInvoiceSimpleFromFetched)
                     .collect(Collectors.toList());
+            long step3Duration = System.currentTimeMillis() - step3Start;
+            System.out.println("⏱️ [STEP 3] Build DTOs: " + step3Duration + "ms");
+
+            long totalDuration = System.currentTimeMillis() - startTime;
+            System.out.println(" [TOTAL] Tổng thời gian: " + totalDuration + "ms");
+            System.out.println("Tối ưu: 3 queries (invoices + refundedBookings + payments) thay vì N+1");
+            System.out.println("═══════════════════════════════════════════════════════");
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("userId", userId);
             response.put("total", invoiceDTOs.size());
             response.put("invoices", invoiceDTOs);
+            response.put("performanceMs", totalDuration);
 
             return ResponseEntity.ok(response);
 

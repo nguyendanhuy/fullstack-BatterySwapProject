@@ -157,5 +157,8 @@ public class VehicleService {
         return vehicleRepository.findUnassignedVehicles();
     }
 
-
+    @Transactional(readOnly = true)
+    public int countVehiclesByUserId(String userId) {
+        return vehicleRepository.countByUserId(userId);
+    }
 }

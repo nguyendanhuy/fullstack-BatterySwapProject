@@ -7,9 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityNotFoundException; // Dùng jakarta
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -19,12 +22,36 @@ public class SystemPriceService {
 
     private final SystemPriceRepository systemPriceRepository;
 
+    // 🚀 Cache SystemPrice để tránh query lặp lại
+    private final Map<SystemPrice.PriceType, Double> priceCache = new ConcurrentHashMap<>();
+
     // [ĐÃ XÓA] - Hằng số DEFAULT_PRICE = 15000.0 đã bị xóa.
     // Giá mặc định giờ sẽ được quản lý trong database.
 
     /**
+     * 🚀 Khởi tạo cache khi service start
+     */
+    @PostConstruct
+    public void initPriceCache() {
+        List<SystemPrice> allPrices = systemPriceRepository.findAll();
+        for (SystemPrice price : allPrices) {
+            priceCache.put(price.getPriceType(), price.getPrice());
+        }
+        log.info("✅ SystemPrice cache khởi tạo thành công với {} loại giá", priceCache.size());
+    }
+
+    /**
+     * 🚀 Refresh cache (gọi sau khi update giá)
+     */
+    public void refreshCache() {
+        priceCache.clear();
+        initPriceCache();
+    }
+
+    /**
      * [THAY THẾ HÀM CŨ]
      * Lấy giá trị của một loại giá cụ thể bằng Enum.
+     * 🚀 TÍCH HỢP CACHE - Không query DB nữa, chỉ đọc từ Map
      *
      * @param priceType Loại giá (ví dụ: SystemPrice.PriceType.BATTERY_SWAP)
      * @return Giá trị Double
@@ -32,6 +59,12 @@ public class SystemPriceService {
      */
     @Transactional(readOnly = true)
     public Double getPriceByType(SystemPrice.PriceType priceType) {
+        Double cachedPrice = priceCache.get(priceType);
+        if (cachedPrice != null) {
+            return cachedPrice;
+        }
+        // Fallback nếu cache chưa có (case edge)
+        log.warn("⚠️ Cache miss cho PriceType: {}. Đang query database...", priceType);
         return systemPriceRepository.findPriceByPriceType(priceType)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cấu hình giá cho loại: " + priceType));
     }
@@ -72,6 +105,7 @@ public class SystemPriceService {
     /**
      * [MỚI] Cập nhật giá của một loại giá đã có
      * Chỉ admin mới được dùng hàm này.
+     * 🚀 Tự động refresh cache sau khi update
      */
     public SystemPrice updatePrice(SystemPrice.PriceType priceType, Double newPrice, String newDescription) {
         SystemPrice priceToUpdate = getSystemPriceByType(priceType); // Tìm giá, nếu không thấy sẽ ném lỗi
@@ -83,6 +117,10 @@ public class SystemPriceService {
 
         SystemPrice saved = systemPriceRepository.save(priceToUpdate);
         log.info("Đã cập nhật giá cho {}: {} VND", saved.getPriceType(), saved.getPrice());
+
+        // 🚀 Refresh cache sau khi update
+        refreshCache();
+
         return saved;
     }
 }

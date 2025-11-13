@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -312,6 +313,10 @@ public class BatteryService {
         return result;
     }
 
+    @Transactional
+    public List<Battery> getRandomUnassignedBatteriesByType(Battery.BatteryType type) {
+        return batteryRepository.findRandomUnassignedBatteriesByType(type, PageRequest.of(0, 10));
+    }
 
 
 }

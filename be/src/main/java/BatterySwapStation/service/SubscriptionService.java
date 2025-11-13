@@ -490,89 +490,115 @@ public class SubscriptionService {
 
         // 1. Lấy subscription ACTIVE
         List<UserSubscription> subs = userSubscriptionRepository.findActiveSubscriptions(userId);
-
         if (subs.isEmpty()) {
             throw new IllegalStateException("Không tìm thấy gói cước đang hoạt động.");
         }
 
-        // lấy gói mới nhất
         UserSubscription activeSub = subs.get(0);
 
-        // 2. Không cho hủy nếu đã hết hạn
         if (activeSub.getEndDate().isBefore(LocalDateTime.now())) {
             throw new IllegalStateException("Gói cước đã hết hạn, không thể hủy.");
         }
 
+        SubscriptionPlan plan = activeSub.getPlan();
         LocalDateTime now = LocalDateTime.now();
+
         long totalDays = Math.max(1, Duration.between(activeSub.getStartDate(), activeSub.getEndDate()).toDays());
         long usedDays = Math.max(0, Duration.between(activeSub.getStartDate(), now).toDays());
 
-        Double planPrice = systemPriceService.getPriceByType(activeSub.getPlan().getPriceType());
+        Double planPrice = systemPriceService.getPriceByType(plan.getPriceType());
         if (planPrice == null || planPrice <= 0) {
             planPrice = 0.0;
         }
 
-        // ✅ Rule mới: refund theo lượt nếu huỷ trong <= 14 ngày
-        int limit = activeSub.getPlan().getSwapLimit(); // total swaps
-        int used = activeSub.getUsedSwaps();            // used swaps
+        int limit = plan.getSwapLimit();
+        int used = activeSub.getUsedSwaps();
         int REFUND_WINDOW_DAYS = 14;
+
         double refundAmount = 0.0;
 
         if (usedDays <= REFUND_WINDOW_DAYS) {
             if (limit > 0) {
-                int remainingSwaps = Math.max(0, limit - used);
-                double swapFactor = remainingSwaps / (double) limit;
-
-                refundAmount = Math.round(planPrice * swapFactor);
+                int remaining = Math.max(0, limit - used);
+                double factor = remaining / (double) limit;
+                refundAmount = Math.round(planPrice * factor);
                 if (refundAmount < 1000) refundAmount = 0;
-            } else {
-                refundAmount = 0;
             }
-        } else {
-            refundAmount = 0;
         }
 
-        // ✅ Lấy invoice thanh toán gần nhất
+        // 2. Lấy hóa đơn thanh toán gói gốc
         List<Invoice> invoices = invoiceRepository.findLatestPaidSubscriptionInvoices(userId);
         if (invoices.isEmpty()) {
             throw new IllegalStateException("Không tìm thấy hóa đơn đã thanh toán.");
         }
 
-        Invoice invoice = invoices.get(0);
+        Invoice originalInvoice = invoices.get(0);
 
-        // 3. Hủy gói
+        // 3. Hủy subscription
         activeSub.setStatus(UserSubscription.SubscriptionStatus.CANCELLED);
         activeSub.setAutoRenew(false);
         userSubscriptionRepository.save(activeSub);
 
-        // ✅ 4. Refund ví
-        if (refundAmount > 0) {
-            User user = activeSub.getUser();
-            user.setWalletBalance(user.getWalletBalance() + refundAmount);
-            userRepository.save(user);
+        User user = activeSub.getUser();
 
-            paymentRepository.save(Payment.builder()
-                    .invoice(invoice)
-                    .amount(refundAmount)
-                    .paymentMethod(Payment.PaymentMethod.WALLET)
-                    .paymentStatus(Payment.PaymentStatus.SUCCESS)
-                    .transactionType(Payment.TransactionType.REFUND)
-                    .message("Hoàn tiền hủy gói cước sớm")
-                    .createdAt(LocalDateTime.now())
-                    .build());
+        // 4. Nếu refundAmount = 0 thì không tạo invoice refund
+        if (refundAmount <= 0) {
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", "CANCELLED");
+            result.put("refundAmount", 0);
+            result.put("message", "Hủy gói thành công (không có hoàn tiền)");
+            return result;
         }
 
-        // 5. Return result (KHÔNG dùng Map.of — tránh null crash)
+        // 5. Cộng tiền ví user
+        user.setWalletBalance(user.getWalletBalance() + refundAmount);
+        userRepository.save(user);
+
+        // 6. Tạo invoice REFUND mới
+        Invoice refundInvoice = new Invoice();
+        refundInvoice.setUserId(user.getUserId());
+        refundInvoice.setInvoiceType(Invoice.InvoiceType.SUBSCRIPTION); // để FE phân loại
+        refundInvoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+        refundInvoice.setCreatedDate(LocalDateTime.now());
+        refundInvoice.setTotalAmount(refundAmount);
+        refundInvoice.setPlanToActivate(plan);
+        refundInvoice = invoiceRepository.save(refundInvoice);
+
+        // 7. Tạo payment REFUND gắn vào invoice refund *mới*
+        Payment refundPayment = Payment.builder()
+                .invoice(refundInvoice)
+                .amount(refundAmount)
+                .paymentMethod(Payment.PaymentMethod.WALLET)
+                .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                .transactionType(Payment.TransactionType.REFUND)
+                .message("Hoàn tiền hủy gói: " + plan.getPlanName() +
+                        " | Invoice gốc #" + originalInvoice.getInvoiceId())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        paymentRepository.save(refundPayment);
+
+        // 8. Trả kết quả
         Map<String, Object> result = new HashMap<>();
         result.put("status", activeSub.getStatus().name());
-        result.put("remainingDays", Math.max(0, totalDays - usedDays));
-        result.put("remainingSwaps", limit > 0 ? Math.max(0, limit - used) : null);
         result.put("refundAmount", refundAmount);
+        result.put("originalInvoiceId", originalInvoice.getInvoiceId());
+        result.put("refundInvoiceId", refundInvoice.getInvoiceId());
+        result.put("planName", plan.getPlanName());
+        result.put("remainingSwaps", limit > 0 ? Math.max(0, limit - used) : null);
         result.put("cancelledAt", LocalDateTime.now());
 
         return result;
     }
 
 
-
+    /** Đếm số lượng gói cước SubscriptionPlan có sẵn.
+     *
+     */
+    @Transactional(readOnly = true)
+    public int countAvailableSubscriptionPlans() {
+        long total = subscriptionPlanRepository.count();
+        return (int) Math.min(total, Integer.MAX_VALUE);
+    }
 }

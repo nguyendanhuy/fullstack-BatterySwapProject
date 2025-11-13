@@ -39,4 +39,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
     @Query("SELECT v FROM Vehicle v WHERE v.user IS NULL AND v.isActive = false")
     List<Vehicle> findUnassignedVehicles();
 
+    @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.user.userId = :userId")
+    int countByUserId(@Param("userId") String userId);
 }

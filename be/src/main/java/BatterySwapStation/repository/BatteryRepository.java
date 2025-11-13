@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
@@ -105,6 +106,16 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
       )
 """, nativeQuery = true)
     List<Object[]> findLooseBatteriesWithStationFast();
+    @Query("""
+    SELECT b 
+    FROM Battery b 
+    WHERE b.stationId IS NULL 
+      AND b.dockSlot IS NULL 
+      AND b.isActive = true
+      AND b.batteryType = :type
+    ORDER BY FUNCTION('RANDOM')
+""")
+    List<Battery> findRandomUnassignedBatteriesByType(@Param("type") Battery.BatteryType type, Pageable pageable);
 
 
 }

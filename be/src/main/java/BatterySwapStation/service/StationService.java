@@ -263,4 +263,8 @@ public class StationService {
         return result;
     }
 
+    public int countStations() {
+        return stationRepository.countAllStations();
+    }
 }
+

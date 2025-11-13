@@ -1,13 +1,16 @@
 package BatterySwapStation.service;
 
+import BatterySwapStation.dto.ApiResponse;
 import BatterySwapStation.dto.BatteryDetail;
 import BatterySwapStation.dto.BatteryRealtimeEvent;
 import BatterySwapStation.dto.BatteryStatusUpdateRequest;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.DockSlot;
+import BatterySwapStation.entity.Vehicle;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.DockSlotRepository;
 import BatterySwapStation.repository.SwapRepository;
+import BatterySwapStation.repository.VehicleRepository;
 import BatterySwapStation.websocket.BatterySocketController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -30,6 +33,7 @@ public class BatteryService {
     private final BatterySocketController batterySocketController;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SwapRepository swapRepository;
+    private final VehicleRepository vehicleRepository;
     // ==================== TỰ ĐỘNG SẠC ====================
     @Scheduled(fixedRate = 6000) // mỗi 6 giây
     @Transactional
@@ -318,5 +322,30 @@ public class BatteryService {
         return batteryRepository.findRandomUnassignedBatteriesByType(type, PageRequest.of(0, 10));
     }
 
+    @Transactional
+    public ApiResponse getBatteriesOfVehicle(Integer vehicleId) {
+
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy xe #" + vehicleId));
+
+        List<Battery> list = batteryRepository.findBatteriesByVehicleId(vehicleId);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Battery b : list) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("batteryId", b.getBatteryId());
+            m.put("batteryType", b.getBatteryType().name());
+            m.put("batteryStatus", b.getBatteryStatus().name());
+            m.put("stateOfHealth", b.getStateOfHealth());
+            m.put("currentCapacity", b.getCurrentCapacity());
+            result.add(m);
+        }
+
+        return new ApiResponse(
+                true,
+                "Lấy danh sách pin thuộc xe #" + vehicleId + " thành công",
+                result
+        );
+    }
 
 }

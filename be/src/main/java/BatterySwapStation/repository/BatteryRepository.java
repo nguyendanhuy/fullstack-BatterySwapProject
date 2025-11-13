@@ -117,5 +117,11 @@ public interface BatteryRepository extends JpaRepository<Battery, String> {
 """)
     List<Battery> findRandomUnassignedBatteriesByType(@Param("type") Battery.BatteryType type, Pageable pageable);
 
+    @Query("""
+    SELECT b FROM Battery b
+    WHERE b.vehicle.vehicleId = :vehicleId
+      AND b.isActive = true
+""")
+    List<Battery> findBatteriesByVehicleId(@Param("vehicleId") Integer vehicleId);
 
 }

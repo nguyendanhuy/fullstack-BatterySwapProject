@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "Battery")
@@ -89,6 +91,10 @@ public class Battery {
 
     @Column(name = "StationId")
     private Integer stationId;
+
+
+    @OneToMany(mappedBy = "battery", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<VehicleBattery> vehicleHistory = new ArrayList<>();
 
     // (Các hàm cũ giữ nguyên)
     public boolean isAvailableForBooking() {

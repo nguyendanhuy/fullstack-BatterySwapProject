@@ -1,19 +1,14 @@
 package BatterySwapStation.controller;
 
-import BatterySwapStation.dto.BatteryUpdateRequestDTO;
-import BatterySwapStation.dto.BatteryUpdateResponseDTO;
-import BatterySwapStation.entity.Battery;
-import BatterySwapStation.entity.DockSlot;
+import BatterySwapStation.dto.ApiResponse;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.service.BatteryService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import BatterySwapStation.dto.BatteryStatusUpdateRequest;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -21,7 +16,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BatteryController {
 
-    private final BatteryRepository batteryRepository;
     private final BatteryService batteryService;
 
 
@@ -76,9 +70,10 @@ public class BatteryController {
     public ResponseEntity<?> getAllLooseBatteriesGroupedByStation() {
         return ResponseEntity.ok(batteryService.getAllLooseBatteriesGroupedByStation());
     }
-    @GetMapping("/random")
-    public ResponseEntity<?> getRandomUnassignedBatteriesByType(@RequestParam Battery.BatteryType type) {
-        return ResponseEntity.ok(batteryService.getRandomUnassignedBatteriesByType(type));
+
+    @GetMapping("/vehicle/{vehicleId}")
+    public ResponseEntity<ApiResponse> getBatteryOfVehicle(@PathVariable Integer vehicleId) {
+        return ResponseEntity.ok(batteryService.getBatteriesOfVehicle(vehicleId));
     }
 
 }

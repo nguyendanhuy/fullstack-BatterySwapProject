@@ -129,6 +129,17 @@ const getStatusBadge = (status) => {
     return statusConfig[status] || statusConfig.PENDING;
 };
 
+// Trạng thái cho BOOKING: COMPLETED, FAILED, CANCELLED
+const getBookingStatusBadge = (status) => {
+    const statusConfig = {
+        COMPLETED: { label: "Hoàn thành", className: "bg-green-100 text-green-800 border-green-300" },
+        FAILED: { label: "Thất bại", className: "bg-red-100 text-red-800 border-red-300" },
+        CANCELLED: { label: "Đã hủy", className: "bg-gray-100 text-gray-800 border-gray-300" },
+        PENDINGSWAPPING: { label: "Đang chờ", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
+    };
+    return statusConfig[status] || statusConfig.PENDINGSWAPPING;
+};
+
 const calculateStats = (invoices) => {
     const totalInvoices = invoices.length;
     const paidInvoices = invoices.filter((inv) => inv.invoiceStatus === "PAID").length;
@@ -155,8 +166,8 @@ const StatsCard = ({ icon: Icon, label, value, iconColor }) => (
 );
 
 const BookingCard = ({ booking, isHighlighted }) => {
-    // Lưu ý: bookingStatus có thể khác; badge hiển thị theo bookingStatus riêng nếu bạn muốn.
-    const statusBadge = getStatusBadge(booking.bookingStatus);
+    // Sử dụng hàm riêng cho booking status
+    const statusBadge = getBookingStatusBadge(booking.bookingStatus);
 
     return (
         <div
@@ -215,6 +226,16 @@ const BookingCard = ({ booking, isHighlighted }) => {
                         </div>
                     </div>
 
+                    {booking.batteryCount > 0 && (
+                        <div className="flex items-center gap-3">
+                            <Zap className="h-5 w-5 text-primary" />
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Số lượng pin</p>
+                                <p className="font-semibold">{booking.batteryCount} pin</p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-3">
                         <DollarSign className="h-5 w-5 text-primary" />
                         <div>
@@ -239,7 +260,6 @@ const Invoices = () => {
     const [filterType, setFilterType] = useState("all"); // "all" | "WALLET_TOPUP" | "BOOKING" | "SUBSCRIPTION" | "PENALTY" | "REFUND"
     const [loading, setLoading] = useState(false);
     const [highlightBookingId, setHighlightBookingId] = useState(null);
-    const [targetInvoiceId, setTargetInvoiceId] = useState(null);
 
     // Lấy booking ID từ navigation state (từ BookingHistory)
     const targetBookingId = location.state?.bookingId;
@@ -262,21 +282,11 @@ const Invoices = () => {
             const res = await getInvoicebyUserId(userData.userId);
             console.log("✅Invoices:", res);
             if (res && Array.isArray(res?.invoices)) {
-                // 1) Lọc cứng: chỉ giữ PENDING | PAID  theo invoiceId giảm dần
+                // Lọc cứng: chỉ giữ PENDING | PAID  theo invoiceId giảm dần
                 const filtered = res.invoices.filter(
                     (inv) => inv.invoiceStatus === "PENDING" || inv.invoiceStatus === "PAID"
                 ).sort((a, b) => b.invoiceId - a.invoiceId);
                 setInvoices(filtered);
-
-                // 2) Nếu có targetBookingId, tìm trong danh sách đã lọc
-                if (targetBookingId) {
-                    const targetInvoice = filtered.find((inv) =>
-                        inv.bookings?.some((booking) => booking.bookingId === targetBookingId)
-                    ); //tìm trong mỗi invoice, các booking coi có khớp không
-                    if (targetInvoice) {
-                        setTargetInvoiceId(targetInvoice.invoiceId);
-                    }
-                }
             } else {
                 toast({
                     title: "Lỗi tải hóa đơn",
@@ -299,8 +309,9 @@ const Invoices = () => {
 
     const filteredInvoices = useMemo(() => {
         return invoices.filter((inv) => {
-            if (targetInvoiceId) {
-                return inv.invoiceId === targetInvoiceId;
+            // Nếu có targetBookingId, chỉ hiển thị các invoice có chứa booking đó
+            if (targetBookingId) {
+                return inv.bookings?.some((booking) => booking.bookingId === targetBookingId);
             }
 
             // Lọc theo tab trạng thái
@@ -319,7 +330,7 @@ const Invoices = () => {
 
             return true;
         });
-    }, [invoices, targetInvoiceId, filterStatus, filterType]);
+    }, [invoices, targetBookingId, filterStatus, filterType]);
 
     const stats = useMemo(() => calculateStats(invoices), [invoices]);
 
@@ -434,11 +445,18 @@ const Invoices = () => {
                         type="single"
                         collapsible
                         className="space-y-4"
-                        defaultValue={targetInvoiceId ? `invoice-${targetInvoiceId}` : undefined}
+                        defaultValue={
+                            targetBookingId && filteredInvoices.length > 0
+                                ? `invoice-${filteredInvoices[0].invoiceId}`
+                                : undefined
+                        }
                     >
                         {filteredInvoices.map((invoice) => {
                             const statusBadge = getStatusBadge(invoice.invoiceStatus);
-                            const isTargetInvoice = targetInvoiceId === invoice.invoiceId;
+                            // Kiểm tra xem invoice này có chứa bookingId đang tìm không
+                            const isTargetInvoice = targetBookingId
+                                ? invoice.bookings?.some((booking) => booking.bookingId === targetBookingId)
+                                : false;
 
                             // Lấy thông tin từ paymentInfo nếu có
                             const paymentMethod = invoice.paymentInfo?.paymentMethod || invoice.paymentMethod;
@@ -547,7 +565,7 @@ const Invoices = () => {
                                                 </div>
 
                                                 {/* Thông tin số lượng và giá */}
-                                                {(invoice.numberOfSwaps || invoice.pricePerSwap) && (
+                                                {(invoice.numberOfSwaps > 0 || invoice.pricePerSwap > 0) && (
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                                         {invoice.numberOfSwaps > 0 && (
                                                             <div className="bg-white rounded-lg p-3 border shadow-sm">
@@ -588,7 +606,7 @@ const Invoices = () => {
                                             </div>
 
                                             {/* Chi tiết booking */}
-                                            {invoice.bookings && invoice.bookings.length > 0 && (
+                                            {invoice.bookings?.length > 0 && (
                                                 <>
                                                     <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
                                                         <Receipt className="h-5 w-5 text-primary" />

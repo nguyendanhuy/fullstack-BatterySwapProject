@@ -481,7 +481,7 @@ const BookingHistory = () => {
                               )}
                               {/* Nút xem hóa đơn */}
                               {
-                                booking.bookingStatus === "COMPLETED" || booking.bookingStatus === "PENDINGSWAPPING" && (
+                                (
                                   <>
                                     <Button
                                       variant="default"

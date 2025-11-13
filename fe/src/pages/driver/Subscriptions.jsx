@@ -49,10 +49,10 @@ const Subscriptions = () => {
           console.log("✅Booking history response:", bookingHistory);
           const bookingHistoryData = bookingHistory.data || [];
           if (bookingHistoryData && Array.isArray(bookingHistoryData)) {
-            // Filter bookings with SUBSCRIPTION payment method and sort by date
             const subscriptionBookings = bookingHistoryData
-              .filter(booking => booking.payment?.paymentMethod === "SUBSCRIPTION")
-              .sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate))
+              .filter(booking => booking.isFreeSwap === true && (booking.bookingStatus === "COMPLETED" || booking.bookingStatus === "PENDINGSWAPPING"))
+              .sort((a, b) => b.bookingId - a.bookingId); // Sort by bookingId descending
+            console.log("Booking history data:", subscriptionBookings);
             setUsageHistory(subscriptionBookings);
           }
         }
@@ -361,7 +361,11 @@ const Subscriptions = () => {
                   const statusInfo = getStatusInfo(booking.bookingStatus);
 
                   return (
-                    <div key={booking.bookingId} className="flex justify-between items-center p-6 bg-gray-50 rounded-3xl hover:bg-gray-100 transition-colors group">
+                    <div
+                      key={booking.bookingId}
+                      className="flex justify-between items-center p-6 bg-gray-50 rounded-3xl hover:bg-gray-100 transition-colors group cursor-pointer"
+                      onClick={() => navigate("/driver/invoices", { state: { bookingId: booking.bookingId } })}
+                    >
                       <div className="flex items-center space-x-4">
                         <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl group-hover:scale-110 transition-transform duration-300">
                           <Zap className="h-5 w-5 text-white" />

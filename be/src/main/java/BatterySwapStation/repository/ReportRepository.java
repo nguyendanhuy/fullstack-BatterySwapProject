@@ -73,26 +73,44 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     List<Map<String, Object>> fetchDailySwap(@Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
 
-    // ✅ Hiệu suất trạm (đã fix theo schema thật)
+    // Optimized station performance: use pre-aggregated subqueries to avoid large intermediate joins
     @Query(value = """
-        SELECT 
+        SELECT
             s.stationid AS "stationId",
             s.stationname AS "stationName",
             s.address AS "address",
-            COALESCE(SUM(i.totalamount), 0) AS "totalRevenue",
-            COUNT(DISTINCT sw.swapid) AS "totalTransactions",
-            COUNT(DISTINCT b.batteryid) AS "managedBatteries",
-            ROUND(
-                (COUNT(DISTINCT ds.dockslotid) FILTER (WHERE ds.slotstatus = 'OCCUPIED') * 100.0) /
-                NULLIF(COUNT(DISTINCT ds.dockslotid), 0), 2
-            ) AS "efficiencyRate"
+            COALESCE(ir.totalrevenue, 0) AS "totalRevenue",
+            COALESCE(sw.total_transactions, 0) AS "totalTransactions",
+            COALESCE(bc.managed_batteries, 0) AS "managedBatteries",
+            CASE WHEN COALESCE(sl.total_slots, 0) = 0 THEN 0
+                 ELSE ROUND( (sl.occupied_slots::numeric * 100.0) / sl.total_slots, 2)
+            END AS "efficiencyRate"
         FROM station s
-        LEFT JOIN dock d ON d.stationid = s.stationid
-        LEFT JOIN dockslot ds ON ds.dockid = d.dockid
-        LEFT JOIN swap sw ON sw.dockid = d.dockid
-        LEFT JOIN invoice i ON i.userid IS NOT NULL  
-        LEFT JOIN battery b ON b.stationid = s.stationid
-        GROUP BY s.stationid, s.stationname, s.address
+        LEFT JOIN (
+            SELECT b.stationid, SUM(i.totalamount) AS totalrevenue
+            FROM invoice i
+            JOIN booking b ON b.invoiceid = i.invoiceid
+            GROUP BY b.stationid
+        ) ir ON ir.stationid = s.stationid
+        LEFT JOIN (
+            SELECT d.stationid, COUNT(sw.swapid) AS total_transactions
+            FROM swap sw
+            JOIN dock d ON sw.dockid = d.dockid
+            GROUP BY d.stationid
+        ) sw ON sw.stationid = s.stationid
+        LEFT JOIN (
+            SELECT stationid, COUNT(batteryid) AS managed_batteries
+            FROM battery
+            GROUP BY stationid
+        ) bc ON bc.stationid = s.stationid
+        LEFT JOIN (
+            SELECT d.stationid,
+                   COUNT(ds.dockslotid) AS total_slots,
+                   COUNT(ds.dockslotid) FILTER (WHERE ds.slotstatus = 'OCCUPIED') AS occupied_slots
+            FROM dockslot ds
+            JOIN dock d ON ds.dockid = d.dockid
+            GROUP BY d.stationid
+        ) sl ON sl.stationid = s.stationid
         ORDER BY s.stationid
     """, nativeQuery = true)
     List<Map<String, Object>> fetchStationPerformance();

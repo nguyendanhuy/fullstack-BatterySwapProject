@@ -21,6 +21,12 @@ public class TicketResponse {
 
     // ➕ Add cho trường hợp phạt cần thanh toán
     private Long invoiceId;
+    private Double refundAmount; // Số tiền hoàn
+    private Long refundedBookingId; // Hoàn tiền của booking nào
     private String penaltyLevel;
     private String paymentChannel;
+
+    private String refundType;       // "MONEY" hoặc "SWAP"
+    private Integer refundSwapCount; // số lượt swap hoàn lại
+
 }

@@ -6,9 +6,12 @@ import lombok.Data;
 
 @Data
 public class TicketResolveRequest {
-    private DisputeTicket.ResolutionMethod resolutionMethod; //
-    private String resolutionDescription;
-    private DisputeTicket.PenaltyLevel penaltyLevel; // MINOR / MEDIUM / SEVERE
-    private Payment.PaymentChannel paymentChannel;         // mô tả thêm
-}
 
+    private DisputeTicket.ResolutionMethod resolutionMethod; // PENALTY / REFUND / OTHER / NO_ACTION
+    private String resolutionDescription;
+
+
+    private DisputeTicket.PenaltyLevel penaltyLevel;
+    private Payment.PaymentChannel paymentChannel;
+
+}

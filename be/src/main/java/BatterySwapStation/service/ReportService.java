@@ -135,7 +135,7 @@ public class ReportService {
         var station = stationRepository.findById(stationId)
                 .orElseThrow(() -> new EntityNotFoundException("Station not found"));
 
-        // 5️⃣ Tạo summary giống format Excel
+        // 5️⃣ Tạo summary giống format Excel (giữ lại định dạng cũ: hardcoded 100%)
         Map<String, Object> summary = Map.of(
                 "stationId", station.getStationId(),
                 "stationName", station.getStationName(),
@@ -339,4 +339,3 @@ public class ReportService {
     }
 
 }
-

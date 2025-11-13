@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +30,8 @@ public class TicketService {
     private final PaymentRepository paymentRepository;
     private final UserService userService;
     private final SystemPriceService systemPriceService;
+    private final UserSubscriptionRepository userSubscriptionRepository;
+
 
     // ----------------------------------------------------------------------
     // --- 1. TẠO DISPUTE TICKET ---
@@ -159,6 +162,10 @@ public class TicketService {
                             res.setPaymentChannel(p.getPaymentChannel().name());
                     });
         }
+        if ("REFUND".equals(ticket.getResolutionMethod()) && ticket.getBooking() != null) {
+            res.setRefundAmount(ticket.getBooking().getAmount());
+            res.setRefundedBookingId(ticket.getBooking().getBookingId());
+        }
 
         return res;
     }
@@ -212,7 +219,7 @@ public class TicketService {
 
         return switch (req.getResolutionMethod()) {
             case PENALTY -> handlePenaltyResolution(ticket, user, req, http);
-            case REFUND -> handleRefundResolution(ticket, user);
+            case REFUND -> handleRefundResolution(ticket, user, req);
             case OTHER -> handleOtherResolution(ticket, req);
             case NO_ACTION -> handleOtherResolution(ticket, req); // ✅ thêm dòng này
         };
@@ -380,19 +387,139 @@ public class TicketService {
     }
 
 
-    // -------------------------------------------------------------------
-    // --- 10. HANDLE REFUND / OTHER ---
-    // -------------------------------------------------------------------
-    private TicketResponse handleRefundResolution(DisputeTicket ticket, User user) {
-        double refund = ticket.getBooking().getAmount();
-        user.setWalletBalance(user.getWalletBalance() + refund);
+    private TicketResponse handleRefundResolution(DisputeTicket ticket, User user, TicketResolveRequest req) {
+
+        Booking booking = ticket.getBooking();
+        if (booking == null) {
+            throw new IllegalStateException("Không thể hoàn tiền vì ticket không gắn booking.");
+        }
+
+        Invoice invoice = booking.getInvoice();
+        if (invoice == null) {
+            throw new IllegalStateException("Booking không có invoice để xử lý hoàn tiền.");
+        }
+
+        double refundAmount = Optional.ofNullable(invoice.getTotalAmount()).orElse(0.0);
+        int swapsUsed = Optional.ofNullable(booking.getBatteryCount()).orElse(1);
+
+        // ======================================================================================
+        // 1️⃣ — TRƯỜNG HỢP HOÀN LƯỢT SWAP (booking = 0đ → dùng gói tháng)
+        // ======================================================================================
+        if (refundAmount <= 0) {
+
+            Optional<UserSubscription> subOpt =
+                    userSubscriptionRepository.findActiveSubscriptionForUser(
+                            user.getUserId(),
+                            UserSubscription.SubscriptionStatus.ACTIVE,
+                            LocalDateTime.now()
+                    );
+
+            int before = 0;
+            int after = 0;
+
+            if (subOpt.isPresent()) {
+                UserSubscription sub = subOpt.get();
+
+                before = sub.getUsedSwaps();
+                after = Math.max(0, before - swapsUsed);
+
+                sub.setUsedSwaps(after);
+                userSubscriptionRepository.save(sub);
+
+                log.info("🔄 Hoàn {} lượt swap ({} → {}) cho user {}.",
+                        swapsUsed, before, after, user.getUserId());
+            }
+
+            // Tạo log payment = 0 VNĐ (invoice cũ)
+            Payment logPayment = Payment.builder()
+                    .invoice(invoice)
+                    .amount(0.0)
+                    .paymentMethod(Payment.PaymentMethod.WALLET)
+                    .paymentChannel(PaymentChannel.WALLET)
+                    .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                    .transactionType(Payment.TransactionType.REFUND)
+                    .createdAt(LocalDateTime.now())
+                    .message("Hoàn trả " + swapsUsed +
+                            " lượt swap cho booking #" + booking.getBookingId() +
+                            (req.getResolutionDescription() != null ? " | " + req.getResolutionDescription() : ""))
+                    .build();
+
+            paymentRepository.save(logPayment);
+
+            // Cập nhật ticket
+            ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
+            ticket.setResolvedAt(LocalDateTime.now());
+            ticket.setResolutionMethod("REFUND");
+            ticket.setResolutionDescription(req.getResolutionDescription());
+            ticket.setPaymentChannel(PaymentChannel.WALLET);
+            disputeTicketRepository.save(ticket);
+
+            // Response
+            TicketResponse res = convertToTicketResponse(ticket);
+            res.setRefundAmount(0.0);
+            res.setRefundedBookingId(booking.getBookingId());
+            res.setInvoiceId(invoice.getInvoiceId());
+            res.setRefundSwapCount(swapsUsed);    // <-- thêm mới
+            res.setRefundType("SWAP");            // <-- thêm mới
+
+            return res;
+        }
+
+        // ======================================================================================
+        // 2️⃣ — TRƯỜNG HỢP HOÀN TIỀN (booking đã thanh toán)
+        // ======================================================================================
+
+        double currentBalance = Optional.ofNullable(user.getWalletBalance()).orElse(0.0);
+        user.setWalletBalance(currentBalance + refundAmount);
         userRepository.save(user);
 
+        // Tạo invoice refund mới
+        Invoice refundInvoice = new Invoice();
+        refundInvoice.setUserId(user.getUserId());
+        refundInvoice.setCreatedDate(LocalDateTime.now());
+        refundInvoice.setInvoiceType(Invoice.InvoiceType.PENALTY);
+        refundInvoice.setInvoiceStatus(Invoice.InvoiceStatus.PAID);
+        refundInvoice.setTotalAmount(refundAmount);
+        refundInvoice = invoiceRepository.save(refundInvoice);
+
+        // Tạo payment
+        Payment refundPayment = Payment.builder()
+                .invoice(refundInvoice)
+                .amount(refundAmount)
+                .paymentMethod(Payment.PaymentMethod.WALLET)
+                .paymentChannel(PaymentChannel.WALLET)
+                .paymentStatus(Payment.PaymentStatus.SUCCESS)
+                .transactionType(Payment.TransactionType.REFUND)
+                .createdAt(LocalDateTime.now())
+                .message("Hoàn tiền " + refundAmount +
+                        " VNĐ cho booking #" + booking.getBookingId() +
+                        (req.getResolutionDescription() != null ? " | " + req.getResolutionDescription() : ""))
+                .build();
+
+        paymentRepository.save(refundPayment);
+
+        // Cập nhật ticket
+        ticket.setPenaltyInvoice(refundInvoice);
+        ticket.setPaymentChannel(PaymentChannel.WALLET);
         ticket.setStatus(DisputeTicket.TicketStatus.RESOLVED);
         ticket.setResolvedAt(LocalDateTime.now());
+        ticket.setResolutionMethod("REFUND");
+        ticket.setResolutionDescription(req.getResolutionDescription());
         disputeTicketRepository.save(ticket);
-        return convertToTicketResponse(ticket);
+
+        // Response
+        TicketResponse res = convertToTicketResponse(ticket);
+        res.setRefundAmount(refundAmount);
+        res.setRefundedBookingId(booking.getBookingId());
+        res.setInvoiceId(refundInvoice.getInvoiceId());
+        res.setRefundType("MONEY");       // <-- thêm mới
+        res.setRefundSwapCount(0);        // <-- thêm mới
+
+        return res;
     }
+
+
+
 
     private TicketResponse handleOtherResolution(DisputeTicket ticket, TicketResolveRequest req) {
         ticket.setResolutionMethod(req.getResolutionMethod().name());

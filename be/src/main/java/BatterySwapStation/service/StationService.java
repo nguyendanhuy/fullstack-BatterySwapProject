@@ -9,6 +9,7 @@ import BatterySwapStation.entity.Vehicle;
 import BatterySwapStation.repository.BatteryRepository;
 import BatterySwapStation.repository.DockSlotRepository;
 import BatterySwapStation.repository.StationRepository;
+import BatterySwapStation.repository.BookingRepository;
 import BatterySwapStation.utils.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class StationService {
     private final VehicleService vehicleService; // 👈 thêm inject service này để lấy loại pin user
     private final BatteryRepository batteryRepository;
     private final DockSlotRepository DockSlotRepository;
+    private final BookingRepository bookingRepository; // mới: dùng để đếm vehicle an toàn
     // ⚡ Lấy toàn bộ trạm với tổng hợp nhanh
     public List<StationResponseDTO> getAllStations() {
         List<Object[]> main = stationRepository.getStationSummary();
@@ -266,5 +268,19 @@ public class StationService {
     public int countStations() {
         return stationRepository.countAllStations();
     }
-}
 
+    // ---- NEW: safe helper to count vehicles at station using BookingRepository (avoid N+1 and consider bookings data)
+    /**
+     * Đếm số xe (distinct vehicleId) liên quan tới trạm - dùng dữ liệu booking để ước lượng.
+     * Trả về 0 nếu không tìm được hoặc có lỗi.
+     */
+    public int countVehiclesAtStationSafe(Integer stationId) {
+        try {
+            Long cnt = bookingRepository.countDistinctVehiclesByStationId(stationId);
+            return cnt == null ? 0 : cnt.intValue();
+        } catch (Exception ex) {
+            // Không ném lỗi để dashboard vẫn hoạt động; log nếu cần
+            return 0;
+        }
+    }
+}

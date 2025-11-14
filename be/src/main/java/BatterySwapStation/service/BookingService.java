@@ -1909,9 +1909,14 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public int countDistinctStationsForUser(String userId) {
-        if (userId == null) return 0;
-        Long count = bookingRepository.countDistinctStationsByUser(userId);
-        return count == null ? 0 : count.intValue();
+    public int countPendingSwappingBookingsForStation(Integer stationId) {
+        if (stationId == null) return 0;
+        try {
+            Long cnt = bookingRepository.countByStation_StationIdAndBookingStatus(stationId, Booking.BookingStatus.PENDINGSWAPPING);
+            return cnt == null ? 0 : cnt.intValue();
+        } catch (Exception ex) {
+            log.warn("Failed to count pending swapping bookings for station {}: {}", stationId, ex.getMessage());
+            return 0;
+        }
     }
 }

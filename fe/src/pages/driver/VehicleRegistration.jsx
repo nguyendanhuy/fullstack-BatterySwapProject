@@ -37,6 +37,7 @@ export default function VehicleRegistration() {
     vehicleType: "",
     batteryType: "",
     batteryCount: "",
+    batteryIds: "",
     purchaseDate: "",
     manufactureYear: "",
     color: "",
@@ -87,6 +88,7 @@ export default function VehicleRegistration() {
           vehicleType: "",
           batteryType: "",
           batteryCount: "",
+          batteryIds: "",
           purchaseDate: "",
           manufactureYear: "",
           color: "",
@@ -108,6 +110,7 @@ export default function VehicleRegistration() {
         vehicleType: res?.vehicleType,
         batteryType: res?.batteryType,
         batteryCount: res?.batteryCount,
+        batteryIds: res?.batteryIds,
         color: res?.color,
         manufactureYear: res?.manufactureYear,
         purchaseDate: res?.purchaseDate,
@@ -200,6 +203,7 @@ export default function VehicleRegistration() {
         vehicleType: "",
         batteryType: "",
         batteryCount: "",
+        batteryIds: "",
         purchaseDate: "",
         manufactureYear: "",
         color: "",
@@ -298,6 +302,7 @@ export default function VehicleRegistration() {
                           vehicleType: "",
                           batteryType: "",
                           batteryCount: "",
+                          batteryIds: "",
                           purchaseDate: "",
                           manufactureYear: "",
                           color: "",
@@ -398,6 +403,11 @@ export default function VehicleRegistration() {
                           </div>
 
                           <div className="bg-gray-50 p-3 rounded-lg">
+                            <div className="text-xs text-gray-500">Mã pin</div>
+                            <div className="font-medium text-gray-900 break-all">{formData.batteryIds || "—"}</div>
+                          </div>
+
+                          <div className="bg-gray-50 p-3 rounded-lg">
                             <div className="text-xs text-gray-500">Năm sản xuất</div>
                             <div className="font-medium text-gray-900">{formData.manufactureYear || "—"}</div>
                           </div>
@@ -412,7 +422,7 @@ export default function VehicleRegistration() {
                             <div className="font-medium text-gray-900">{formData.color || "—"}</div>
                           </div>
 
-                          <div className="sm:col-span-2 bg-gray-50 p-3 rounded-lg">
+                          <div className="bg-gray-50 p-3 rounded-lg">
                             <div className="text-xs text-gray-500">Biển số</div>
                             <div className="font-medium text-gray-900">{formData.licensePlate || "—"}</div>
                           </div>
@@ -496,10 +506,11 @@ export default function VehicleRegistration() {
                               <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Dòng xe</div><div className="font-medium text-gray-900">{item.vehicleType || '—'}</div></div>
                               <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Loại pin</div><div className="font-medium text-gray-900">{item.batteryType || '—'}</div></div>
                               <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Số lượng pin</div><div className="font-medium text-gray-900">{item.batteryCount ?? '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Mã pin</div><div className="font-medium text-gray-900 break-all">{item.batteryIds || '—'}</div></div>
                               <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Ngày sản xuất</div><div className="font-medium text-gray-900">{item.manufactureDate || '—'}</div></div>
                               <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Ngày mua</div><div className="font-medium text-gray-900">{item.purchaseDate || '—'}</div></div>
                               <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Màu</div><div className="font-medium text-gray-900">{item.color || '—'}</div></div>
-                              <div className="sm:col-span-2 bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Biển số</div><div className="font-medium text-gray-900">{item.licensePlate || '—'}</div></div>
+                              <div className="bg-gray-50 p-2 rounded"><div className="text-xs text-gray-500">Biển số</div><div className="font-medium text-gray-900">{item.licensePlate || '—'}</div></div>
                             </div>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Đóng</AlertDialogCancel>

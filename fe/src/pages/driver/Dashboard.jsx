@@ -8,7 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { getUserAllVehicles, getInvoicebyUserId, cancelPendingInvoiceById } from "../../services/axios.services";
+import { getUserAllVehicles, getInvoicebyUserId, cancelPendingInvoiceById, getDriverDashboardReport } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 import { useToast } from "@/hooks/use-toast";
 const DriverDashboard = () => {
@@ -17,10 +17,12 @@ const DriverDashboard = () => {
   const navigate = useNavigate();
   const [pendingInvoices, setPendingInvoices] = useState([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [DashboardInfo, setDashboardInfo] = useState(null);
 
   useEffect(() => {
     loadUserVehicles();
     loadPendingInvoices();
+    loadDashboardInfo();
   }, []);
 
   const loadUserVehicles = async () => {
@@ -33,6 +35,17 @@ const DriverDashboard = () => {
         description: JSON.stringify(res.error),
         variant: "destructive",
       });
+    }
+  };
+
+  const loadDashboardInfo = async () => {
+    if (!userData?.userId) return;
+    try {
+      const response = await getDriverDashboardReport(userData.userId);
+      console.log("✅ Dashboard info fetched:", response);
+      setDashboardInfo(response);
+    } catch (error) {
+      console.error("Error loading dashboard info:", error);
     }
   };
 
@@ -216,10 +229,10 @@ const DriverDashboard = () => {
         {/* Enhanced Quick Stats */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           {[
-            { icon: Car, count: "1", label: "Xe đã đăng ký", color: "from-blue-500 to-indigo-500" },
-            { icon: MapPin, count: "12", label: "Trạm gần đây", color: "from-green-500 to-emerald-500" },
-            { icon: Calendar, count: "3", label: "Lịch hẹn", color: "from-orange-500 to-yellow-500" },
-            { icon: CreditCard, count: "5", label: "Gói thuê bao", color: "from-purple-500 to-pink-500" },
+            { icon: Car, count: DashboardInfo?.totalVehicle ?? "0", label: "Xe đã đăng ký", color: "from-blue-500 to-indigo-500" },
+            { icon: MapPin, count: DashboardInfo?.totalStation ?? "0", label: "Trạm gần đây", color: "from-green-500 to-emerald-500" },
+            { icon: Calendar, count: DashboardInfo?.totalPendingSwappingBooking ?? "0", label: "Lịch hẹn chờ đổi", color: "from-orange-500 to-yellow-500" },
+            { icon: CreditCard, count: DashboardInfo?.totalSubscription ?? "0", label: "Gói thuê bao", color: "from-purple-500 to-pink-500" },
           ].map((stat, index) => (<Card key={index} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-500 hover:-translate-y-1 group overflow-hidden" style={{ animationDelay: `${index * 0.1}s` }}>
             <CardContent className="p-6 text-center group-hover:scale-105 transition-transform duration-300">
               <div className={`p-3 bg-gradient-to-r ${stat.color} rounded-xl mx-auto mb-4 w-fit`}>

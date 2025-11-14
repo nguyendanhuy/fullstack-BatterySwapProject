@@ -283,6 +283,11 @@ const updateRebalanceRequest = (rebalanceId, status) => {
 const getStationReportByRangeDate = (stationId, range) => {
     return axios.get(`/reports/station/${stationId}/range?days=${range}`);
 }
+
+
+const getDriverDashboardReport = (driverId) => {
+    return axios.get(`/dashboard?userId=${driverId}`);
+}
 export {
     getStationReportByRangeDate,
     swapHourlyReport,
@@ -349,5 +354,6 @@ export {
     getAllRebalance,
     getAIRebalanceSuggestion,
     createARebalanceRequest,
-    updateRebalanceRequest
+    updateRebalanceRequest,
+    getDriverDashboardReport
 };

@@ -135,7 +135,8 @@ const BookingHistory = () => {
         console.log("Hủy đặt chỗ thành công:", res);
         toast({
           title: "Yêu cầu hủy đặt chỗ đã được gửi",
-          description: "Chúng tôi sẽ xử lý và hoàn tiền trong vòng 24h",
+          description: "Tiền đã được hoàn về ví của bạn",
+          className: "bg-green-600 text-white",
         });
         setCancelDialogOpen(false);
         setCancelReason("");

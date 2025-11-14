@@ -45,6 +45,17 @@ const formatDate = (dateString) => {
     });
 };
 
+const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
 const formatTime = (timeString) => {
     return timeString.substring(0, 5);
 };
@@ -144,7 +155,15 @@ const calculateStats = (invoices) => {
     const totalInvoices = invoices.length;
     const paidInvoices = invoices.filter((inv) => inv.invoiceStatus === "PAID").length;
     const pendingInvoices = invoices.filter((inv) => inv.invoiceStatus === "PENDING").length;
-    const totalAmount = invoices.reduce((sum, inv) => sum + (inv.invoiceStatus === "PAID" ? inv.totalAmount : 0), 0);
+
+    // Tính tổng chi dựa trên displayAmount (có dấu +/-)
+    const totalAmount = invoices.reduce((sum, inv) => {
+        if (inv.invoiceStatus === "PAID" && inv.paymentInfo?.displayAmount) {
+            const amount = parseFloat(inv.paymentInfo.displayAmount);
+            return sum + amount;
+        }
+        return sum;
+    }, 0);
 
     return { totalInvoices, paidInvoices, pendingInvoices, totalAmount };
 };
@@ -491,12 +510,12 @@ const Invoices = () => {
                                                         )}
                                                     </h3>
                                                     <div className="flex items-center gap-3 mt-2 text-sm">
-                                                        <Badge className={`${invoiceTypeInfo.badgeClass} border font-semibold`}>
+                                                        <Badge className={`${invoiceTypeInfo.badgeClass} border font-semibold min-w-[160px] justify-center`}>
                                                             {invoiceTypeInfo.label}
                                                         </Badge>
                                                         <span className="flex items-center gap-1 text-muted-foreground">
                                                             <Calendar className="h-4 w-4" />
-                                                            {formatDate(invoice.createdDate)}
+                                                            {formatDateTime(invoice.createdDate)}
                                                         </span>
                                                     </div>
                                                 </div>

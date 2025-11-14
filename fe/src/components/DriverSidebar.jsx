@@ -34,6 +34,26 @@ const mainItems = [
     { title: "Ví điện tử", url: "/driver/wallet", icon: Wallet },
 ];
 
+export function MobileBottomDriveNav() {
+    return (
+        <div className="fixed bottom-0 left-0 w-full h-16 bg-white border-t shadow-lg flex justify-around items-center md:hidden z-50">
+            {mainItems.map((item) => (
+                <NavLink
+                    key={item.title}
+                    to={item.url}
+                    className={({ isActive }) =>
+                        `flex flex-col items-center justify-center text-xs ${isActive ? "text-blue-600" : "text-gray-500"
+                        }`
+                    }
+                >
+                    <item.icon className="h-5 w-5" />
+                    <span className="text-[11px]">{item.title}</span>
+                </NavLink>
+            ))}
+        </div>
+    );
+}
+
 export function DriverSidebar() {
     const { open, toggleSidebar } = useSidebar();
     const { userData } = useContext(SystemContext);
@@ -53,7 +73,7 @@ export function DriverSidebar() {
     };
 
     return (
-        <>
+        <div className="hidden md:block ">
             <Sidebar
                 className="border-r border-white/10 transition-all duration-300"
                 style={{ width: open ? "220px" : "60px" }}
@@ -201,7 +221,7 @@ export function DriverSidebar() {
                     <AccountSettings userRole="driver" />
                 </DialogContent>
             </Dialog>
-        </>
+        </div>
     );
 }
 

@@ -1,5 +1,5 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { StaffSidebar } from "./StaffSidebar";
+import { MobileBottomStaffNav, StaffSidebar } from "./StaffSidebar";
 import { Menu } from "lucide-react";
 import { Outlet } from "react-router-dom";
 
@@ -11,6 +11,7 @@ export function StaffLayout() {
                 <main className="flex-1">
                     <Outlet />
                 </main>
+                <MobileBottomStaffNav />
             </div>
         </SidebarProvider>
     );

@@ -132,7 +132,6 @@ const BookingHistory = () => {
     try {
       const res = await cancelBookingById(selectedBooking.bookingId, userData.userId, cancelReason);
       if (res.success) {
-        console.log("Hủy đặt chỗ thành công:", res);
         toast({
           title: "Yêu cầu hủy đặt chỗ đã được gửi",
           description: "Tiền đã được hoàn về ví của bạn",
@@ -441,6 +440,7 @@ const BookingHistory = () => {
                                           Lý do hủy đặt chỗ
                                         </label>
                                         <input
+                                          required
                                           type="text"
                                           placeholder="Nhập lý do hủy..."
                                           value={cancelReason}

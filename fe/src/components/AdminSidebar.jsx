@@ -25,7 +25,25 @@ const mainItems = [
     { title: "Quản lý nhân viên", url: "/admin/staff-management", icon: Users },
     { title: "Quản lý giá", url: "/admin/price-management", icon: FileText },
 ];
-
+export function MobileBottomAdminNav() {
+    return (
+        <div className="fixed bottom-0 left-0 w-full h-16 bg-white border-t shadow-lg flex justify-around items-center md:hidden z-50">
+            {mainItems.map((item) => (
+                <NavLink
+                    key={item.title}
+                    to={item.url}
+                    className={({ isActive }) =>
+                        `flex flex-col items-center justify-center text-xs ${isActive ? "text-blue-600" : "text-gray-500"
+                        }`
+                    }
+                >
+                    <item.icon className="h-5 w-5" />
+                    <span className="text-[11px]">{item.title}</span>
+                </NavLink>
+            ))}
+        </div>
+    );
+}
 export function AdminSidebar() {
     const { open, toggleSidebar } = useSidebar();
     const navigate = useNavigate();
@@ -38,8 +56,9 @@ export function AdminSidebar() {
 
     return (
         <>
-            <div className="[--sidebar-width:230px] [--sidebar-width-icon:60px]">
-                <Sidebar className="border-r border-white/10 transition-all duration-300" collapsible="icon">
+            <div className="[--sidebar-width:230px] [--sidebar-width-icon:60px] hidden md:block">
+                <Sidebar className="border-r border-white/10 transition-all duration-300"
+                    collapsible="icon">
                     <div className="h-full bg-gradient-to-b from-blue-600 via-indigo-600 to-purple-600 flex flex-col">
                         {/* Header */}
                         <SidebarHeader className="border-b border-white/10 p-3">

@@ -33,7 +33,25 @@ const mainItems = [
     { title: "Kiểm tra pin", url: "/staff/battery-inspection", icon: Search },
     { title: "Quản lý tranh chấp pin", url: "/staff/battery-dispute", icon: TrendingUp },
 ];
-
+export function MobileBottomStaffNav() {
+    return (
+        <div className="fixed bottom-0 left-0 w-full h-16 bg-white border-t shadow-lg flex justify-around items-center md:hidden z-50">
+            {mainItems.map((item) => (
+                <NavLink
+                    key={item.title}
+                    to={item.url}
+                    className={({ isActive }) =>
+                        `flex flex-col items-center justify-center text-xs ${isActive ? "text-blue-600" : "text-gray-500"
+                        }`
+                    }
+                >
+                    <item.icon className="h-5 w-5" />
+                    <span className="text-[11px]">{item.title}</span>
+                </NavLink>
+            ))}
+        </div>
+    );
+}
 export function StaffSidebar() {
     const { open, toggleSidebar } = useSidebar();
     const navigate = useNavigate();
@@ -43,7 +61,7 @@ export function StaffSidebar() {
 
     return (
         <>
-            <div className="[--sidebar-width:230px] [--sidebar-width-icon:60px]">
+            <div className="hidden md:block [--sidebar-width:230px] [--sidebar-width-icon:60px]">
                 <Sidebar
                     className="border-r border-white/10 transition-all duration-300 "
                     collapsible="icon"

@@ -23,6 +23,10 @@ public class VehicleImportDTO {
     private String purchaseDate;
     private Boolean isActive;
 
+    // danh sách battery ids (chuỗi) nếu CSV có cột battery_ids
+    @Builder.Default
+    private List<String> batteryIds = new ArrayList<>();
+
     // Validation errors
     @Builder.Default
     private List<String> errors = new ArrayList<>();
@@ -31,4 +35,3 @@ public class VehicleImportDTO {
         return errors.isEmpty();
     }
 }
-

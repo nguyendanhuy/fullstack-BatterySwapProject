@@ -365,7 +365,17 @@ public class VehicleImportService {
 
                                      // also set battery.vehicle field for consistency
                                      b.setVehicle(saved);
-                                     batteryRepository.save(b);
+                                     // According to requirement: when battery id is provided with vehicle import,
+                                    // set battery status to IN_USE and clear station/dockSlot to reflect it's attached to a vehicle
+                                    try {
+                                        b.setBatteryStatus(Battery.BatteryStatus.IN_USE);
+                                    } catch (Exception ex) {
+                                        // fallback: if enum not present or other issue, ignore to avoid breaking import
+                                        log.warn("Could not set battery status IN_USE for {}: {}", bid, ex.getMessage());
+                                    }
+                                    b.setStationId(null);
+                                    b.setDockSlot(null);
+                                    batteryRepository.save(b);
                                  } else {
                                      log.warn("Battery id {} not found when attaching to vehicle VIN={}", bid, dto.getVIN());
                                  }

@@ -241,8 +241,10 @@ public class InspectionService { // ✅ Đổi tên lớp
                     .slotNumber(slot.getSlotNumber())
                     .batteryId(battery.getBatteryId())
                     .batteryStatus(battery.getBatteryStatus().name())
+                    .batteryType(battery != null ? battery.getBatteryType().name() : null)
                     .stateOfHealth(battery.getStateOfHealth())
                     .currentCapacity(battery.getCurrentCapacity())
+                    .cycleCount(battery != null ? battery.getCycleCount() : null)
                     .action(action) // e.g. "INSPECTED" / "STATUS_CHANGED"
                     .timestamp(LocalDateTime.now().toString())
                     .build();

@@ -49,23 +49,34 @@ public class BatteryService {
             if (current > 100.0) current = 100.0;
 
             boolean fullyCharged = current >= 100.0;
+
+            // Cập nhật capacity
             battery.setCurrentCapacity(current);
 
+          // Tăng chu kỳ sạc nếu vừa đầy
+            if (fullyCharged && battery.getBatteryStatus() == Battery.BatteryStatus.CHARGING) {
+                Integer oldCycle = battery.getCycleCount();
+                if (oldCycle == null) oldCycle = 0;
+                battery.setCycleCount(oldCycle + 1);
+            }
+
+            // Nếu đầy thì chuyển sang AVAILABLE
             if (fullyCharged) {
                 battery.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
             }
 
             updated.add(battery);
 
-            // ✅ Luôn gửi realtime mỗi lần tăng (dù nhiều pin)
+
             if (battery.getDockSlot() != null) {
                 DockSlot slot = battery.getDockSlot();
+
                 String action = fullyCharged ? "CHARGING_COMPLETE" : "CHARGING_PROGRESS";
+
                 sendRealtimeUpdate(slot, action, battery.getBatteryStatus().name(), battery);
             }
         }
 
-        // ✅ Batch update tất cả pin sau cùng
         batteryRepository.saveAll(updated);
     }
 
@@ -166,8 +177,10 @@ public class BatteryService {
                     .slotNumber(slot.getSlotNumber())
                     .batteryId(battery != null ? battery.getBatteryId() : null)
                     .batteryStatus(status)
+                    .batteryType(battery != null ? battery.getBatteryType().name() : null)  // ⭐ THÊM DÒNG NÀY
                     .stateOfHealth(battery != null ? battery.getStateOfHealth() : null)
                     .currentCapacity(battery != null ? battery.getCurrentCapacity() : null)
+                    .cycleCount(battery != null ? battery.getCycleCount() : null)
                     .action(action)
                     .timestamp(LocalDateTime.now().toString())
                     .build();
@@ -346,6 +359,34 @@ public class BatteryService {
                 "Lấy danh sách pin thuộc xe #" + vehicleId + " thành công",
                 result
         );
+    }
+    // ==================== TỰ ĐỘNG TIÊU HAO PIN KHI GẮN VÀO XE ====================
+    @Scheduled(cron = "0 0 0/12 * * *") // mỗi 12 tiếng: 00:00 và 12:00
+     @Transactional
+    public void autoDrainInUseBatteries() {
+
+        List<Battery> inUseBatteries = batteryRepository.findByBatteryStatus(Battery.BatteryStatus.IN_USE);
+        if (inUseBatteries.isEmpty()) return;
+
+        for (Battery battery : inUseBatteries) {
+
+            Double cur = Optional.ofNullable(battery.getCurrentCapacity()).orElse(100.0);
+
+            // Giảm 10%
+            cur -= 10.0;
+
+            if (cur < 0) cur = 0.0;
+
+            battery.setCurrentCapacity(cur);
+
+            // Gửi realtime nếu muốn
+            if (battery.getDockSlot() != null) {
+                sendRealtimeUpdate(battery.getDockSlot(), "USAGE_DRAIN", battery.getBatteryStatus().name(), battery);
+            }
+        }
+
+        batteryRepository.saveAll(inUseBatteries);
+        System.out.println("Đã tiêu hao 10% cho toàn bộ pin IN_USE");
     }
 
 }

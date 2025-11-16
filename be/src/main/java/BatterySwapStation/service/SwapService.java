@@ -323,8 +323,10 @@ public class SwapService {
                     .slotNumber(slot.getSlotNumber())
                     .batteryId(battery != null ? battery.getBatteryId() : null)
                     .batteryStatus(battery != null ? battery.getBatteryStatus().name() : "EMPTY")
+                    .batteryType(battery != null ? battery.getBatteryType().name() : null)
                     .stateOfHealth(battery != null ? battery.getStateOfHealth() : null)
                     .currentCapacity(battery != null ? battery.getCurrentCapacity() : null)
+                    .cycleCount(battery != null ? battery.getCycleCount() : null)
                     .action(action)
                     .timestamp(LocalDateTime.now().toString())
                     .build();
@@ -373,6 +375,19 @@ public class SwapService {
             return new ApiResponse(false, "Thiếu danh sách mã pin cần kiểm tra.");
         }
 
+       //kiểm tra số lương pin khớp với yêu cầu booking
+        Integer required = (booking.getBatteryCount() != null && booking.getBatteryCount() > 0)
+                ? booking.getBatteryCount()
+                : 1;
+
+        if (batteryIds.size() != required) {
+            return new ApiResponse(
+                    false,
+                    "Số lượng pin nhập (" + batteryIds.size() + ") không khớp yêu cầu booking (" + required + ").",
+                    Map.of("required", required, "provided", batteryIds.size())
+            );
+        }
+
         List<Map<String, Object>> results = new ArrayList<>();
 
         for (String batteryId : batteryIds) {
@@ -403,9 +418,14 @@ public class SwapService {
 
         return new ApiResponse(
                 allValid,
-                allValid ? "Tất cả pin thuộc xe, có thể swap."
+                allValid
+                        ? "Tất cả pin thuộc xe, có thể swap."
                         : "Một hoặc nhiều pin không thuộc xe.",
                 results
         );
     }
+
+
+
+
 }

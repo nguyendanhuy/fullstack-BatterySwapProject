@@ -223,5 +223,14 @@ public class VehicleService {
     public int countVehiclesByUserId(String userId) {
         return vehicleRepository.countByUserId(userId);
     }
-}
 
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<VehicleRepository.VehicleAdminProjection> getAllVehiclesAdmin(org.springframework.data.domain.Pageable pageable) {
+        return vehicleRepository.findAllProjected(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<VehicleRepository.VehicleAdminProjection> getAllVehiclesAdminUnpaged() {
+        return vehicleRepository.findAllProjected(org.springframework.data.domain.Pageable.unpaged()).getContent();
+    }
+}

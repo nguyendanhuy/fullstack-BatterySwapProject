@@ -2,6 +2,7 @@ package BatterySwapStation.controller;
 
 import BatterySwapStation.dto.VehicleImportResultDTO;
 import BatterySwapStation.service.VehicleImportService;
+import BatterySwapStation.service.VehicleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -17,6 +19,7 @@ import java.util.Map;
 public class AdminVehicleController {
 
     private final VehicleImportService vehicleImportService;
+    private final VehicleService vehicleService;
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> importVehicles(
@@ -38,5 +41,15 @@ public class AdminVehicleController {
                 "error", e.getMessage()
             ));
         }
+    }
+
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getAllVehicles() {
+        List<?> list = vehicleService.getAllVehiclesAdminUnpaged();
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "totalElements", list.size(),
+            "vehicles", list
+        ));
     }
 }

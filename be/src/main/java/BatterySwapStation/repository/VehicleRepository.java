@@ -3,6 +3,8 @@ package BatterySwapStation.repository;
 import BatterySwapStation.entity.Battery;
 import BatterySwapStation.entity.User;
 import BatterySwapStation.entity.Vehicle;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -43,5 +45,21 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
     @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.user.userId = :userId")
     int countByUserId(@Param("userId") String userId);
 
+    // ----- Admin fast projection -----
+    interface VehicleAdminProjection {
+        Integer getVehicleId();
+        String getVIN();
+        String getLicensePlate();
+        String getOwnerName();
+        String getColor();
+        String getVehicleType();
+        String getBatteryType();
+        Integer getBatteryCount();
+        Boolean getIsActive();
+        String getUserId();
+    }
+
+    @Query("SELECT v.vehicleId as vehicleId, v.VIN as VIN, v.licensePlate as licensePlate, v.ownerName as ownerName, v.color as color, v.vehicleType as vehicleType, v.batteryType as batteryType, v.batteryCount as batteryCount, v.isActive as isActive, v.user.userId as userId FROM Vehicle v")
+    Page<VehicleAdminProjection> findAllProjected(Pageable pageable);
 
 }

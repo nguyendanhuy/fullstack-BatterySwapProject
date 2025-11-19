@@ -6,7 +6,6 @@ import { SystemContext } from "../contexts/system.context";
 import * as axiosServices from "../services/axios.services";
 import { BrowserQRCodeReader } from "@zxing/browser";
 
-// Mock dependencies
 jest.mock("../hooks/use-toast", () => ({
     useToast: () => ({
         toast: jest.fn(),

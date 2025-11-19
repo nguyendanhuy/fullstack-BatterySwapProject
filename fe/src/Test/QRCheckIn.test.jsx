@@ -51,7 +51,6 @@ jest.mock("antd", () => ({
     Divider: () => <div data-testid="divider" />,
 }));
 
-// Mock URL APIs
 global.URL.createObjectURL = jest.fn(() => "blob:preview");
 global.URL.revokeObjectURL = jest.fn();
 

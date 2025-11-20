@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, ArrowLeft, Search, CalendarIcon, TrendingUp, DollarSign, Battery, Users, Clock, MapPin, CreditCard, Eye, Download, Filter, ChevronRight, Activity, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
-import { getStationPerformanceReports, swapHourlyReport, swapDaylyReport, revenueHourlyReport, revenueDaylyReport, getStationReportByRangeDate } from "../../services/axios.services";
+import { getStationPerformanceReports, exportReportByRangeDate, swapHourlyReport, swapDaylyReport, revenueHourlyReport, revenueDaylyReport, getStationReportByRangeDate } from "../../services/axios.services";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, ComposedChart, Line } from 'recharts';
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
@@ -252,6 +252,27 @@ const Reports = () => {
     setCurrentPage(page);
   };
 
+  const exportReport = async () => {
+    try {
+      //lấy report của 6 tháng trước đến hiện tại
+      const endDate = format(new Date(), "yyyy-MM-dd");
+      const startDate = format(subDays(new Date(), 30), "yyyy-MM-dd");
+      const response = await exportReportByRangeDate(startDate, endDate);
+      console.log("Export response:", response, endDate, startDate);
+      const blob = new Blob([response?.data ?? response], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      let fileName = "report.xlsx";
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Xuất báo cáo thất bại. Vui lòng thử lại sau.");
+    }
+  };
   return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
     {/* Header */}
     <div className="bg-white border-b border-slate-200/60 sticky top-0 z-10 backdrop-blur-lg bg-white/95">
@@ -267,7 +288,7 @@ const Reports = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm" className="gap-2 bg-white/80 backdrop-blur-sm">
+            <Button onClick={exportReport} variant="outline" size="sm" className="gap-2 bg-white/80 backdrop-blur-sm">
               <Download className="h-4 w-4" />
               Xuất Dữ Liệu
             </Button>

@@ -288,7 +288,16 @@ const getStationReportByRangeDate = (stationId, range) => {
 const getDriverDashboardReport = (driverId) => {
     return axios.get(`/dashboard?userId=${driverId}`);
 }
+const exportReportByRangeDate = (startDate,endDate ) => {
+    return axios.get(`/reports/export/all?startDate=${startDate}&endDate=${endDate}`, { 
+        responseType: 'blob', 
+        headers:{
+            Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        } 
+    });
+}
 export {
+    exportReportByRangeDate,
     getStationReportByRangeDate,
     swapHourlyReport,
     swapDaylyReport,

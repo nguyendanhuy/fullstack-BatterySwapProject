@@ -46,7 +46,7 @@ export default function PriceManagement() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await getSystemPriceAdmin(); // expect: array hoặc { data: array }
+            const res = await getSystemPriceAdmin();
             setRows(Array.isArray(res?.data) ? res.data : res);
         } catch (e) {
             toast({

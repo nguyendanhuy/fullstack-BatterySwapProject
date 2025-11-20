@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BarChart3, TrendingUp, Users, Battery, MapPin, Home, Settings, DollarSign } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Battery, MapPin, Home, Settings, DollarSign, Car } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import AccountSettings from "@/components/AccountSettings";
@@ -190,6 +190,27 @@ const AdminDashboard = () => {
                 <Link to="/admin/price-management">
                   <Button className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-md">
                     Quản lý giá
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105 overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center text-gray-800">
+                  <div className="bg-gradient-to-r from-indigo-500 to-purple-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3 shadow-md">
+                    <Car className="h-5 w-5 text-white" />
+                  </div>
+                  Quản lý Xe
+                </CardTitle>
+                <CardDescription>
+                  Quản lý thông tin xe và import từ CSV
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link to="/admin/vehicle-management">
+                  <Button className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-md">
+                    Quản lý xe
                   </Button>
                 </Link>
               </CardContent>

@@ -16,13 +16,14 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import AccountSettings from "@/components/AccountSettings";
-import { Home, FileText, Battery, Users, Settings, LogOut, PanelLeft, PanelLeftClose } from "lucide-react";
+import { Home, FileText, Battery, Users, Settings, LogOut, PanelLeft, PanelLeftClose, Car } from "lucide-react";
 
 const mainItems = [
     { title: "Dashboard", url: "/admin", icon: Home },
     { title: "Báo cáo", url: "/admin/reports", icon: FileText },
     { title: "Điều phối pin", url: "/admin/battery-dispatch", icon: Battery },
     { title: "Quản lý nhân viên", url: "/admin/staff-management", icon: Users },
+    { title: "Quản lý xe", url: "/admin/vehicle-management", icon: Car },
     { title: "Quản lý giá", url: "/admin/price-management", icon: FileText },
 ];
 export function MobileBottomAdminNav() {

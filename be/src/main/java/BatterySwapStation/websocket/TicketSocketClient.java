@@ -18,14 +18,16 @@ import java.util.concurrent.CompletableFuture;
 @Component
 public class TicketSocketClient {
 
-    private static final String WS_URL = "wss://batteryswap-be-production.up.railway.app/ws-battery/websocket";
+    private static final String WS_URL =
+            "wss://batteryswap.up.railway.app/ws-battery/websocket";
+
     private WebSocketStompClient stompClient;
     private StompSession session;
 
     @PostConstruct
     public void connect() {
         try {
-            log.info("🌐 [LOCAL SOCKET] Đang kết nối tới Railway WS: {}", WS_URL);
+            log.info("🌐 [LOCAL SOCKET] Connecting to Railway WS: {}", WS_URL);
 
             stompClient = new WebSocketStompClient(new StandardWebSocketClient());
             stompClient.setMessageConverter(new MappingJackson2MessageConverter());
@@ -34,7 +36,6 @@ public class TicketSocketClient {
             scheduler.initialize();
             stompClient.setTaskScheduler(scheduler);
 
-            // ✅ Dùng connectAsync (phiên bản hiện hành, không deprecated)
             CompletableFuture<StompSession> future = stompClient.connectAsync(
                     WS_URL,
                     new WebSocketHttpHeaders(),
@@ -42,22 +43,23 @@ public class TicketSocketClient {
                     new StompSessionHandlerAdapter() {
                         @Override
                         public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-                            log.info("✅ [LOCAL SOCKET] Kết nối thành công đến Railway!");
-                            // Lắng nghe tất cả ticket tại trạm (hoặc set id tuỳ logic)
+                            log.info("✅ [LOCAL SOCKET] Connected to Railway WebSocket!");
+
+                            // Lắng nghe mọi ticket của station-1
                             session.subscribe("/topic/station-1/tickets", new TicketEventHandler());
                         }
 
                         @Override
                         public void handleTransportError(StompSession session, Throwable ex) {
-                            log.error("❌ [LOCAL SOCKET] Lỗi transport: {}", ex.getMessage());
+                            log.error("[LOCAL SOCKET] Transport error: {}", ex.getMessage());
                         }
                     }
             );
 
-            // Optional: đợi 5 giây cho kết nối
             session = future.get();
+
         } catch (Exception e) {
-            log.error("⚠️ [LOCAL SOCKET] Không thể kết nối Railway WebSocket: {}", e.getMessage());
+            log.error("⚠️ [LOCAL SOCKET] WebSocket connection failed: {}", e.getMessage());
         }
     }
 
@@ -65,7 +67,7 @@ public class TicketSocketClient {
     public void disconnect() {
         if (session != null && session.isConnected()) {
             session.disconnect();
-            log.info("🔌 [LOCAL SOCKET] Ngắt kết nối WS.");
+            log.info("🔌 [LOCAL SOCKET] WS disconnected.");
         }
     }
 
@@ -77,8 +79,11 @@ public class TicketSocketClient {
 
         @Override
         public void handleFrame(StompHeaders headers, Object payload) {
-            TicketSocketController.TicketPaidEvent event = (TicketSocketController.TicketPaidEvent) payload;
-            log.info("📩 [REALTIME RECEIVED] Ticket #{} | Event = {}", event.ticketId(), event.event());
+            TicketSocketController.TicketPaidEvent event =
+                    (TicketSocketController.TicketPaidEvent) payload;
+
+            log.info("📩 [REALTIME RECEIVED] Ticket #{} | Event = {}",
+                    event.ticketId(), event.event());
         }
     }
 }

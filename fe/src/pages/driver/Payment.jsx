@@ -24,16 +24,7 @@ const Payment = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(isPayingPendingInvoice ? "VNPAY" : "WALLET"); // "VNPAY" or "WALLET"
 
-
-
   const items = Object.values(reservationData || {});
-  const groupedByStation = items.reduce((acc, item) => {
-    const stationId = item.stationInfo?.stationId;
-    if (!acc[stationId]) acc[stationId] = [];
-    acc[stationId].push(item);
-    return acc;
-  }, {});
-  const stations = Object.values(groupedByStation);
 
   // Helpers
   const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
@@ -345,91 +336,36 @@ const Payment = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Hiển thị theo từng trạm - CHỈ cho booking mới */}
-                {!isPayingPendingInvoice && stations.map((stationItems, idx) => (
-                  <div key={idx}>
-                    <div className="mb-4 pb-4 border-b border-gray-200">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-gray-600">Trạm {idx + 1}:</span>
-                        <span className="font-semibold text-gray-800 text-right">
-                          {stationItems[0]?.stationInfo?.stationName}
-                        </span>
+                {/* Hiển thị danh sách booking - CHỈ cho booking mới */}
+                {!isPayingPendingInvoice && items.map((item, idx) => (
+                  <div key={idx} className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800 text-lg mb-1">{item.vehicleInfo?.vehicleType}</div>
+                        <div className="text-sm text-gray-600 mb-2">{item.stationInfo?.stationName}</div>
+                        <div className="flex items-center gap-4 text-xs text-gray-600">
+                          <span>📅 {format(item.date, "dd/MM/yyyy", { locale: vi })}</span>
+                          <span>⏰ {item.time}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 text-sm">Số lượng:</span>
-                        <Badge className="bg-blue-100 text-blue-800">
-                          {stationItems.reduce((s, i) => s + i.qty, 0)} pin
-                        </Badge>
-                      </div>
+                      <Badge className="bg-blue-100 text-blue-800">
+                        {item.qty} pin {item.batteryType}
+                      </Badge>
                     </div>
-
-                    {stationItems.map((item, i) => (
-                      <div key={i} className="p-3 bg-gray-50 rounded-lg space-y-2 mb-3">
-                        <div className="flex justify-between">
-                          <div className="text-sm">
-                            <div className="font-semibold">{item.vehicleInfo?.vehicleType}</div>
-                            <div className="text-gray-600">Pin {item.batteryType} × {item.qty}</div>
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          📅 {format(item.date, "dd/MM/yyyy", { locale: vi })} - ⏰ {item.time}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 ))}
 
-                {/* Hiển thị cho hóa đơn pending nạp tiền ví hệ thống */}
-                {isPayingPendingInvoice && pendingInvoice.invoiceType === "WALLET_TOPUP" && (
+                {/* Hiển thị cho hóa đơn pending nạp tiền ví */}
+                {isPayingPendingInvoice && (
                   <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
                     <div className="flex items-center gap-2 mb-2">
-                      <CreditCard className="h-5 w-5 text-blue-600" />
-                      <span className="font-semibold text-blue-800">Hóa đơn nạp tiền ví của bạn</span>
+                      <Wallet className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-blue-800">Hóa đơn nạp tiền ví</span>
                     </div>
                     <div className="text-sm text-gray-700 space-y-1">
                       <div>📅 Ngày tạo: {format(new Date(pendingInvoice.createdDate), "dd/MM/yyyy HH:mm", { locale: vi })}</div>
+                      <div>💰 Số tiền: {pendingInvoice.totalAmount?.toLocaleString("vi-VN")} VNĐ</div>
                     </div>
-                  </div>
-                )}
-
-                {/* Hiển thị cho hóa đơn book pending */}
-                {isPayingPendingInvoice && pendingInvoice.invoiceType !== "WALLET_TOPUP" && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-xl">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Zap className="h-5 w-5 text-orange-600" />
-                        <span className="font-semibold text-orange-800">Hóa đơn #{pendingInvoice.invoiceId}</span>
-                      </div>
-                      <div className="text-sm text-gray-700 space-y-1">
-                        <div>📅 Ngày tạo: {format(new Date(pendingInvoice.createdDate), "dd/MM/yyyy HH:mm", { locale: vi })}</div>
-                        <div>🔋 Số lượt đổi: {pendingInvoice.numberOfSwaps} lượt</div>
-                        <div>💰 Giá mỗi lượt: {pendingInvoice.pricePerSwap?.toLocaleString("vi-VN")} VNĐ</div>
-                        {pendingInvoice.invoiceType && (
-                          <div>📋 Loại: {pendingInvoice.invoiceType}</div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Danh sách bookings trong invoice */}
-                    {pendingInvoice.bookings && pendingInvoice.bookings.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="font-semibold text-gray-700">Chi tiết các booking:</h4>
-                        {pendingInvoice.bookings.map((booking, i) => (
-                          <div key={i} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                            <div className="flex justify-between">
-                              <div className="text-sm">
-                                <div className="font-semibold">Booking #{booking.bookingId}</div>
-                                <div className="text-gray-600">{booking.stationName}</div>
-                                <div className="text-gray-600">{booking.vehicleType} - {booking.vehicleBatteryType}</div>
-                              </div>
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              📅 {format(new Date(booking.bookingDate), "dd/MM/yyyy", { locale: vi })} - ⏰ {booking.timeSlot}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
 

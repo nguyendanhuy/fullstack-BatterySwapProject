@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star, Car } from "lucide-react";
+import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Car } from "lucide-react";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
@@ -204,7 +204,6 @@ export default function StationFinder() {
           address: station.address,
           latitude: station.latitude,
           longitude: station.longitude,
-          rating: station.rating,
           distance: station.distance,
           estimatedTime: station.estimatedTime,
           active: station.active,
@@ -641,14 +640,6 @@ export default function StationFinder() {
                             </div>
                             <div>
                               <h3 className="text-2xl font-bold text-gray-800 mb-1">{station.stationName}</h3>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className={`h-4 w-4 ${i < Math.floor(station.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                                  ))}
-                                </div>
-                                <span className="text-sm font-semibold text-yellow-600">{station.rating}</span>
-                              </div>
                             </div>
                           </div>
                           <div className="space-y-2 text-sm text-gray-600">

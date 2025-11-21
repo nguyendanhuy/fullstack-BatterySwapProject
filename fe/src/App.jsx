@@ -32,6 +32,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import Reports from "./pages/admin/Reports";
 import BatteryDispatch from "./pages/admin/BatteryDispatch";
 import StaffManagement from "./pages/admin/StaffManagement";
+import VehicleManagement from "./pages/admin/VehicleManagement";
 import { SystemProvider } from "./contexts/system.context";
 import DriverPrivateRoute from "./pages/DriverPrivateRouter";
 import StaffPrivateRoute from "./pages/StaffPrivateRouter";
@@ -109,6 +110,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
               <Route path="/admin/price-management" element={<PriceManagement />} />
               <Route path="battery-dispatch" element={<BatteryDispatch />} />
               <Route path="staff-management" element={<StaffManagement />} />
+              <Route path="vehicle-management" element={<VehicleManagement />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

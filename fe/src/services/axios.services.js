@@ -296,6 +296,21 @@ const exportReportByRangeDate = (startDate,endDate ) => {
         } 
     });
 }
+
+const getAllVehicles = () => {
+    return axios.get("/admin/vehicles");
+}
+
+const importVehiclesCSV = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axios.post("/admin/vehicles/import", formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
 export {
     exportReportByRangeDate,
     getStationReportByRangeDate,
@@ -364,5 +379,7 @@ export {
     getAIRebalanceSuggestion,
     createARebalanceRequest,
     updateRebalanceRequest,
-    getDriverDashboardReport
+    getDriverDashboardReport,
+    getAllVehicles,
+    importVehiclesCSV
 };

@@ -2,15 +2,24 @@ import { useEffect, useMemo, useState, useContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { MapPin, Zap, Star, Clock, Calendar as CalendarIcon, Bike } from "lucide-react";
+import { MapPin, Zap, Star, Clock, Calendar as CalendarIcon, Bike, AlertTriangle, ShieldAlert } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Steps } from "antd";
 import { UserOutlined, CalendarOutlined, ClockCircleOutlined, CreditCardOutlined, LoadingOutlined } from "@ant-design/icons";
-import { getSwapDefaultPrice, createBookingForVehicles } from "../../services/axios.services";
+import { getSwapDefaultPrice, createBookingForVehicles, getSystemPriceAdmin } from "../../services/axios.services";
 import { SystemContext } from "../../contexts/system.context";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Reservation = () => {
   const { userData, setUserData } = useContext(SystemContext);
@@ -23,6 +32,10 @@ const Reservation = () => {
   // copy sang local state để có thể cập nhật trực tiếp date/time trong từng dòng
   const [sb, setSb] = useState(selectBattery || {});
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [penaltyFees, setPenaltyFees] = useState([]);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [pendingPaymentAction, setPendingPaymentAction] = useState(null); // "subscription" or "normal"
 
   useEffect(() => {
     if (selectBattery) setSb(selectBattery);
@@ -49,14 +62,30 @@ const Reservation = () => {
     const fetchDefaultPrice = async () => {
       try {
         const res = await getSwapDefaultPrice();
-        console.log("Default swap price:", res);
+        console.log("✅Default swap price:", res);
         setDefaultPrice(res?.price ?? 15000);
       } catch (error) {
         console.error("Error fetching default price:", error);
       }
     };
+    const fetchPenaltyFees = async () => {
+      try {
+        const res = await getSystemPriceAdmin();
+        const filterPenaltyFees = res.filter(item => item.priceType.startsWith("PENALTY_"));
+        console.log("✅Penalty fees:", filterPenaltyFees);
+        setPenaltyFees(filterPenaltyFees || []);
+        const filterSwapFees = res.find(item => item.priceType === "BATTERY_SWAP");
+        setDefaultPrice(filterSwapFees?.price);
+      } catch (error) {
+        console.error("Error fetching penalty fees:", error);
+      }
+    };
+
     fetchDefaultPrice();
+    fetchPenaltyFees();
   }, [])
+
+  console.log("Penalty Fees:", penaltyFees);
 
 
   // cập nhật date/time vào sb[vehicleId]
@@ -131,6 +160,39 @@ const Reservation = () => {
   // Helpers
   const pickApiMessage = (res) => res?.message || res?.messages?.auth || res?.messages?.business || res?.error || "Có lỗi xảy ra.";
   const isErrorResponse = (res) => res?.success === false || !!(res?.error || res?.messages?.auth || res?.messages?.business);
+
+
+  // const swapPrice = defaultPrice ? `${defaultPrice.toLocaleString("vi-VN")} ₫` : "20.000 ₫";
+
+  // Show terms modal before payment
+  const handleOpenTermsModal = (paymentType) => {
+    setPendingPaymentAction(paymentType);
+    setTermsAccepted(false);
+    setShowTermsModal(true);
+  };
+
+  // Proceed with payment after accepting terms
+  const handleProceedPayment = () => {
+    if (!termsAccepted) {
+      toast({
+        title: "Vui lòng đồng ý điều khoản",
+        description: "Bạn cần đồng ý với điều khoản sử dụng và phí phạt để tiếp tục.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setShowTermsModal(false);
+
+    if (pendingPaymentAction === "subscription") {
+      handleSubscriptionPayment();
+    } else if (pendingPaymentAction === "normal") {
+      // Navigate to payment page
+      navigate("/driver/payment", {
+        state: { reservationData: sb, totalPrice: totalBatteries * defaultPrice }
+      });
+    }
+  };
 
   // Handle subscription payment
   const handleSubscriptionPayment = async () => {
@@ -494,16 +556,14 @@ const Reservation = () => {
                 <div className="space-y-3 pt-6">
                   {!hasActiveSubscription || (remainingCount < totalBatteries) ? (
                     <>
-                      <Link
-                        to="/driver/payment"
-                        state={{ reservationData: sb, totalPrice: totalBatteries * defaultPrice }}
-                        className={`block ${!anyTimePicked ? "pointer-events-none opacity-50" : ""}`}
+                      <Button
+                        onClick={() => handleOpenTermsModal("normal")}
+                        disabled={!anyTimePicked}
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                       >
-                        <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
-                          <Zap className="h-5 w-5 mr-2" />
-                          Tiến hành thanh toán
-                        </Button>
-                      </Link>
+                        <Zap className="h-5 w-5 mr-2" />
+                        Tiến hành thanh toán
+                      </Button>
                       <p className="text-xs text-gray-500 text-center">
                         💡 Bạn sẽ được chuyển qua trang thanh toán
                       </p>
@@ -511,7 +571,7 @@ const Reservation = () => {
                   ) : (
                     <>
                       <Button
-                        onClick={handleSubscriptionPayment}
+                        onClick={() => handleOpenTermsModal("subscription")}
                         disabled={!anyTimePicked || paymentLoading}
                         className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                       >
@@ -526,6 +586,127 @@ const Reservation = () => {
           </div>
         </div>
       </div>
+
+      {/* Terms and Conditions Modal */}
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <ShieldAlert className="h-6 w-6 text-blue-600" />
+              Điều khoản sử dụng & Phí phạt
+            </DialogTitle>
+            <DialogDescription>
+              Vui lòng đọc kỹ các điều khoản và phí phạt trước khi đặt lịch
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Swap Price */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+              <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-blue-700">
+                <Zap className="h-5 w-5" />
+                Giá dịch vụ đổi pin
+              </h3>
+              <div className="bg-white rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-700">Giá tiêu chuẩn cho một lần đổi pin</span>
+                  <span className="text-2xl font-bold text-blue-600">{defaultPrice?.toLocaleString("vi-VN")} ₫</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Penalty Fees */}
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+              <h3 className="font-bold text-lg mb-3 flex items-center gap-2 text-red-700">
+                <AlertTriangle className="h-5 w-5" />
+                Phí phạt hư hại pin
+              </h3>
+              <div className="space-y-3">
+                {penaltyFees.map((penalty, index) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-red-200">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{penalty?.description}</p>
+                      </div>
+                      <span className="text-xl font-bold text-red-600 whitespace-nowrap">{penalty?.price.toLocaleString('vi-VN')} ₫</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Terms and Conditions */}
+            <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4">
+              <h3 className="font-bold text-lg mb-3 text-gray-700">Điều khoản sử dụng</h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-1">•</span>
+                  <span>Khách hàng có trách nhiệm bảo quản pin trong quá trình sử dụng</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-1">•</span>
+                  <span>Mọi hư hại do sử dụng không đúng cách sẽ bị tính phí phạt theo mức độ</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-1">•</span>
+                  <span>Vui lòng đến đúng giờ đã đặt. Trễ hơn 15 phút có thể bị hủy booking</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-1">•</span>
+                  <span>Trường hợp không thể đến, vui lòng hủy booking trước ít nhất 1 tiếng</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-1">•</span>
+                  <span>Pin đổi mới phải được kiểm tra tình trạng trước khi rời trạm</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 mt-1">•</span>
+                  <span>Khách hàng có quyền từ chối pin nếu phát hiện hư hỏng trước khi nhận</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Agreement Checkbox */}
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={setTermsAccepted}
+                  className="mt-1"
+                />
+                <label
+                  htmlFor="terms"
+                  className="text-sm font-medium leading-relaxed cursor-pointer select-none"
+                >
+                  Tôi đã đọc và đồng ý với các điều khoản sử dụng, chính sách phí phạt và cam kết bảo quản pin đúng cách.
+                  Tôi hiểu rằng mọi hư hại do lỗi của tôi sẽ phải chịu phí phạt theo quy định.
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowTermsModal(false)}
+              className="border-gray-300"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              onClick={handleProceedPayment}
+              disabled={!termsAccepted}
+              className={`${termsAccepted
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                : "bg-gray-400"
+                } text-white`}
+            >
+              Đồng ý và tiếp tục
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div >
   );
 };

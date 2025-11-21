@@ -14,8 +14,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .servers(List.of(
                         new Server().url("http://localhost:8080").description("Localhost"),
-                        new Server().url("https://batteryswap.up.railway.app").description("Railway"),
-                        new Server().url("https://batteryswap-be-production.up.railway.app").description("Railway")
+                        new Server().url("https://batteryswap.up.railway.app").description("Railway")
                 ));
     }
 

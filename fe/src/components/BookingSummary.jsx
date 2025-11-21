@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Car, Battery } from "lucide-react";
 
 export default function BookingSummary({ selectBattery, totalQuota, totalBooked, onRemove }) {
     const items = Object.values(selectBattery || {});

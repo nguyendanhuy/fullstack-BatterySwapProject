@@ -99,8 +99,8 @@ public class BookingService {
 
         // ================== KIỂM TRA NGÀY ==================
         LocalDate now = LocalDate.now();
-        if (request.getBookingDate().isBefore(now) || request.getBookingDate().isAfter(now.plusDays(7))) {
-            throw new IllegalArgumentException("Ngày đặt pin phải nằm trong vòng 7 ngày kể từ hôm nay.");
+        if (request.getBookingDate().isBefore(now) || request.getBookingDate().isAfter(now.plusDays(30))) {
+            throw new IllegalArgumentException("Ngày đặt pin phải nằm trong vòng 30 ngày kể từ hôm nay.");
         }
 
         if (request.getTimeSlot() == null) {

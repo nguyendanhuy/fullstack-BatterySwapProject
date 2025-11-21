@@ -218,7 +218,7 @@ const BookingCard = ({ booking, isHighlighted }) => {
                     <div className="flex items-center gap-3">
                         <Calendar className="h-5 w-5 text-primary" />
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">Thời gian</p>
+                            <p className="text-sm font-medium text-muted-foreground">Thời gian đổi pin</p>
                             <p className="font-semibold">
                                 {formatDate(booking.bookingDate)} - {formatTime(booking.timeSlot)}
                             </p>
@@ -515,7 +515,7 @@ const Invoices = () => {
                                                         </Badge>
                                                         <span className="flex items-center gap-1 text-muted-foreground">
                                                             <Calendar className="h-4 w-4" />
-                                                            {formatDateTime(invoice.createdDate)}
+                                                            Tạo lúc : {formatDateTime(invoice.createdDate)}
                                                         </span>
                                                     </div>
                                                 </div>

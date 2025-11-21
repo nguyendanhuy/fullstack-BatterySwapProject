@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star } from "lucide-react";
+import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star, Car } from "lucide-react";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
@@ -524,7 +524,13 @@ export default function StationFinder() {
                             const composite = `${index}_${vehicle.batteryType}`;
                             return (
                               <SelectItem key={composite} value={composite}>
-                                🛵 {vehicle.vehicleType} - 🔋 {vehicle.batteryType}
+                                <div className="flex items-center gap-2">
+                                  <Car className="h-4 w-4 text-blue-600" />
+                                  <span>{vehicle.vehicleType}</span>
+                                  <span className="text-gray-400">—</span>
+                                  <Battery className="h-4 w-4 text-green-600" />
+                                  <span>{vehicle.batteryType}</span>
+                                </div>
                               </SelectItem>
                             );
                           })}
@@ -830,7 +836,14 @@ export default function StationFinder() {
                       {Array.isArray(userVehicles) && userVehicles.length > 0 ? (
                         userVehicles.map(v => (
                           <SelectItem key={v.vehicleId} value={String(v.vehicleId)}>
-                            🛵 {v.vehicleType} — 🔋 {v.batteryType} (cần {getVehicleRequired(v)})
+                            <div className="flex items-center gap-2">
+                              <Car className="h-4 w-4 text-blue-600" />
+                              <span>{v.vehicleType}</span>
+                              <span className="text-gray-400">—</span>
+                              <Battery className="h-4 w-4 text-green-600" />
+                              <span>{v.batteryType}</span>
+                              <span className="text-gray-500">(cần {getVehicleRequired(v)})</span>
+                            </div>
                           </SelectItem>
                         ))
                       ) : (

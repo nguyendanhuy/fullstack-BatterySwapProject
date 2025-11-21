@@ -30,7 +30,7 @@ const Reservation = () => {
 
   // chỉ lấy dòng có qty > 0
   const lines = useMemo(
-    () => Object.values(sb || {}).filter((l) => Number(l?.qty || 0) > 0),
+    () => Object.values(sb || {}).filter((l) => Number(l?.qty) > 0),
     [sb]
   );
 

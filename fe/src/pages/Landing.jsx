@@ -96,7 +96,7 @@ const Landing = () => {
                 <a href="#contact" className="hover:text-white/80 transition-colors">LIÊN HỆ</a>
                 <div className="flex items-center text-white/90">
                   <Phone className="h-4 w-4 mr-2" />
-                  <span className="font-semibold">0369.123.456</span>
+                  <span className="font-semibold">1900 1234</span>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
@@ -126,13 +126,13 @@ const Landing = () => {
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight animate-slide-up">
-              Hãy để chúng tôi làm sạch
-              <span className="block text-electric-blue-light animate-pulse-glow">những tấm pin giúp bạn nào.</span>
+              Đổi Pin Nhanh Chóng
+              <span className="block text-electric-blue-light animate-pulse-glow">Trải Nghiệm Liền Mạch</span>
             </h1>
 
             <p className="text-xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              Dịch vụ đổi pin xe điện chuyên nghiệp, nhanh chóng và hiệu quả.
-              Kết nối tài xế, nhân viên và quản trị viên trong một hệ thống thống nhất.
+              Hệ thống đổi pin xe điện VINFAST thông minh - Chỉ 5 phút để có pin đầy.
+              Mạng lưới trạm rộng khắp, thanh toán linh hoạt, hỗ trợ 24/7.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.5s' }}>
@@ -174,25 +174,29 @@ const Landing = () => {
             </div>
 
             <div className="animate-slide-up">
-              <div className="text-primary text-lg font-medium mb-4 italic">Chào mừng bạn đến!</div>
+              <div className="text-primary text-lg font-medium mb-4 italic">Về Chúng Tôi</div>
               <h2 className="text-4xl font-bold text-gray-800 mb-6">
-                Dịch vụ đổi pin xe điện chuyên nghiệp của chúng tôi
+                Hệ Thống Đổi Pin VINFAST Hàng Đầu Việt Nam
               </h2>
               <p className="text-gray-600 text-lg leading-relaxed mb-8">
-                Như bạn biết các sản phẩm sạc pin thông thường có thể giúp ích, nhưng không thể so sánh được với
-                sức mạnh của dịch vụ đổi pin chuyên nghiệp của chúng tôi. EVSwap có thể giúp loại bỏ mọi vấn đề
-                về pin trong cuộc sống hàng ngày.
+                Chúng tôi cung cấp giải pháp đổi pin thông minh cho xe điện VINFAST (VF 8, VF 9, VF e34, Klara, Tempest, Vento).
+                Với công nghệ tiên tiến và quy trình tự động hóa, bạn có thể đổi pin chỉ trong 5 phút mà không cần chờ đợi lâu.
+                Hệ thống quản lý thông minh giúp theo dõi tình trạng pin, đặt lịch trước và thanh toán dễ dàng.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button className="bg-electric-blue text-white hover:bg-electric-blue-dark px-8 py-3 rounded-full hover-scale hover-glow group">
-                  KHU THƯƠNG MẠI
-                  <ArrowRight className="inline-block ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white px-8 py-3 rounded-full hover-scale group">
-                  KHU DÂN CƯ
-                  <ArrowRight className="inline-block ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
+                <Link to="/signup">
+                  <Button className="bg-electric-blue text-white hover:bg-electric-blue-dark px-8 py-3 rounded-full hover-scale hover-glow group">
+                    ĐĂNG KÝ NGAY
+                    <ArrowRight className="inline-block ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+                <a href="#services">
+                  <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white px-8 py-3 rounded-full hover-scale group">
+                    XEM DỊCH VỤ
+                    <ArrowRight className="inline-block ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </a>
               </div>
             </div>
           </div>
@@ -218,9 +222,9 @@ const Landing = () => {
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16 animate-fade-in">
-            <div className="text-primary text-lg font-medium mb-4 italic">Những dịch vụ của chúng tôi</div>
+            <div className="text-primary text-lg font-medium mb-4 italic">Dịch Vụ Của Chúng Tôi</div>
             <h2 className="text-4xl font-bold text-gray-800 mb-6">
-              Hãy đưa chúng tôi pin của bạn.
+              Trải Nghiệm Đổi Pin Thông Minh
             </h2>
           </div>
 
@@ -231,8 +235,8 @@ const Landing = () => {
                 <Battery className="h-16 w-16 text-white group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
               </div>
               <CardContent className="p-6 text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-electric-blue transition-colors">Kiểm tra Pin</h3>
-                <p className="text-gray-600">Kiểm tra tình trạng pin chi tiết với công nghệ AI</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-electric-blue transition-colors">Đặt Lịch Trước</h3>
+                <p className="text-gray-600">Đặt lịch đổi pin qua app, tránh chờ đợi tại trạm</p>
               </CardContent>
             </Card>
 
@@ -242,8 +246,8 @@ const Landing = () => {
                 <Zap className="h-16 w-16 text-white group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
               </div>
               <CardContent className="p-6 text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-primary transition-colors">Đổi Pin Nhanh</h3>
-                <p className="text-gray-600">Quy trình đổi pin tự động chỉ trong 5 phút</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-primary transition-colors">Đổi Pin 5 Phút</h3>
+                <p className="text-gray-600">Quy trình tự động hóa, đổi pin nhanh như đổ xăng</p>
               </CardContent>
             </Card>
 
@@ -253,8 +257,8 @@ const Landing = () => {
                 <Shield className="h-16 w-16 text-white group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
               </div>
               <CardContent className="p-6 text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-primary transition-colors">Bảo vệ</h3>
-                <p className="text-gray-600">Bảo vệ pin khỏi hư hỏng và kéo dài tuổi thọ</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-primary transition-colors">Thanh Toán Linh Hoạt</h3>
+                <p className="text-gray-600">Ví điện tử, thẻ ngân hàng, gói đăng ký theo tháng</p>
               </CardContent>
             </Card>
           </div>
@@ -292,10 +296,10 @@ const Landing = () => {
               {[
                 { Icon: Zap, title: "Quy trình nhanh", text: "Đổi pin tự động chỉ trong 5 phút với công nghệ tiên tiến", bg: "from-electric-blue to-electric-blue-dark" },
                 { Icon: Smartphone, title: "Ứng dụng di động", text: "Đặt lịch và thanh toán dễ dàng qua ứng dụng thông minh", bg: "from-primary to-electric-blue-dark" },
-                { Icon: Network, title: "Mạng lưới rộng", text: "Hơn 100 trạm đổi pin trên toàn quốc", bg: "from-electric-blue-light to-primary" },
+                { Icon: Network, title: "Mạng lưới rộng", text: "Hơn 20 trạm đổi pin trên toàn quốc", bg: "from-electric-blue-light to-primary" },
                 { Icon: HeadphonesIcon, title: "Hỗ trợ 24/7", text: "Đội ngũ hỗ trợ sẵn sàng phục vụ mọi lúc mọi nơi", bg: "from-primary to-electric-blue" },
                 { Icon: Shield, title: "An toàn tuyệt đối", text: "Kiểm tra chất lượng pin nghiêm ngặt và bảo hành toàn diện", bg: "from-electric-blue-dark to-primary" },
-                { Icon: Battery, title: "Pin chất lượng cao", text: "Pin VINFAST chính hãng với hiệu suất vượt trội", bg: "from-primary to-electric-blue-light" },
+                { Icon: Battery, title: "Pin chất lượng cao", text: "Pin chính hãng với hiệu suất vượt trội", bg: "from-primary to-electric-blue-light" },
               ].map(({ Icon, title, text, bg }, i) => (
                 <CarouselItem key={i} className="pl-2 md:pl-4 basis-[85%] sm:basis-1/2 lg:basis-1/3">
                   <div className="h-full">
@@ -339,15 +343,15 @@ const Landing = () => {
             </div>
             <div className="group hover-scale animate-fade-in" style={{ animationDelay: '0.1s' }}>
               <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform animate-pulse-glow">24/7</div>
-              <div className="text-white/80 group-hover:text-white transition-colors">Hoạt động liên tục</div>
+              <div className="text-white/80 group-hover:text-white transition-colors">Hỗ trợ khẩn cấp</div>
             </div>
             <div className="group hover-scale animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform animate-pulse-glow">100+</div>
-              <div className="text-white/80 group-hover:text-white transition-colors">Trạm đổi pin</div>
+              <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform animate-pulse-glow">6 dòng xe</div>
+              <div className="text-white/80 group-hover:text-white transition-colors">VINFAST hỗ trợ</div>
             </div>
             <div className="group hover-scale animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform animate-pulse-glow">99.9%</div>
-              <div className="text-white/80 group-hover:text-white transition-colors">Độ tin cậy</div>
+              <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform animate-pulse-glow">3 loại pin</div>
+              <div className="text-white/80 group-hover:text-white transition-colors">Lithium, NiMH, Lead-Acid</div>
             </div>
           </div>
         </div>
@@ -466,7 +470,7 @@ const Landing = () => {
                   </li>
                   <li className="flex items-center text-muted-foreground">
                     <CheckCircle className="h-4 w-4 mr-3 text-electric-blue" />
-                    Quản lý người dùng
+                    Quản lý nhân viên
                   </li>
                 </ul>
               </CardContent>
@@ -526,10 +530,9 @@ const Landing = () => {
             <div className="flex items-center justify-center space-x-6 mb-6 text-white/70">
               <span className="flex items-center"><CheckCircle className="h-4 w-4 mr-1" /> Bảo mật cao</span>
               <span className="flex items-center"><CheckCircle className="h-4 w-4 mr-1" /> Hỗ trợ 24/7</span>
-              <span className="flex items-center"><CheckCircle className="h-4 w-4 mr-1" /> Công nghệ AI</span>
             </div>
             <p className="text-white/60 text-sm mb-4">
-              © 2024 VINFAST. Hệ thống quản lý trạm đổi pin xe điện hàng đầu Việt Nam.
+              © 2025 VINFAST. Hệ thống quản lý trạm đổi pin xe điện hàng đầu Việt Nam.
             </p>
             <p className="text-white/40 text-xs">
               Công nghệ xanh • Tương lai bền vững • Đổi mới không ngừng

@@ -72,6 +72,11 @@ const BookingHistory = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadUserHistory();
+  }, []);
+
   const generateQR = async (bookingId) => {
     setIsQrLoading(true);
     setQr(null);
@@ -98,19 +103,17 @@ const BookingHistory = () => {
     }
   }
 
-  useEffect(() => {
-    loadUserHistory();
-  }, [])
+
   // Filter and sort bookings
 
   const filteredBookings = (allBookings ?? []).filter((booking) => {
+    // Search filter
     const matchesSearch =
       `BK${booking?.bookingId}`.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
       booking?.stationAddress?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
       booking?.vehicleType?.toLowerCase()?.includes(searchTerm.toLowerCase());
-
+    // Status filter
     const matchesStatus = statusFilter === "all" || booking.bookingStatus === statusFilter;
-
     // Date filter
     let matchesDate = true;
     const [start, end] = dateRange || [];
@@ -431,7 +434,7 @@ const BookingHistory = () => {
                                         <strong>Số tiền:</strong> {selectedBooking?.amount} VNĐ
                                       </p>
                                       <p className="text-sm text-muted-foreground mb-4">
-                                        Tiền sẽ được hoàn lại trong vòng 24 giờ
+                                        Tiền sẽ được hoàn lại trong vòng 5-30 phút
                                       </p>
 
                                       {/* Ô nhập lý do hủy */}

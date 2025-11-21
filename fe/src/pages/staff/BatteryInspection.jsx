@@ -84,8 +84,6 @@ const BatteryInspection = () => {
           status: it.status === "PASS" ? "Đạt chuẩn" : "Bảo trì",
         }))
         .sort((a, b) => {
-          // So sánh theo thời gian gốc sẽ chuẩn hơn, nhưng hiện đã stringify — vẫn ổn cho UI
-          // Nếu muốn chuẩn: giữ thêm inspectionTime gốc (Date) và sort theo Date.
           return b.inspectionDate.localeCompare(a.inspectionDate);
         });
 
@@ -110,12 +108,11 @@ const BatteryInspection = () => {
   const InspectionForm = ({ battery, onClose, bookingId, onSuccess }) => {
     const [physicalCondition, setPhysicalCondition] = useState("");
     const [soh, setSoh] = useState("");
-    const [status, setStatus] = useState(""); // AVAILABLE | MAINTENANCE
+    const [status, setStatus] = useState(""); // CHARGING | MAINTENANCE
     const [submitting, setSubmitting] = useState(false);
     const { toast } = useToast();
 
     const mapStatusToInspection = (s) => (s === "MAINTENANCE" ? "IN_MAINTENANCE" : "PASS");
-
     const handleSubmit = async () => {
       const sohNum = Number(soh);
       if (Number.isNaN(sohNum) || sohNum < 0 || sohNum > 100) {
@@ -138,8 +135,8 @@ const BatteryInspection = () => {
       setSubmitting(true);
       try {
         // 1) Cập nhật trạng thái pin
-        await batteryStatusUpdate(battery.id, status);
-
+        const res1 = await batteryStatusUpdate(battery.id, status);
+        console.log("Cập nhật trạng thái pin:", res1);
         // 2) Tạo phiếu inspection
         const payload = {
           batteryInId: battery.id,
@@ -254,7 +251,7 @@ const BatteryInspection = () => {
                 <SelectValue placeholder="Chọn trạng thái xử lý" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="AVAILABLE">Tiếp tục sử dụng</SelectItem>
+                <SelectItem value="CHARGING">Tiếp tục sử dụng</SelectItem>
                 <SelectItem value="MAINTENANCE">Gửi bảo trì</SelectItem>
               </SelectContent>
             </Select>

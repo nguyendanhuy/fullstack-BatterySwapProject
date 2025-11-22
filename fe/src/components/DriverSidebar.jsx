@@ -73,7 +73,7 @@ export function DriverSidebar() {
     };
 
     return (
-        <div className="hidden md:block ">
+        <div className="hidden md:block [--sidebar-width:219px] [--sidebar-width-icon:60px]">
             <Sidebar
                 className="border-r border-white/10 transition-all duration-300"
                 style={{ width: open ? "220px" : "60px" }}

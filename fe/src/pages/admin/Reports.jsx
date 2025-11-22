@@ -84,7 +84,7 @@ const Reports = () => {
         let startDate, endDate;
 
         if (chartViewMode === "hourly") {
-          // For hourly view, use only today (24 hours)
+          // For hourly view, use only today (3days back)
           const today = new Date();
           const yesterday = subDays(today, 3);
           startDate = format(yesterday, "yyyy-MM-dd");
@@ -258,7 +258,6 @@ const Reports = () => {
       const endDate = format(new Date(), "yyyy-MM-dd");
       const startDate = format(subDays(new Date(), 180), "yyyy-MM-dd");
       const response = await exportReportByRangeDate(startDate, endDate);
-      console.log("Export response:", response, endDate, startDate);
       const url = response.downloadUrl.replace("http://", "https://");
       const a = document.createElement("a");
       a.href = url;
@@ -269,6 +268,7 @@ const Reports = () => {
       toast.error(error?.response?.data || error?.message || "Có lỗi xảy ra");
     }
   };
+
   return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
     {/* Header */}
     <div className="bg-white border-b border-slate-200/60 sticky top-0 z-10 backdrop-blur-lg bg-white/95">
@@ -341,9 +341,11 @@ const Reports = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tất cả trạm</SelectItem>
-                        {stations.map(station => <SelectItem key={station.stationId} value={station.stationId}>
-                          {station.stationName}
-                        </SelectItem>)}
+                        {stations.map(station =>
+                          <SelectItem key={station.stationId} value={station.stationId}>
+                            {station.stationName}
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

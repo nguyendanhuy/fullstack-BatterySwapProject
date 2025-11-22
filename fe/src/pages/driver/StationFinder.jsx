@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Car } from "lucide-react";
+import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Car, CarFront } from "lucide-react";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";

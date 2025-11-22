@@ -367,7 +367,7 @@ LFVTH1A10N0000338,KLARA,LEAD_ACID,Trần Thị B,30C2-23456,Xanh,1,2023-06-20,`}
               >
                 <option value="">Tất cả xe</option>
                 <option value="hasOwner">Xe có chủ ({vehicles.filter(v => v.userId).length})</option>
-                <option value="noOwner">Xe chưa có chủ ({vehicles.filter(v => !v.userId).length})</option>
+                <option value="noOwner">Xe chưa liên kết ({vehicles.filter(v => !v.userId).length})</option>
               </select>
             </div>
           </CardContent>

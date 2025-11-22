@@ -1,22 +1,23 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Battery, Check, Crown, Star, Zap, Shield, TrendingUp } from "lucide-react";
+import { Battery, Check, Crown, Star, Zap, TrendingUp } from "lucide-react";
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { Popconfirm, Progress } from 'antd';
-import { Link, useNavigate } from "react-router-dom";
-import {
-  getAllPlans, getDriverSubscription, getBookingHistoryByUserId, cancelAutoRenewSubscription, cancelSubscriptionImmediate
-} from "../../services/axios.services";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-
-
 import { useEffect, useState, useContext } from "react";
 import { SystemContext } from "../../contexts/system.context";
 import dayjs from "dayjs";
+import {
+  getAllPlans, getDriverSubscription,
+  getBookingHistoryByUserId,
+  cancelAutoRenewSubscription,
+  cancelSubscriptionImmediate
+} from "../../services/axios.services";
 
 const Subscriptions = () => {
-  const { userData, setUserData } = useContext(SystemContext);
+  const { userData } = useContext(SystemContext);
   const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [currentSubscription, setCurrentSubscription] = useState(null);
@@ -28,14 +29,13 @@ const Subscriptions = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch plans
         const plansResponse = await getAllPlans();
         console.log("✅All Subscription Plans response:", plansResponse);
 
         if (plansResponse && plansResponse.success && plansResponse.plans) {
           setPackages(plansResponse.plans);
         }
-        // Fetch current subscription
+
         if (userData && userData.userId) {
           const subscriptionResponse = await getDriverSubscription(userData.userId);
           console.log("✅User subscription response:", subscriptionResponse);
@@ -250,16 +250,6 @@ const Subscriptions = () => {
                 }
               };
 
-              // Helper function to get background color
-              const getBgColor = (index) => {
-                switch (index) {
-                  case 0: return "from-blue-50 to-indigo-50";
-                  case 1: return "from-green-50 to-emerald-50";
-                  case 2: return "from-purple-50 to-pink-50";
-                  default: return "from-gray-50 to-slate-50";
-                }
-              };
-
               // Split description into features
               const features = pkg.description
                 .split('. ')
@@ -268,12 +258,11 @@ const Subscriptions = () => {
 
               const IconComponent = getIcon(index);
               const color = getColor(index);
-              const bgColor = getBgColor(index);
-              const popular = index === 1;
+              const popular = pkg.planName === 'PREMIUM';
 
-              return (<Card key={pkg.planId} className={`relative border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 overflow-hidden group ${popular ? 'ring-2 ring-green-500 scale-105' : ''}`} style={{ animationDelay: `${index * 0.1}s` }}>
-                {popular && (<div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-2 text-sm font-semibold">
+              return (<Card key={pkg.planId} className={`relative border-0 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 overflow-visible group ${popular ? 'ring-2 ring-green-500 scale-105' : ''}`} style={{ animationDelay: `${index * 0.1}s` }}>
+                {popular && (<div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-2 text-sm font-semibold shadow-lg">
                     ⭐ Phổ biến nhất
                   </Badge>
                 </div>)}
@@ -281,7 +270,7 @@ const Subscriptions = () => {
                 <div className={`h-3 bg-gradient-to-r ${color}`}></div>
 
                 <CardHeader className="text-center pb-6">
-                  <div className={`mx-auto mb-6 p-4 bg-gradient-to-br ${bgColor} rounded-2xl w-fit group-hover:scale-110 transition-transform duration-300`}>
+                  <div className={`mx-auto mb-6 p-4 bg-gradient-to-br rounded-2xl w-fit group-hover:scale-110 transition-transform duration-300`}>
                     <div className={`p-3 bg-gradient-to-r ${color} rounded-xl`}>
                       <IconComponent className="h-8 w-8 text-white" />
                     </div>

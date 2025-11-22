@@ -19,8 +19,6 @@ const AdminPrivateRoute = (props) => {
         });
     }
     // Show notification when access is denied
-    // Người dùng vào /user → bị chuyển đến /login → history: [/login] (ghi đè /user)
-    // Khi login xong, nhấn "Back" sẽ về trang trước /user (ví dụ home) → không bị loop
     return <Navigate to="/login" replace />;
 }
 export default AdminPrivateRoute;

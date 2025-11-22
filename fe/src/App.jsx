@@ -57,6 +57,7 @@ const App = () => (<QueryClientProvider client={queryClient}>
             <Route path="/signup" element={<SignUp />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+
             {/* Driver (bảo vệ cả nhánh) */}
             <Route
               path="/driver"

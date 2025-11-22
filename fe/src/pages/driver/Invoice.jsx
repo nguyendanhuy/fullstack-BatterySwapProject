@@ -5,13 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-    FileText,
-    CheckCircle,
-    Clock,
-    DollarSign,
-    MapPin,
-    Calendar,
-    Car,
+    FileText, CheckCircle, Clock, DollarSign, MapPin, Calendar, Car,
     Battery,
     Zap,
     AlertCircle,
@@ -151,6 +145,7 @@ const getBookingStatusBadge = (status) => {
     return statusConfig[status] || statusConfig.PENDINGSWAPPING;
 };
 
+//Tổng quan của trang
 const calculateStats = (invoices) => {
     const totalInvoices = invoices.length;
     const paidInvoices = invoices.filter((inv) => inv.invoiceStatus === "PAID").length;

@@ -17,7 +17,6 @@ export default function SubscriptionCheckout() {
     const { toast } = useToast();
     const { userData, setUserData } = useContext(SystemContext);
 
-    // Receive selected plan via navigation state or query string
     const planFromState = location.state?.plan || null;
 
     console.log("✅ Selected plan from state:", planFromState);
@@ -26,20 +25,12 @@ export default function SubscriptionCheckout() {
 
     const priceNumber = Number(plan?.price || 0);
 
-    const getDisplayName = (planName) => {
-        switch (planName) {
-            case "BASIC": return "Gói Cơ bản";
-            case "PREMIUM": return "Gói Premium";
-            case "BUSINESS": return "Gói Doanh nghiệp";
-            default: return planName;
-        }
-    };
 
-    const getIcon = (planName) => {
-        switch (planName) {
-            case "BASIC": return Battery;
-            case "PREMIUM": return Star;
-            case "BUSINESS": return Crown;
+    const getIcon = (planIndex) => {
+        switch (planIndex) {
+            case 1: return Battery;
+            case 2: return Star;
+            case 3: return Crown;
             default: return Battery;
         }
     };
@@ -93,7 +84,6 @@ export default function SubscriptionCheckout() {
                 description: "Gói subscription đã được kích hoạt bằng ví hệ thống.",
                 className: "bg-green-500 text-white",
             });
-            // setUserData(prev => ({ ...prev, activeSubscriptionId: plan.planId, planName: plan.planName, usedSwaps: 0, maxSwaps: plan.swapLimit, walletBalance: prev.walletBalance - priceNumber }));
 
             navigate("/driver/subscriptions");
             setTimeout(() => {
@@ -207,7 +197,7 @@ export default function SubscriptionCheckout() {
                                 <CardTitle className="flex items-center text-2xl font-bold text-gray-800">
                                     <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl mr-4">
                                         {(() => {
-                                            const IconComponent = getIcon(plan?.planName);
+                                            const IconComponent = getIcon(plan?.planId);
                                             return <IconComponent className="h-6 w-6 text-white" />;
                                         })()}
                                     </div>
@@ -220,8 +210,8 @@ export default function SubscriptionCheckout() {
                                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border border-emerald-200">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <div className="text-lg font-bold text-gray-800">{getDisplayName(plan.planName)}</div>
-                                                <div className="text-sm text-gray-600">Chu kỳ: tháng</div>
+                                                <div className="text-lg font-bold text-gray-800">Gói {plan.planName}</div>
+                                                <div className="text-sm text-gray-600">Chu kỳ: theo 1 tháng</div>
                                             </div>
                                             <Badge className="bg-emerald-100 text-emerald-800">Gói {plan.planId}</Badge>
                                         </div>

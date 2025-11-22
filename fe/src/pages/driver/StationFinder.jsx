@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+<<<<<<< HEAD
 import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star, Car, CarFront } from "lucide-react";
+=======
+import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Car } from "lucide-react";
+>>>>>>> 2b409182a724c55fcb6dca7b3f16071f7bde080b
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
@@ -199,7 +203,6 @@ export default function StationFinder() {
           address: station.address,
           latitude: station.latitude,
           longitude: station.longitude,
-          rating: station.rating,
           distance: station.distance,
           estimatedTime: station.estimatedTime,
           active: station.active,
@@ -640,9 +643,6 @@ export default function StationFinder() {
                             </div>
                             <div>
                               <h3 className="text-2xl font-bold text-gray-800 mb-1">{station.stationName}</h3>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-yellow-600">{station.rating}</span>
-                              </div>
                             </div>
                           </div>
                           <div className="space-y-2 text-sm text-gray-600">

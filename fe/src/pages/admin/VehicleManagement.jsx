@@ -6,15 +6,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Car, Upload, ArrowLeft, Search, Filter, Info } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState,useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import {getAllVehicles, importVehiclesCSV}  from "@/services/axios.services"
+import { getAllVehicles, importVehiclesCSV } from "@/services/axios.services"
 
 const VehicleManagement = () => {
   const [vehicles, setVehicles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVehicleType, setSelectedVehicleType] = useState("");
   const [selectedBatteryType, setSelectedBatteryType] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState(""); // "", "hasOwner", "noOwner"
 
   useEffect(() => {
     const fetchVehicles = async () => {
@@ -25,7 +26,7 @@ const VehicleManagement = () => {
           // Sort theo loại xe trước
           const typeCompare = a.vehicleType.localeCompare(b.vehicleType);
           if (typeCompare !== 0) return typeCompare;
-          
+
           // Nếu cùng loại xe, sort theo ID
           return a.vehicleId - b.vehicleId;
         }));
@@ -44,11 +45,11 @@ const VehicleManagement = () => {
       toast.error("Vui lòng chọn file CSV");
       return;
     }
-    
+
     try {
       const response = await importVehiclesCSV(file);
       console.log("Import response:", response);
-      
+
       if (response.failureCount === 0) {
         toast.success(`Đã import ${response.successCount || 0} xe thành công`);
         const vehicleRes = await getAllVehicles();
@@ -60,10 +61,10 @@ const VehicleManagement = () => {
           }));
         }
       } else {
-        const errorMessages = response?.errors.map(error => 
+        const errorMessages = response?.errors.map(error =>
           `• Biển số ${error.licensePlate}: ${error.errors[0]}`
         ).join("\n");
-        
+
         toast.error(
           <div>
             <div className="font-semibold mb-2">
@@ -90,43 +91,50 @@ const VehicleManagement = () => {
       vehicle.ownerName.toLowerCase().includes(search) ||
       vehicle.vehicleType.toLowerCase().includes(search)
     );
-    
+
     const matchVehicleType = selectedVehicleType === "" || vehicle.vehicleType === selectedVehicleType;
     const matchBatteryType = selectedBatteryType === "" || vehicle.batteryType === selectedBatteryType;
-    
-    return matchSearch && matchVehicleType && matchBatteryType;
+
+    let matchOwner = true;
+    if (ownerFilter === "hasOwner") {
+      matchOwner = !!vehicle.userId;
+    } else if (ownerFilter === "noOwner") {
+      matchOwner = !vehicle.userId;
+    }
+
+    return matchSearch && matchVehicleType && matchBatteryType && matchOwner;
   });
 
   // Lấy danh sách loại pin unique
   const batteryTypes = [...new Set(vehicles.map(v => v.batteryType))];
-  
+
   const getBatteryTypeBadge = (batteryType) => {
     const colors = [
       "bg-blue-500 text-white hover:bg-blue-600",
-      "bg-green-500 text-white hover:bg-green-600", 
+      "bg-green-500 text-white hover:bg-green-600",
       "bg-yellow-500 text-white hover:bg-yellow-600",
       "bg-purple-500 text-white hover:bg-purple-600",
       "bg-pink-500 text-white hover:bg-pink-600",
       "bg-indigo-500 text-white hover:bg-indigo-600"
     ];
-    
+
     const index = batteryTypes.indexOf(batteryType);
     return index >= 0 && index <= 5 ? colors[index] : "bg-gray-500 text-white hover:bg-gray-600";
   };
 
   // Lấy danh sách loại xe unique
   const vehicleTypes = [...new Set(vehicles.map(v => v.vehicleType))];
-  
+
   const getVehicleTypeBadge = (vehicleType) => {
     const colors = [
       "bg-cyan-500 text-white hover:bg-cyan-600",
-      "bg-emerald-500 text-white hover:bg-emerald-600", 
+      "bg-emerald-500 text-white hover:bg-emerald-600",
       "bg-amber-500 text-white hover:bg-amber-600",
       "bg-violet-500 text-white hover:bg-violet-600",
       "bg-rose-500 text-white hover:bg-rose-600",
       "bg-teal-500 text-white hover:bg-teal-600"
     ];
-    
+
     const index = vehicleTypes.indexOf(vehicleType);
     return index >= 0 && index <= 5 ? colors[index] : "bg-slate-500 text-white hover:bg-slate-600";
   };
@@ -213,7 +221,7 @@ const VehicleManagement = () => {
                   </div>
                 </Button>
               </label>
-              
+
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="w-full mt-2">
@@ -228,7 +236,7 @@ const VehicleManagement = () => {
                       Format và điều kiện validate cho file CSV
                     </DialogDescription>
                   </DialogHeader>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <h3 className="font-semibold mb-2">Format CSV:</h3>
@@ -290,7 +298,7 @@ const VehicleManagement = () => {
                     <div>
                       <h3 className="font-semibold mb-2">Ví dụ CSV hợp lệ:</h3>
                       <code className="block bg-gray-100 p-3 rounded text-xs overflow-x-auto whitespace-pre">
-{`VIN,vehicleType,batteryType,ownerName,licensePlate,color,batteryCount,manufactureDate,purchaseDate
+                        {`VIN,vehicleType,batteryType,ownerName,licensePlate,color,batteryCount,manufactureDate,purchaseDate
 LFVTH1A10N0000337,VENTO,LITHIUM_ION,Nguyễn Văn A,29B1-12345,Đỏ,2,2023-05-15,15/06/2023
 LFVTH1A10N0000338,KLARA,LEAD_ACID,Trần Thị B,30C2-23456,Xanh,1,2023-06-20,`}
                       </code>
@@ -319,7 +327,7 @@ LFVTH1A10N0000338,KLARA,LEAD_ACID,Trần Thị B,30C2-23456,Xanh,1,2023-06-20,`}
             <CardTitle>Tìm kiếm và lọc xe</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -329,7 +337,7 @@ LFVTH1A10N0000338,KLARA,LEAD_ACID,Trần Thị B,30C2-23456,Xanh,1,2023-06-20,`}
                   className="pl-10"
                 />
               </div>
-              
+
               <select
                 value={selectedVehicleType}
                 onChange={(e) => setSelectedVehicleType(e.target.value)}
@@ -340,7 +348,7 @@ LFVTH1A10N0000338,KLARA,LEAD_ACID,Trần Thị B,30C2-23456,Xanh,1,2023-06-20,`}
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
-              
+
               <select
                 value={selectedBatteryType}
                 onChange={(e) => setSelectedBatteryType(e.target.value)}
@@ -350,6 +358,16 @@ LFVTH1A10N0000338,KLARA,LEAD_ACID,Trần Thị B,30C2-23456,Xanh,1,2023-06-20,`}
                 {batteryTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
+              </select>
+
+              <select
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">Tất cả xe</option>
+                <option value="hasOwner">Xe có chủ ({vehicles.filter(v => v.userId).length})</option>
+                <option value="noOwner">Xe chưa có chủ ({vehicles.filter(v => !v.userId).length})</option>
               </select>
             </div>
           </CardContent>

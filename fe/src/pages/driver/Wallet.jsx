@@ -43,10 +43,7 @@ const Wallet = () => {
 
     // Format currency
     const formatCurrency = (value) => {
-        return new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-        }).format(value);
+        return value.toLocaleString('vi-VN') + ' VND';
     };
 
     // Handle deposit
@@ -114,7 +111,7 @@ const Wallet = () => {
                     return;
                 }
 
-                // Clear URL params
+                // Xóa cho url sạch sẽ bằng api của trình duyệt
                 window.history.replaceState({}, document.title, window.location.pathname);
 
                 if (paymentStatus.paymentStatus === "SUCCESS" || paymentStatus.vnpResponseCode === "00") {
@@ -132,7 +129,7 @@ const Wallet = () => {
                 }
             } catch (error) {
                 console.error("❌ VNPay status check error:", error);
-                // Retry nếu lỗi network
+                // Retry nếu lỗi mangj
                 if (retryCount < 5) {
                     console.log(`⏳ Error occurred, retry ${retryCount + 1}/5...`);
                     retryCount++;
@@ -242,7 +239,7 @@ const Wallet = () => {
                             <div className="relative">
                                 <Input
                                     id="customAmount"
-                                    type="text"
+                                    type="number"
                                     placeholder="Nhập số tiền (VNĐ)"
                                     value={amount}
                                     onChange={
@@ -255,7 +252,7 @@ const Wallet = () => {
                                     className="h-14 text-lg pl-4 pr-16 border-2 focus:border-blue-500"
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                                    ₫
+                                    VND
                                 </span>
                             </div>
                             {amount && (

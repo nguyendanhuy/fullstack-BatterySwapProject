@@ -59,15 +59,7 @@ const Reservation = () => {
   const [defaultPrice, setDefaultPrice] = useState(null);
 
   useEffect(() => {
-    const fetchDefaultPrice = async () => {
-      try {
-        const res = await getSwapDefaultPrice();
-        console.log("✅Default swap price:", res);
-        setDefaultPrice(res?.price ?? 15000);
-      } catch (error) {
-        console.error("Error fetching default price:", error);
-      }
-    };
+
     const fetchPenaltyFees = async () => {
       try {
         const res = await getSystemPriceAdmin();
@@ -81,11 +73,9 @@ const Reservation = () => {
       }
     };
 
-    fetchDefaultPrice();
     fetchPenaltyFees();
   }, [])
 
-  console.log("Penalty Fees:", penaltyFees);
 
 
   // cập nhật date/time vào sb[vehicleId]

@@ -256,21 +256,17 @@ const Reports = () => {
     try {
       //lấy report của 6 tháng trước đến hiện tại
       const endDate = format(new Date(), "yyyy-MM-dd");
-      const startDate = format(subDays(new Date(), 30), "yyyy-MM-dd");
+      const startDate = format(subDays(new Date(), 180), "yyyy-MM-dd");
       const response = await exportReportByRangeDate(startDate, endDate);
       console.log("Export response:", response, endDate, startDate);
-      const blob = new Blob([response?.data ?? response], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = window.URL.createObjectURL(blob);
+      const url = response.downloadUrl.replace("http://", "https://");
       const a = document.createElement("a");
       a.href = url;
-      let fileName = "report.xlsx";
-      a.download = fileName;
+      a.download = "report.xlsx";
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      toast.error("Xuất báo cáo thất bại. Vui lòng thử lại sau.");
+      toast.error(error?.response?.data || error?.message || "Có lỗi xảy ra");
     }
   };
   return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">

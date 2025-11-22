@@ -52,7 +52,7 @@ const QRCheckIn = () => {
     }
   }, [previewUrl]);
 
-
+  //tách mảng (, space, xuống dòng, tab, carriage return) input thành mảng id pin
   const formatBatteryIdInput = (input) => {
     return (input ?? "").split(/[,\n\r\t ]+/).map(id => id.trim()).filter(Boolean).map(id => id.toUpperCase());
   }
@@ -200,7 +200,6 @@ const QRCheckIn = () => {
 
     setIsCancelling(true);
     try {
-      // payload có thể thay đổi tùy API của bạn
       const res = await cancelBooking({
         bookingId: scannedCustomer.bookingId,
         cancelType: "PERMANENT"
@@ -212,7 +211,6 @@ const QRCheckIn = () => {
           description: res.message || "Hủy booking thành công.",
           duration: 5000,
         });
-        // Tuỳ UX: có thể clear khách hàng đã quét
         setScannedCustomer(null);
         setEnteredBatteryId("");
         setVerificationError("");

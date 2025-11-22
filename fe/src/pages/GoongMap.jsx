@@ -26,7 +26,7 @@ export default function SimpleGoongMap({
     heightClass = "h-[60vh]",
     defaultCenter = [106.660172, 10.762622],
     station,            // mảng trạm như JSON bạn gửi
-    stations: s2,       // (tuỳ chọn) hỗ trợ tên prop khác nếu bạn đang dùng "stations"
+    stations: s2,       // (tuỳ chọn) 
     onLocationSelect,   // Callback khi chọn vị trí (trả về {lng, lat, address})
     selectMode = false, // Bật chế độ chọn vị trí
 }) {

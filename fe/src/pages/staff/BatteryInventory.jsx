@@ -101,7 +101,7 @@ const BatteryInventory = () => {
     if (!Array.isArray(grouped)) return;
     setDocksData(grouped);
   };
-
+  console.log("Docks data:", docksData);
 
   // Xử lý event realtime
   const applyRealtimeEvent = (evt) => {
@@ -228,7 +228,7 @@ const BatteryInventory = () => {
 
   // Lấy danh sách slot trống của dock hiện tại cho select thêm pin
   const availableSlots = (docks[selectedDockIndex]?.slots || []).filter(
-    (s) => (s.isEmpty || !s.id));
+    (s) => (!s.id));
 
 
   // ==============
@@ -301,7 +301,7 @@ const BatteryInventory = () => {
           <Badge className="bg-yellow-500 text-white">Đang chờ</Badge>
         ); // 🌟 badge cho WAITING
       case "empty":
-        return <Badge variant="secondary">Pin đang bảo trì</Badge>;
+        return <Badge variant="secondary">Pin đang bảo trì hoặc trống</Badge>;
       case "error":
         return (
           <Badge className="bg-destructive text-destructive-foreground">Lỗi</Badge>
@@ -552,7 +552,7 @@ const BatteryInventory = () => {
         {/* Dock Selector */}
         <Card className="mb-6 border-0 shadow-lg bg-white">
           <CardContent className="p-4">
-            <div className="flex items-center gap-4 overflow-x-auto">
+            <div className="flex items-center gap-4 ">
               {docks.map((dock, idx) => {
                 const stats = getDockStats(idx);
                 const isActive = selectedDockIndex === idx;
@@ -712,7 +712,6 @@ const BatteryInventory = () => {
                       <Select
                         value={newBattery.slotId || ""}
                         onValueChange={(value) => {
-                          console.log("Selected slot value:", value);
                           setNewBattery({ ...newBattery, slotId: value });
                         }}
                         disabled={availableSlots.length === 0}
@@ -758,7 +757,7 @@ const BatteryInventory = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
-                Ma trận pin - {currentDock.name}
+                Danh sách pin - {currentDock.name}
                 <span className="text-lg font-normal text-gray-500 ml-2">
                   ({(currentDock.slots || []).length} pin)
                 </span>

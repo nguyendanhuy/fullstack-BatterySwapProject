@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star, Car } from "lucide-react";
+import { MapPin, Battery, Filter, Map as MapIcon, Navigation, Zap, Clock, Star, Car, CarFront } from "lucide-react";
 import { List, Modal, Tooltip } from "antd";
 import SimpleGoongMap from "../GoongMap";
 import { getAllStations, getStationNearbyLocation } from "../../services/axios.services";
@@ -15,7 +15,7 @@ import ProvinceDistrictWardSelect from "../../components/ProvinceDistrictWardSel
 import BookingSummary from "../../components/BookingSummary";
 import { useSessionStorage } from "../../hooks/useSessionStorage";
 
-// --- Utils địa chỉ (giữ nguyên tinh thần code cũ) ---
+//thay đổi hàm so khớp địa chỉ theo filter
 const normalizeVi = (s = "") =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, "").toLowerCase().trim();
 
@@ -82,7 +82,6 @@ export default function StationFinder() {
   const [filterAddress, setFilterAddress] = useState({});
   const [vehicleSelectValue, setVehicleSelectValue] = useState("ALL");
 
-  // --- NEW: chọn xe chi tiết & giỏ đặt pin theo xe ---
   const [currentVehicleId, setCurrentVehicleId] = useState(null);
   // Sử dụng useSessionStorage để lưu thông tin đặt pin
   const [selectBattery, setSelectBattery] = useSessionStorage("battery-booking-selection", {});
@@ -153,8 +152,6 @@ export default function StationFinder() {
     const available = Number(bInfo?.available || 0);
 
     const alreadyAssigned = assignedAtStationType(station.stationId, batteryType);
-
-    // sameLine chỉ coi là "đang giữ thật" khi qty>0 để đỡ rối
     const meOldQty = Number(line.qty || 0);
     const sameLine =
       meOldQty > 0 &&
@@ -184,13 +181,11 @@ export default function StationFinder() {
         return;
       }
     }
-
-    // Nếu muốn: về 0 thì xoá stationInfo cho trực quan hơn
     if (next === 0) {
-      setSelectBattery((s) => ({
-        ...s,
-        [vehicleId]: { ...s[vehicleId], stationInfo: null, qty: 0 }
-      }));
+      setSelectBattery((s) => {
+        const { [vehicleId]: _, ...rest } = s;
+        return rest;
+      });
       return;
     }
 
@@ -383,10 +378,14 @@ export default function StationFinder() {
       return true;
     });
   }, [stations, filterAddress, filters.batteryType, filters.distance]);
-
+  // --- Xử lý chọn vị trí từ bản đồ goong map---
   const handleLocationSelect = (location) => setSelectedLocation(location);
-  const handleMapOk = () => setIsMapOpen(false);
 
+  const handleMapOk = () => setIsMapOpen(false);
+  // --- Lấy xe hiện tại ---
+  const selectedVehicle = userVehicles.find(
+    x => x.vehicleId == currentVehicleId
+  );
   const handleShowWayBtn = (lat, lng) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     window.open(url, "_blank");
@@ -402,7 +401,7 @@ export default function StationFinder() {
       </header>
 
       {/* Main */}
-      <div className="container mx-auto px-6 py-8 max-w-screen-2xl">
+      <div className="container mx-auto px-1 py-6 max-w-screen-2xl">
         {/* 3 columns layout */}
         <div className="grid lg:grid-cols-12 gap-8">
           {/* Col 1: Vị trí + Filters + Quick Stats */}
@@ -642,11 +641,6 @@ export default function StationFinder() {
                             <div>
                               <h3 className="text-2xl font-bold text-gray-800 mb-1">{station.stationName}</h3>
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className={`h-4 w-4 ${i < Math.floor(station.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                                  ))}
-                                </div>
                                 <span className="text-sm font-semibold text-yellow-600">{station.rating}</span>
                               </div>
                             </div>
@@ -809,61 +803,80 @@ export default function StationFinder() {
           </div>
 
           {/* Col 3: Chọn xe + Booking Summary */}
-          <div className="lg:col-span-3 space-y-6 order-3">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center text-lg font-semibold">
-                  <div className="p-2 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-lg mr-3">
-                    <Battery className="h-5 w-5 text-white" />
-                  </div>
-                  Chọn xe chi tiết
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold mb-3 block text-gray-700">Xe</label>
-                  <Select
-                    value={currentVehicleId ?? ""}
-                    onValueChange={(vid) => {
-                      setCurrentVehicleId(vid);
-                      ensureVehicleLine(vid);
-                    }}
-                  >
-                    <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-violet-500 rounded-xl">
-                      <SelectValue placeholder="Chọn xe để gán pin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.isArray(userVehicles) && userVehicles.length > 0 ? (
-                        userVehicles.map(v => (
-                          <SelectItem key={v.vehicleId} value={String(v.vehicleId)}>
-                            <div className="flex items-center gap-2">
+          <div className="lg:col-span-3 order-3">
+            <div className="lg:sticky lg:top-24 space-y-4">
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-lg font-semibold">
+                    <div className="p-2 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-lg mr-3">
+                      <Battery className="h-5 w-5 text-white" />
+                    </div>
+                    Chọn xe chi tiết
+                  </CardTitle>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Chọn xe trước, sau đó dùng nút <span className="font-semibold">"Chi tiết pin / Đặt pin"</span> ở mỗi trạm để gán pin cho xe này.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm font-semibold mb-3 block text-gray-700">Xe</label>
+                    <Select
+                      value={currentVehicleId ?? ""}
+                      onValueChange={(vid) => {
+                        setCurrentVehicleId(vid);
+                        ensureVehicleLine(vid);
+                      }}
+                    >
+                      <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-violet-500 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          {currentVehicleId ? (
+                            <>
                               <Car className="h-4 w-4 text-blue-600" />
-                              <span>{v.vehicleType}</span>
-                              <span className="text-gray-400">—</span>
-                              <Battery className="h-4 w-4 text-green-600" />
-                              <span>{v.batteryType}</span>
-                              <span className="text-gray-500">(cần {getVehicleRequired(v)})</span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="-" disabled>Chưa có xe</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="text-sm text-gray-600">
-                  Hạn mức tổng: <b>{totalBooked}</b> / {totalQuota} pin
-                </div>
-              </CardContent>
-            </Card>
+                              <span>{selectedVehicle?.vehicleType}</span>
+                              <span className="text-gray-400">•</span>
+                              <span>{selectedVehicle?.batteryType}</span>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-gray-500">(cần {getVehicleRequired(selectedVehicle)})</span>
+                            </>
+                          ) : (
+                            "Chọn xe để gán pin"
+                          )}
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(userVehicles) && userVehicles.length > 0 ? (
+                          userVehicles.map(v => (
+                            <SelectItem key={v.vehicleId} value={String(v.vehicleId)}>
+                              <div className="flex items-center gap-2">
+                                <Car className="h-4 w-4 text-blue-600" />
+                                <span>{v.vehicleType}</span>
+                                <Battery className="h-4 w-4 text-green-600" />
+                                <span>{v.batteryType}</span>
+                                <span className="text-gray-500">(cần {getVehicleRequired(v)})</span>
+                                <CarFront className="h-4 w-4 text-green-600" />
+                                <span>{v.licensePlate}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="-" disabled>Chưa có xe</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Hạn mức tổng: <b>{totalBooked}</b> / {totalQuota} pin
+                  </div>
+                </CardContent>
+              </Card>
 
-            <BookingSummary
-              selectBattery={selectBattery}
-              totalQuota={totalQuota}
-              totalBooked={totalBooked}
-              onRemove={removeVehicleLine}
-            />
+              <BookingSummary
+                selectBattery={selectBattery}
+                totalQuota={totalQuota}
+                totalBooked={totalBooked}
+                onRemove={removeVehicleLine}
+              />
+            </div>
           </div>
         </div>
       </div>

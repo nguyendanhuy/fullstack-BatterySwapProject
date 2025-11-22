@@ -289,12 +289,7 @@ const getDriverDashboardReport = (driverId) => {
     return axios.get(`/dashboard?userId=${driverId}`);
 }
 const exportReportByRangeDate = (startDate,endDate ) => {
-    return axios.get(`/reports/export/all?startDate=${startDate}&endDate=${endDate}`, { 
-        responseType: 'blob', 
-        headers:{
-            Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        } 
-    });
+    return axios.get(`/reports/export?startDate=${startDate}&endDate=${endDate}&mode=downloadUrl`);
 }
 
 const getAllVehicles = () => {

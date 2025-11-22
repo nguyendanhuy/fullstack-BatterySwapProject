@@ -184,15 +184,15 @@ public class InspectionService { // ✅ Đổi tên lớp
             battery.setBatteryStatus(Battery.BatteryStatus.MAINTENANCE);
         } else if (inspectionStatus == BatteryInspection.InspectionStatus.PASS) {
             // Pin vượt qua kiểm tra -> chuyển về AVAILABLE (sẵn sàng sử dụng)
-            battery.setBatteryStatus(Battery.BatteryStatus.AVAILABLE);
+            battery.setBatteryStatus(Battery.BatteryStatus.CHARGING);
         }
 
-        // Tăng số lượng chu kỳ sử dụng
-        if (battery.getCycleCount() == null) {
-            battery.setCycleCount(1);
-        } else {
-            battery.setCycleCount(battery.getCycleCount() + 1);
-        }
+//        // Tăng số lượng chu kỳ sử dụng
+//        if (battery.getCycleCount() == null) {
+//            battery.setCycleCount(1);
+//        } else {
+//            battery.setCycleCount(battery.getCycleCount() + 1);
+//        }
 
         // Lưu thay đổi vào database
         batteryRepository.save(battery);

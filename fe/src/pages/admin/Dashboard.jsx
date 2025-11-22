@@ -3,10 +3,39 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BarChart3, TrendingUp, Users, Battery, MapPin, Home, Settings, DollarSign, Car } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AccountSettings from "@/components/AccountSettings";
+import { getAdminDashboard } from "../../services/axios.services";
+
 const AdminDashboard = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState({
+    totalVehicle: 0,
+    totalStation: 0,
+    totalPendingSwappingBooking: 0,
+    totalSubscription: 0
+  });
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const date = new Date();
+        console.log('Fetching dashboard data for date:', date.toISOString().slice(0, 10));
+        const res = await getAdminDashboard(date.toISOString().slice(0, 10));
+        console.log('Dashboard data:', res);
+        setDashboardData(res);
+      } catch (err) {
+        setDashboardData({
+          totalVehicle: 0,
+          totalStation: 0,
+          totalPendingSwappingBooking: 0,
+          totalSubscription: 0
+        });
+      }
+    };
+    fetchDashboard();
+  }, []);
+
   return (<div className="min-h-screen bg-background">
     {/* Header with gradient background like the image */}
     <header className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6">
@@ -69,41 +98,38 @@ const AdminDashboard = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105">
               <CardContent className="p-6 text-center">
-                <div className="bg-gradient-to-r from-green-500 to-green-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <TrendingUp className="h-6 w-6 text-white" />
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Car className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-3xl font-bold text-gray-800">2.85M</h3>
-                <p className="text-gray-600 text-sm">Doanh thu (VNĐ)</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-6 text-center">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Users className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-3xl font-bold text-gray-800">1,248</h3>
+                <h3 className="text-3xl font-bold text-gray-800">{dashboardData.activeUsers}</h3>
                 <p className="text-gray-600 text-sm">Người dùng hoạt động</p>
               </CardContent>
             </Card>
-
-            <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-6 text-center">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Battery className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-3xl font-bold text-gray-800">156</h3>
-                <p className="text-gray-600 text-sm">Lần đổi pin hôm nay</p>
-              </CardContent>
-            </Card>
-
             <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105">
               <CardContent className="p-6 text-center">
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <MapPin className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-3xl font-bold text-gray-800">12</h3>
+                <h3 className="text-3xl font-bold text-gray-800">{dashboardData.totalStation}</h3>
                 <p className="text-gray-600 text-sm">Trạm hoạt động</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="bg-gradient-to-r from-orange-500 to-yellow-500 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <Battery className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-800">{dashboardData.totalPendingSwappingBooking}</h3>
+                <p className="text-gray-600 text-sm">Lịch hẹn chờ đổi</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="bg-gradient-to-r from-pink-500 to-purple-500 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <DollarSign className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-800">{dashboardData.totalSubscription}</h3>
+                <p className="text-gray-600 text-sm">Gói thuê bao</p>
               </CardContent>
             </Card>
           </div>

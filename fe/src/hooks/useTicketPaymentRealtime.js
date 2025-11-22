@@ -2,33 +2,37 @@ import { useRef, useCallback, useEffect } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
-const HTTP_BASE = 'https://batteryswap-be-production.up.railway.app' ||
-    (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')) ||
-    'http://localhost:8080';
+const HTTP_BASE = import.meta.env.VITE_API_BASE_URL;
 
-/**
- * Hook để lắng nghe realtime payment events cho ticket
- * Subscribe tới /topic/station-{stationId}/tickets
- */
 export const useTicketPaymentRealtime = (stationId, onPenaltyPaid) => {
     const clientRef = useRef(null);
     const onPenaltyPaidRef = useRef(onPenaltyPaid);
     const subscriptionRef = useRef(null);
+
 
     useEffect(() => {
         onPenaltyPaidRef.current = onPenaltyPaid;
     }, [onPenaltyPaid]);
 
     const connect = useCallback(() => {
-        if (clientRef.current?.connected) return;
+        console.log('🔌 Attempting to connect to Ticket Payment WebSocket...', HTTP_BASE);
+        if (clientRef.current?.connected) {
+            console.log('⚠️ Already connected, skipping...');
+            return;
+        }
 
         const client = new Client({
             webSocketFactory: () => new SockJS(`${HTTP_BASE}/ws-battery`),
-            reconnectDelay: 2000,
+            reconnectDelay: 5000,
             heartbeatIncoming: 10000,
             heartbeatOutgoing: 10000,
-            onConnect: () => subscribeToTicketEvents(),
+            onConnect: () => {
+                console.log('✅ Ticket Payment WebSocket Connected');
+                subscribeToTicketEvents();
+            },
+            onDisconnect: () => console.log('⚠️ Ticket Payment WebSocket Disconnected'),
             onStompError: (frame) => console.error('❌ STOMP Error:', frame),
+            onWebSocketError: (error) => console.error('❌ WebSocket Error - Backend may not be available:', error),
         });
 
         clientRef.current = client;

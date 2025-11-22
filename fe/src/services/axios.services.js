@@ -288,7 +288,7 @@ const getStationReportByRangeDate = (stationId, range) => {
 const getDriverDashboardReport = (driverId) => {
     return axios.get(`/dashboard?userId=${driverId}`);
 }
-const exportReportByRangeDate = (startDate,endDate ) => {
+const exportReportByRangeDate = (startDate, endDate) => {
     return axios.get(`/reports/export?startDate=${startDate}&endDate=${endDate}&mode=downloadUrl`);
 }
 
@@ -304,6 +304,11 @@ const importVehiclesCSV = (file) => {
             'Content-Type': 'multipart/form-data'
         }
     });
+}
+
+
+const getAdminDashboard = (date) => {
+    return axios.get(`/dashboard/admin?date=${date}`);
 }
 
 export {
@@ -376,5 +381,6 @@ export {
     updateRebalanceRequest,
     getDriverDashboardReport,
     getAllVehicles,
-    importVehiclesCSV
+    importVehiclesCSV,
+    getAdminDashboard
 };

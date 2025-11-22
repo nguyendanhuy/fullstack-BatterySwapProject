@@ -336,7 +336,7 @@ const StaffManagement = () => {
                             </CardContent>
                           </Card>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="z-50 max-h-[85vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>Nhân viên trong {st.stationName}</DialogTitle>
                           </DialogHeader>

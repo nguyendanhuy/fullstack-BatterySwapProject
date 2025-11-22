@@ -260,35 +260,6 @@ const StaffDashboard = () => {
             </Card>
           ))}
         </div>
-
-        {/* TODAY SUMMARY */}
-        <Card className="mt-8 border-0 shadow-lg bg-white">
-          <CardHeader>
-            <CardTitle className="flex items-center text-2xl font-bold text-gray-800">
-              <div className="p-3 bg-gradient-to-r from-gray-600 to-gray-800 rounded-xl mr-4">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              Tóm tắt ca làm việc hôm nay
-            </CardTitle>
-            <CardDescription>Hiệu suất và thành tích trong ngày</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-4 gap-6">
-              {[
-                { label: "Giao dịch hoàn thành", value: "23", icon: CheckCircle, color: "text-green-600" },
-                { label: "Thời gian trung bình", value: "3.2 phút", icon: Clock, color: "text-blue-600" },
-                { label: "Pin đã kiểm tra", value: "12", icon: Battery, color: "text-orange-600" },
-                { label: "Đánh giá trung bình", value: "4.8/5", icon: Star, color: "text-purple-600" }
-              ].map((item, index) => (
-                <div key={index} className="text-center p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                  <item.icon className={`h-8 w-8 mx-auto mb-3 ${item.color}`} />
-                  <h3 className="text-2xl font-bold text-gray-800 mb-1">{item.value}</h3>
-                  <p className="text-sm text-gray-600">{item.label}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

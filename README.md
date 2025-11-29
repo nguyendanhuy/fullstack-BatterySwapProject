@@ -101,7 +101,39 @@ This project provided a clearer perspective on teamwork, task distribution, API�
 ![Tickets](image/7.3.realtimeTicket.png)
 
 ---
+## 🛡️ Admin Management System
 
+A dedicated portal for administrators to oversee the entire system, from revenue and personnel to battery inventory operations.
+
+### 1. General Reports
+Provides detailed reports on revenue, transactions, and managed battery inventory. The interface features visualization charts for swap frequency and revenue trends over time, with capabilities to export data for external analysis .
+
+![Admin Dashboard](image/8.1.png)
+![Admin Dashboard](image/8.1.2.png)
+
+### 2. AI Smart Battery Dispatch
+Monitors detailed battery inventory by type at each station. The system displays dispatch orders for updates and lists AI-driven suggestions to apply optimal dispatch commands effectively .
+
+![Battery Dispatch](image/8.2.1.png)
+![Battery Dispatch](image/8.2.2.png)
+
+### 3. Staff Management
+Manages staff distribution per station. Admins can view the staff count for each location and perform actions to assign available staff or unassign active staff within specific stations .
+
+![Staff Management](image/8.3.1.png)
+![Staff Management](image/8.3.2.png)
+![Staff Management](image/8.3.3.png)
+
+### 4. Vehicle Management
+Manages the registry of vehicles with detailed information. Includes a feature to import vehicle lists via CSV from partners to update the system database, complete with import instructions .
+
+![Vehicle Management](image/8.4.1.png)
+![Vehicle Management](image/8.4.2.png)
+
+### 5. Pricing Management
+CRUD capabilities for managing system pricing and service fees.
+
+![Pricing Management](image/8.5.png)
 ## 🚀 Detailed Features
 
 ### 👤 For Drivers
@@ -143,3 +175,5 @@ This project provided a clearer perspective on teamwork, task distribution, API�
 - **Nguyễn Đan Huy** — Front-end
 - **Phùng Quang Tuyết Linh** — Back-end
 - **Nguyễn Huỳnh Minh Phát** — Back-end
+
+>Documented by Công Định

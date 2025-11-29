@@ -111,7 +111,7 @@ const StaffManagement = () => {
       const data = await createStaffAccount(formData.name, formData.email, formData.password, stationId);
       console.log("✅ Create Staff Response:", data);
       if (isErrorResponse(data)) {
-        toast.error(pickApiMessage(data));
+        toast.error(data?.messages?.name || pickApiMessage(data));
         return;
       }
       toast.success("Tạo nhân viên thành công");

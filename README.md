@@ -2,6 +2,8 @@
 
 > A comprehensive solution for booking battery swaps, tracking real-time battery status, and automating charging station operations.
 
+>Readme file documented by Công Định
+
 ---
 
 ## 📘 Introduction
@@ -21,24 +23,50 @@ This project provided a clearer perspective on teamwork, task distribution, API�
 
 ---
 
-## ❗ Problems & ✔️ Solutions
+## 🚀 Detailed Features
 
-### ❗ Problems
-- Long waiting times for charging.
-- Uncertainty about which stations have available batteries.
-- Manual battery swapping processes are prone to errors.
-- Inability to track battery status (SoH / faults).
+### 👤 For Drivers
+- Register / Login / Link vehicle.
+- Find stations using Goong Map.
+- Book swaps, pay via wallet or subscription.
+- View Battery %, SoH, transaction history.
 
-### ✔️ Solutions
-- Online battery swap booking.
-- Quick QR Check-in at stations.
-- Real-time battery inventory management.
-- Automated inspection & evaluation of returned batteries.
+### 👨‍🔧 For Staff
+- Scan Booking QR & process swap flows.
+- Real-time dock monitoring.
+- Handle faulty batteries and create tickets.
+- Record and process violation penalties.
+
+### 🛠 For Admin
+- Statistical dashboard.
+- Manage stations, battery distribution between stations.
+- Manage users, staff, vehicles, and batteries.
 
 ---
 
-## 🔄 Workflow
+## 💻 Tech Stack
 
+| Category | Technology |
+|--------|-----------|
+| **Front-End** | ReactJS, Ant Design, Axios, Toastify, TailWindCss, WebSocket |
+| **Back-End** | Spring Boot, Spring Security, JPA |
+| **Database** | PostgreSQL |
+| **Payments** | VNPay |
+| **Maps** | Goong Map API |
+| **Auth** | Google OAuth |
+| **Deploy** | Railway |
+
+---
+
+## 👥 Development Team
+
+- **Phạm Công Định** — Front-end
+- **Nguyễn Đan Huy** — Front-end
+- **Phùng Quang Tuyết Linh** — Back-end
+- **Nguyễn Huỳnh Minh Phát** — Back-end
+
+
+## 🔄 Workflow
 ---
 
 ### 1️⃣ Registration & Login (User Auth)
@@ -140,46 +168,3 @@ Manages the registry of vehicles with detailed information. Includes a feature t
 CRUD capabilities for managing system pricing and service fees.
 
 ![Pricing Management](image/8.5.png)
-## 🚀 Detailed Features
-
-### 👤 For Drivers
-- Register / Login / Link vehicle.
-- Find stations using Goong Map.
-- Book swaps, pay via wallet or subscription.
-- View Battery %, SoH, transaction history.
-
-### 👨‍🔧 For Staff
-- Scan Booking QR & process swap flows.
-- Real-time dock monitoring.
-- Handle faulty batteries and create tickets.
-- Record and process violation penalties.
-
-### 🛠 For Admin
-- Statistical dashboard.
-- Manage stations, battery distribution between stations.
-- Manage users, staff, vehicles, and batteries.
-
----
-
-## 💻 Tech Stack
-
-| Category | Technology |
-|--------|-----------|
-| **Front-End** | ReactJS, Ant Design, Axios, Toastify, TailWindCss, WebSocket |
-| **Back-End** | Spring Boot, Spring Security, JPA |
-| **Database** | PostgreSQL |
-| **Payments** | VNPay |
-| **Maps** | Goong Map API |
-| **Auth** | Google OAuth |
-| **Deploy** | Railway |
-
----
-
-## 👥 Development Team
-
-- **Phạm Công Định** — Front-end
-- **Nguyễn Đan Huy** — Front-end
-- **Phùng Quang Tuyết Linh** — Back-end
-- **Nguyễn Huỳnh Minh Phát** — Back-end
-
->Documented by Công Định

@@ -82,6 +82,12 @@ This project provided a clearer perspective on teamwork, task distribution, APIâ
 ![Payment Wallet](image/6.3.bookpayment.png)
 **Payment via Subscription (if registered):**
 ![Payment Subscription](image/6.3.2.bookingbysubscript.png)
+Driver get QR Code in booking history
+![Payment QR](image/6.4.bookingQR.png)
+Driver can also watch Invoices - money flow
+![Money flow](image/6.5.monneyInvoiceflow.png)
+
+
 
 ---
 

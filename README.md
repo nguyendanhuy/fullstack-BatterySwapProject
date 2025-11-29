@@ -155,7 +155,7 @@ CRUD capabilities for managing system pricing and service fees.
 - Record and process violation penalties.
 
 ### 🛠 For Admin
-- Real-time statistical dashboard.
+- Statistical dashboard.
 - Manage stations, battery distribution between stations.
 - Manage users, staff, vehicles, and batteries.
 

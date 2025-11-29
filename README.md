@@ -67,7 +67,6 @@ This project provided a clearer perspective on teamwork, task distribution, API�
 
 
 ## 🔄 Workflow
----
 
 ### 1️⃣ Registration & Login (User Auth)
 - Register Account → Verify Email → Login → Access Dashboard.

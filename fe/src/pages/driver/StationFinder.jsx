@@ -800,7 +800,7 @@ export default function StationFinder() {
 
           {/* Col 3: Chọn xe + Booking Summary */}
           <div className="lg:col-span-3 order-3">
-            <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="lg:top-24 space-y-4">
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center text-lg font-semibold">
